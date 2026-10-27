@@ -1,0 +1,102 @@
+{
+  "id": "torus-internal-readiness",
+  "version": "1.0.0",
+  "description": "Internal automated readiness rubric, not the sponsor's judging weights or an official competition score.",
+  "humanReview": [
+    "Creativity",
+    "Clarity of insight",
+    "Execution and presentation quality"
+  ],
+  "cases": [
+    {
+      "id": "ROUTER-01",
+      "group": "Router and reporting",
+      "points": 20,
+      "runner": "vitest",
+      "file": "test/core/reporting/reporting.test.ts",
+      "project": "",
+      "title": "executed work captures otherwise-curtailed solar with the same ending battery inventory"
+    },
+    {
+      "id": "ROUTER-02",
+      "group": "Router and reporting",
+      "points": 5,
+      "runner": "vitest",
+      "file": "test/core/reporting/reporting.test.ts",
+      "project": "",
+      "title": "a lower carbon total for unfinished work is not a comparable reduction"
+    },
+    {
+      "id": "ROUTER-03",
+      "group": "Router and reporting",
+      "points": 5,
+      "runner": "vitest",
+      "file": "test/core/reporting/reporting.test.ts",
+      "project": "",
+      "title": "a report cannot derive a reduction from unavailable selected carbon evidence"
+    },
+    {
+      "id": "ROUTER-04",
+      "group": "Router and reporting",
+      "points": 10,
+      "runner": "playwright",
+      "file": "test/userflows/reporting/reporting.test.ts",
+      "project": "chromium",
+      "title": "[FLOW-02] executes work and sees a comparable carbon report"
+    },
+    {
+      "id": "BID-01",
+      "group": "Bidding and execution",
+      "points": 10,
+      "runner": "vitest",
+      "file": "test/core/market/market.test.ts",
+      "project": "",
+      "title": "a site with only protected stored energy makes no execution offer this hour"
+    },
+    {
+      "id": "BID-02",
+      "group": "Bidding and execution",
+      "points": 10,
+      "runner": "vitest",
+      "file": "test/core/market/market.test.ts",
+      "project": "",
+      "title": "a job declines an available site offer it cannot afford"
+    },
+    {
+      "id": "BID-03",
+      "group": "Bidding and execution",
+      "points": 10,
+      "runner": "vitest",
+      "file": "test/core/execution/execution.test.ts",
+      "project": "",
+      "title": "the executor accounts only for the remaining work in a partial final tick"
+    },
+    {
+      "id": "BID-04",
+      "group": "Bidding and execution",
+      "points": 10,
+      "runner": "playwright",
+      "file": "test/userflows/market/market.test.ts",
+      "project": "chromium",
+      "title": "[FLOW-01] inspects hourly offers and selects a site before work executes"
+    },
+    {
+      "id": "MAP-01",
+      "group": "Map freshness",
+      "points": 10,
+      "runner": "vitest",
+      "file": "test/core/energy/energy.test.ts",
+      "project": "",
+      "title": "the live map does not recommend a location from stale evidence"
+    },
+    {
+      "id": "MAP-02",
+      "group": "Map freshness",
+      "points": 10,
+      "runner": "playwright",
+      "file": "test/userflows/energy/energy.test.ts",
+      "project": "chromium",
+      "title": "[FLOW-03] distinguishes stale site evidence from a current recommendation"
+    }
+  ]
+}

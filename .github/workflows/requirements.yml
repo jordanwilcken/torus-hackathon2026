@@ -1,0 +1,75 @@
+name: Requirements and score (advisory)
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Use the pinned npm version
+        run: npm install --global npm@11.20.0
+      - name: Install dependencies
+        id: dependencies
+        continue-on-error: true
+        run: npm ci --no-audit --no-fund
+      - name: Type-check and build
+        id: build
+        if: steps.dependencies.outcome == 'success'
+        continue-on-error: true
+        run: npm run build
+      - name: Verify score reporting
+        id: tooling
+        if: always()
+        continue-on-error: true
+        run: node --test test/tooling/score.test.ts
+      - name: Install the Chromium test browser
+        id: browser
+        if: steps.dependencies.outcome == 'success'
+        continue-on-error: true
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Run requirements and browser flows; calculate score
+        id: requirements
+        if: always()
+        continue-on-error: true
+        run: node scripts/score.mjs
+      - name: Publish the commit summary
+        if: always()
+        env:
+          INSTALL_RESULT: ${{ steps.dependencies.outcome }}
+          BUILD_RESULT: ${{ steps.build.outcome }}
+          TOOLING_RESULT: ${{ steps.tooling.outcome }}
+          BROWSER_RESULT: ${{ steps.browser.outcome }}
+          REQUIREMENTS_RESULT: ${{ steps.requirements.outcome }}
+        run: node scripts/ci-summary.mjs
+      - name: Save tests, score and browser traces
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: requirements-${{ github.sha }}
+          path: |
+            .reports/
+            test-results/
+            playwright-report/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Preserve the actual test conclusion
+        if: always()
+        env:
+          INSTALL_RESULT: ${{ steps.dependencies.outcome }}
+          BUILD_RESULT: ${{ steps.build.outcome }}
+          TOOLING_RESULT: ${{ steps.tooling.outcome }}
+          BROWSER_RESULT: ${{ steps.browser.outcome }}
+          REQUIREMENTS_RESULT: ${{ steps.requirements.outcome }}
+        run: node scripts/ci-summary.mjs --conclusion
