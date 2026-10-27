@@ -1,0 +1,23 @@
+{
+  "fake": true,
+  "label": "Fake report — illustrative comparison, not a record of job execution.",
+  "reports": [
+    {
+      "jobId": "fake-job",
+      "comparison": "illustrative",
+      "scenario": "Same assets and dispatch, equal one-GPU-hour work and ending storage; zero transfer overhead.",
+      "carbon": {
+        "accountingBasis": "Fake: average operational CO2 for equal one-GPU-hour work",
+        "baselineCarbonKg": 0.4,
+        "selectedCarbonKg": 0
+      },
+      "cost": {
+        "costBasis": "Fake: realized electricity + modeled carbon at $100/tonne",
+        "baselineModeledCostUsd": 0.09,
+        "selectedModeledCostUsd": 0,
+        "baselineElectricityUsd": 0.05,
+        "selectedElectricityUsd": 0
+      }
+    }
+  ]
+}

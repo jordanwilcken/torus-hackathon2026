@@ -1,0 +1,73 @@
+{
+  "fake": true,
+  "label": "Fake data — illustrative Utah sites, not live Torus installations.",
+  "asOf": "2026-10-27T18:00:00Z",
+  "window": {
+    "startAt": "2026-10-27T18:00:00Z",
+    "endAt": "2026-10-27T19:00:00Z"
+  },
+  "sites": [
+    {
+      "id": "fake-utah-grid",
+      "name": "Utah grid example",
+      "latitude": 40.7608,
+      "longitude": -111.891,
+      "solarKWh": 0,
+      "regionId": "PACE",
+      "computeProfile": "fake-1kWh-per-GPUh",
+      "snapshot": {
+        "status": "current",
+        "source": "fake-local-energy",
+        "version": "fake-v1",
+        "observedAt": "2026-10-27T18:00:00Z",
+        "projected": false,
+        "simulated": true,
+        "slot": {
+          "id": "fake-utah-grid-18",
+          "locationId": "fake-utah-grid",
+          "window": {
+            "startAt": "2026-10-27T18:00:00Z",
+            "endAt": "2026-10-27T19:00:00Z"
+          },
+          "availablePowerKW": 1,
+          "availableEnergyKWh": 1,
+          "capGpus": 1,
+          "usedGpus": 0,
+          "postedUsdPerGpuHour": 0.09,
+          "priceBasis": "Fake: $50/MWh grid energy + $100/tonne carbon; 1 kWh/GPU-hour"
+        }
+      }
+    },
+    {
+      "id": "fake-utah-solar",
+      "name": "Utah solar example",
+      "latitude": 40.2338,
+      "longitude": -111.6585,
+      "solarKWh": 2,
+      "regionId": "PACE",
+      "computeProfile": "fake-1kWh-per-GPUh",
+      "snapshot": {
+        "status": "current",
+        "source": "fake-local-energy",
+        "version": "fake-v1",
+        "observedAt": "2026-10-27T18:00:00Z",
+        "projected": false,
+        "simulated": true,
+        "slot": {
+          "id": "fake-utah-solar-18",
+          "locationId": "fake-utah-solar",
+          "window": {
+            "startAt": "2026-10-27T18:00:00Z",
+            "endAt": "2026-10-27T19:00:00Z"
+          },
+          "availablePowerKW": 1,
+          "availableEnergyKWh": 1,
+          "capGpus": 1,
+          "usedGpus": 0,
+          "postedUsdPerGpuHour": 0,
+          "priceBasis": "Fake: $50/MWh grid energy + $100/tonne carbon; 1 kWh/GPU-hour"
+        }
+      }
+    }
+  ]
+}

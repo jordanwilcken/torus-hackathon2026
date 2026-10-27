@@ -16,7 +16,8 @@
     "allowImportingTsExtensions": true,
     "types": [
       "node"
-    ]
+    ],
+    "resolveJsonModule": true
   },
   "include": [
     "src/**/*.ts",

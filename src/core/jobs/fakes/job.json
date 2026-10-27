@@ -1,0 +1,25 @@
+{
+  "fake": true,
+  "label": "Fake job for independent UI development.",
+  "job": {
+    "id": "fake-job",
+    "workloadRef": "fake-batch",
+    "computeProfile": "fake-1kWh-per-GPUh",
+    "window": {
+      "startAt": "2026-10-27T18:00:00Z",
+      "endAt": "2026-10-27T19:00:00Z"
+    },
+    "allowedLocations": [
+      "fake-utah-grid",
+      "fake-utah-solar"
+    ],
+    "homeLocation": "fake-utah-grid",
+    "currentLocation": "fake-utah-solar",
+    "readyAt": "2026-10-27T18:00:00Z",
+    "workGpuH": 1,
+    "remainingGpuH": 1,
+    "maxGpus": 1,
+    "dataGB": 0,
+    "state": "queued"
+  }
+}
