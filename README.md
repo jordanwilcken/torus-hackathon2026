@@ -2,11 +2,17 @@
 
 [![Build and score reporting](https://github.com/jordanwilcken/torus-hackathon2026/actions/workflows/requirements.yml/badge.svg?branch=main)](https://github.com/jordanwilcken/torus-hackathon2026/actions/workflows/requirements.yml?query=branch%3Amain)
 
-**[See the latest score and progress →](https://github.com/jordanwilcken/torus-hackathon2026/actions/workflows/requirements.yml?query=branch%3Amain)**
-Open the latest run: the **Score** job shows the numeric result; the run summary
-shows progress by area and every requirement's result. Each run records its commit,
-so earlier runs show how the implementation is progressing. The badge above shows
-build/reporting health, not the rubric score.
+<!-- scorecard:start -->
+<!-- scorecard:run 3 attempt 1 -->
+**[Open latest CI scorecard →](https://github.com/jordanwilcken/torus-hackathon2026/actions/runs/40588033416)** · **[Download scorecard + rubric](https://github.com/jordanwilcken/torus-hackathon2026/actions/runs/40588033416/artifacts/12772317696)** · [All runs](https://github.com/jordanwilcken/torus-hackathon2026/actions/workflows/requirements.yml?query=branch%3Amain)
+
+Latest reported commit: [`1eedc0c`](https://github.com/jordanwilcken/torus-hackathon2026/commit/1eedc0c5767b1efacbe53d54b34882e38d20006c) · Run 3, attempt 1.
+<!-- scorecard:end -->
+
+The links update automatically after main-branch CI. The run summary shows the numeric score,
+progress by area and every requirement's result. The download includes the
+scorecard and exact rubric. The badge above shows build/reporting health,
+not the rubric score.
 
 TypeScript, React and Vite setup for the Torus hackathon. The current UI is a launch
 shell. The planner, market, simulator and reporting behavior are still to implement.
@@ -45,6 +51,10 @@ GitHub Actions runs on every push and on manual dispatch. It reports the tested
 commit SHA, build stages, test outcomes and internal automated rubric points,
 then uploads the raw evidence and browser traces. One push with several commits
 tests its resulting revision, not each intermediate commit.
+
+CI updates only the scorecard block above through a README-only bot commit.
+Older results cannot replace newer links. These bot commits do not trigger another
+CI run; the linked commit remains the revision that was actually tested.
 
 The summary links to a **`readiness-score-<commit>-attempt-<n>`** artifact containing the
 readable `score.md`, machine-readable `score.json`, and the exact `rubric.json`

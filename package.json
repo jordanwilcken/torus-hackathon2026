@@ -15,7 +15,7 @@
     "test:userflows": "playwright test",
     "test:score": "node scripts/score.mjs",
     "score:report": "node scripts/score.mjs --report-only",
-    "test:tooling": "node --test test/tooling/score.test.ts test/tooling/ci-summary.test.ts"
+    "test:tooling": "node --test test/tooling/score.test.ts test/tooling/ci-summary.test.ts test/tooling/scorecard-links.test.ts"
   },
   "dependencies": {
     "react": "19.3.0",

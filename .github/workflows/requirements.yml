@@ -14,6 +14,7 @@ jobs:
     timeout-minutes: 20
     outputs:
       score_label: ${{ steps.summary.outputs.score_label }}
+      artifact_url: ${{ steps.score_artifact.outputs.artifact-url }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -105,3 +106,24 @@ jobs:
         run: |
           printf 'Readiness: %s\n' "$SCORE_LABEL"
           printf 'Open the **Build, tests and evidence** summary for the area breakdown and individual requirements.\n'
+
+  readme:
+    name: Update README scorecard links
+    needs: [evidence, score]
+    if: ${{ always() && !cancelled() && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - name: Refresh the direct run and artifact links
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SCORE_ARTIFACT_URL: ${{ needs.evidence.outputs.artifact_url }}
+        run: node scripts/update-scorecard-links.mjs
