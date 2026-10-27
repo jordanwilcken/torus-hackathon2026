@@ -5,7 +5,6 @@ import { expect } from "vitest";
 import { expectData, comparisonEqual, finiteNumber } from "../../dsl/comparison.js";
 
 
-/* @expec-test "0fdfd836-7049-43b5-a1dd-d72878f743c7" */
 test("the executor accounts only for the remaining work in a partial final tick", async ({ torus }) => {
   const job = await torus.jobForHours("short batch", 0.25, 1, 1, 0.85, 10);
   await torus.jobPlacement(job, "A", ["A"]);

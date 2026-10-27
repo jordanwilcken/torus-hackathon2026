@@ -5,7 +5,6 @@ import { expect } from "vitest";
 import { expectData, comparisonEqual, finiteNumber } from "../../dsl/comparison.js";
 
 
-/* @expec-test "59eac1f9-09fe-47be-80f0-232c2f93026f" */
 test("a site with only protected stored energy makes no execution offer this hour", async ({ torus }) => {
   const job = await torus.jobForHours("training", 4, 1, 4, 1, 10);
   await torus.jobPlacement(job, "A", ["A"]);
@@ -20,7 +19,6 @@ test("a site with only protected stored energy makes no execution offer this hou
 });
 
 
-/* @expec-test "90ba4ce9-d1fa-40ea-89fa-e103f5b910f0" */
 test("a job declines an available site offer it cannot afford", async ({ torus }) => {
   const job = await torus.jobForHours("training", 1, 1, 1, 1, 0.5);
   await torus.jobPlacement(job, "A", ["A"]);

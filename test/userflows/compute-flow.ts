@@ -5,7 +5,7 @@ import type { ImpactView, JobInput } from './compute-flow.interface';
  * Browser driver for the application that the team will implement.
  *
  * Scenario preparation must configure the real application with the matching
- * .expec inputs. Read methods must observe rendered application state. This
+ * scenario inputs. Read methods must observe rendered application state. This
  * driver must not schedule work, calculate carbon, or supply expected results.
  * Each Playwright test has an isolated browser context; scenario setup must also
  * reset any state the eventual application keeps outside that context.

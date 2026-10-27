@@ -381,7 +381,7 @@ The original estimates total about 24h; the merged scope needs the team's check.
 
 ## 18. Highest-value acceptance examples
 
-Seven generated core acceptance cases and three enabled browser userflows now form the initial acceptance harness. Their unimplemented drivers keep feature requirements RED. The internal score covers this initial set; it does not establish planner feasibility, concurrent clearing/reservation safety or migration correctness. The examples below remain design sketches. Helpers arrange inputs and inspect the real router/executor/report; they must not implement a second scheduler. Unspecified fixture constraints are compatible and budgets are sufficient.
+Seven core acceptance cases and three enabled browser userflows now form the initial acceptance harness. Their unimplemented drivers keep feature requirements RED. The internal score covers this initial set; it does not establish planner feasibility, concurrent clearing/reservation safety or migration correctness. The examples below remain design sketches. Helpers arrange inputs and inspect the real router/executor/report; they must not implement a second scheduler. Unspecified fixture constraints are compatible and budgets are sufficient.
 
 ```ts
 it("routes work to otherwise-curtailed solar and reports the increment", async () => {

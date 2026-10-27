@@ -5,7 +5,6 @@ import { expect } from "vitest";
 import { expectData, comparisonEqual, finiteNumber } from "../../dsl/comparison.js";
 
 
-/* @expec-test "b49fbc1b-dbce-4d8b-a938-505014806e6d" */
 test("executed work captures otherwise-curtailed solar with the same ending battery inventory", async ({ torus }) => {
   const job = await torus.jobForHours("training", 1, 1, 1, 1, 10);
   await torus.jobPlacement(job, "A", ["A", "B"]);
@@ -36,7 +35,6 @@ test("executed work captures otherwise-curtailed solar with the same ending batt
 });
 
 
-/* @expec-test "f3896b82-2ff2-4d86-bbd3-1f3258589f50" */
 test("a lower carbon total for unfinished work is not a comparable reduction", async ({ torus }) => {
   const job = await torus.jobForHours("training", 2, 1, 2, 1, 10);
   await torus.sameAverageOperationalCO2Basis();
@@ -52,7 +50,6 @@ test("a lower carbon total for unfinished work is not a comparable reduction", a
 });
 
 
-/* @expec-test "62d80d1d-99a8-4655-a39d-7a6767e10f6f" */
 test("a report cannot derive a reduction from unavailable selected carbon evidence", async ({ torus }) => {
   const job = await torus.jobForHours("training", 1, 1, 1, 1, 10);
   await torus.sameAverageOperationalCO2Basis();
