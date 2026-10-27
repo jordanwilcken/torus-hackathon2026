@@ -59,7 +59,7 @@ and `test/driver/`. Empty UI folders are placeholders, not implementations.
 
 Router and site-agent signatures are asynchronous. Native input types belong to
 their energy or reporting feature. The TypeScript target and library use `ESNext`.
-Tests use `.test.ts`; files containing only types use `.type.ts`.
+Tests use `.test.ts`; interface-only files use `.interface.ts`; type aliases use `.type.ts`.
 
 Design context: [design.md](design.md). Test harness references:
 [Playwright web server](https://playwright.dev/docs/test-webserver) and

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import type { ImpactView, JobInput } from './compute-flow.type';
+import type { ImpactView, JobInput } from './compute-flow.interface';
 
 /**
  * Browser driver for the application that the team will implement.

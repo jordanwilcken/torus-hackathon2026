@@ -1,6 +1,6 @@
 /** Number profile: JavaScript binary64. */
 import type { Job } from "../jobs/Job.type.js";
-import type { CarbonObservation } from "./CarbonObservation.type.js";
+import type { CarbonObservation } from "./CarbonObservation.interface.js";
 import type { CarbonReport } from "./CarbonReport.type.js";
 export interface ReportableJob {
     /**

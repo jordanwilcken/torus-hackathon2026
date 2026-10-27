@@ -1,5 +1,5 @@
 /** Number profile: JavaScript binary64. */
-import type { SlotQuery } from "./SlotQuery.type.js";
+import type { SlotQuery } from "./SlotQuery.interface.js";
 import type { SlotReference } from "./SlotReference.type.js";
 import type { SlotSnapshot } from "./SlotSnapshot.type.js";
 import type { BidForecast } from "../market/BidForecast.type.js";
