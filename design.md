@@ -95,6 +95,8 @@ flowchart LR
 
 **Actor boundaries:** application owners supply `Job` requirements; compute operators supply hardware/queue/execution state; grid/utility inputs supply regional evidence or authorized local constraints. `RegionalGrid` adapts EIA snapshots; `SiteEnergy` answers site/time availability questions, implemented by `ScenarioSiteEnergy` for the demo. `EnergyMap` shares readings with agents and UI, initially in memory. EIA knows neither individual jobs nor available site storage.
 
+**Integration points to settle:** assess local solar/storage supply consistently when sites share the same regional grid signal; carry the site's price evidence into `JobAgent` affordability decisions; distinguish reading/projecting availability from mutating the shared ledger on accepted execution; define when an hourly submission round closes; and normalize work, energy and comparison evidence for reporting and UI. These connections remain to implement.
+
 ## 5. Data
 
 **Source:** EIA-930 Hourly Electric Grid Monitor. The `electricity/rto/fuel-type-data` endpoint remains useful for generation-mix context. For the reported operational-carbon comparison, use EIA's published **load/consumption CO2 intensity**, including interchange, from its BA/regional downloads. Normalize units and hour-ending timestamps to UTC. [EIA definitions and downloads](https://www.eia.gov/electricity/930-content/about.html)
@@ -318,6 +320,8 @@ An immediately effective reserve cannot exceed current SOC; reject that setting 
 
 At a common horizon, headline savings require the same jobs fully completed and matching per-site ending storage within a declared tolerance. Otherwise show raw totals, incomplete work and non-comparability. Negative savings remain visible; percentages are unavailable when baseline is zero. `ReportableJob` derives carbon reduction from its compatible baseline/selected evidence; unknown is never zero.
 
+**Research coverage limits:** the home-site baseline does not compare against the best fixed placement. Forecast sensitivity remains proposed, with no demonstrated robustness to uncertainty. This draft distinguishes average from marginal attribution and includes declared fleet idle energy, but the current acceptance cases do not test marginal-ranking reversals or idle-fleet tradeoffs. Water use and carbon/water tradeoffs are outside the current model. The initial tests cover selected examples, not every research counterexample.
+
 **Headline tiles:**
 - **Estimated operational CO₂ difference** (kg and %, when comparable)
 - **Electricity energy-charge delta**, separate from modeled auction payments/carbon incentives
@@ -377,7 +381,7 @@ The original estimates total about 24h; the merged scope needs the team's check.
 
 ## 18. Highest-value acceptance examples
 
-These are proposed domain tests, not an implemented harness. Helpers arrange inputs and inspect the real router/executor/report; they must not implement a second scheduler. Unspecified fixture constraints are compatible and budgets are sufficient.
+Seven generated core acceptance cases and three enabled browser userflows now form the initial acceptance harness. Their unimplemented drivers keep feature requirements RED. The internal score covers this initial set; it does not establish planner feasibility, concurrent clearing/reservation safety or migration correctness. The examples below remain design sketches. Helpers arrange inputs and inspect the real router/executor/report; they must not implement a second scheduler. Unspecified fixture constraints are compatible and budgets are sufficient.
 
 ```ts
 it("routes work to otherwise-curtailed solar and reports the increment", async () => {

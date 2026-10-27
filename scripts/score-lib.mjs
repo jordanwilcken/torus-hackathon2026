@@ -200,13 +200,24 @@ export async function fingerprintInputs(root) {
 }
 
 export function renderMarkdown(report) {
+  const passed = report.cases.filter(item => item.classification === 'passed').length;
+  const progress = (earned, maximum) => {
+    const filled = Math.floor(20 * earned / maximum);
+    return '`' + '█'.repeat(filled) + '░'.repeat(20 - filled) + '`';
+  };
+  const state = report.allGreen ? 'all tests green'
+    : passed === report.cases.length ? 'all rubric cases passed; other tests remain RED — advisory'
+      : `${passed}/${report.cases.length} requirements passed; ${report.cases.length - passed} remaining — RED / advisory`;
   const lines = [
-    '# Internal readiness score', '', report.note ?? 'Internal rubric; not official sponsor judging.', '',
-    `**${report.earned}/${report.maximum}** — ${report.allGreen ? 'all required tests green' : 'work remains; advisory result'}`,
+    '# Internal readiness score', '',
+    report.validRun
+      ? `**${report.earned}/${report.maximum}** ${progress(report.earned, report.maximum)}\n\n${state}`
+      : '**Score unavailable** — test evidence is incomplete or invalid; results below are diagnostic only.',
+    '', report.note ?? 'Internal rubric; not official sponsor judging.',
     '', `Commit: \`${report.commitSha}\` · Run: \`${report.runId}\``,
     `Rubric: \`${report.rubric.version}\` · SHA-256: \`${report.rubric.hash}\``, '',
-    '| Area | Earned | Available |', '|---|---:|---:|',
-    ...report.groups.map(group => `| ${group.group} | ${group.earned} | ${group.maximum} |`), '',
+    '| Area | Earned | Available | Progress |', '|---|---:|---:|---|',
+    ...report.groups.map(group => `| ${group.group} | ${group.earned} | ${group.maximum} | ${report.validRun ? progress(group.earned, group.maximum) : 'Unavailable'} |`), '',
     '| Requirement | Result | Points |', '|---|---|---:|',
     ...report.cases.map(item => `| ${item.id}: ${item.title.replaceAll('|', '\\|')} | ${item.classification} | ${item.earned}/${item.points} |`), '',
     'Missing, skipped, unimplemented, failed and harness-error results earn zero; their weights stay in the denominator. Smoke/build checks earn no rubric points.', '',

@@ -1,4 +1,4 @@
-name: Requirements and score (advisory)
+name: Build and readiness score
 
 on:
   push:
@@ -9,8 +9,11 @@ permissions:
 
 jobs:
   evidence:
+    name: Build, tests and evidence
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      score_label: ${{ steps.summary.outputs.score_label }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -32,7 +35,7 @@ jobs:
         id: tooling
         if: always()
         continue-on-error: true
-        run: node --test test/tooling/score.test.ts
+        run: npm run test:tooling
       - name: Install the Chromium test browser
         id: browser
         if: steps.dependencies.outcome == 'success'
@@ -43,9 +46,24 @@ jobs:
         if: always()
         continue-on-error: true
         run: node scripts/score.mjs
+      - name: Attach the scorecard and rubric
+        id: score_artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: readiness-score-${{ github.sha }}-attempt-${{ github.run_attempt }}
+          path: |
+            .reports/score.md
+            .reports/score.json
+            rubric.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
       - name: Publish the commit summary
+        id: summary
         if: always()
         env:
+          SCORE_ARTIFACT_URL: ${{ steps.score_artifact.outputs.artifact-url }}
           INSTALL_RESULT: ${{ steps.dependencies.outcome }}
           BUILD_RESULT: ${{ steps.build.outcome }}
           TOOLING_RESULT: ${{ steps.tooling.outcome }}
@@ -56,7 +74,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: requirements-${{ github.sha }}
+          name: requirements-${{ github.sha }}-attempt-${{ github.run_attempt }}
           path: |
             .reports/
             test-results/
@@ -64,7 +82,7 @@ jobs:
           include-hidden-files: true
           if-no-files-found: warn
           retention-days: 14
-      - name: Preserve the actual test conclusion
+      - name: Check build and reporting health
         if: always()
         env:
           INSTALL_RESULT: ${{ steps.dependencies.outcome }}
@@ -73,3 +91,17 @@ jobs:
           BROWSER_RESULT: ${{ steps.browser.outcome }}
           REQUIREMENTS_RESULT: ${{ steps.requirements.outcome }}
         run: node scripts/ci-summary.mjs --conclusion
+
+  score:
+    name: Score ${{ needs.evidence.outputs.score_label || 'unavailable - CI needs attention' }}
+    needs: evidence
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Show this commit's progress
+        env:
+          SCORE_LABEL: ${{ needs.evidence.outputs.score_label || 'unavailable - CI needs attention' }}
+        run: |
+          printf 'Readiness: %s\n' "$SCORE_LABEL"
+          printf 'Open the **Build, tests and evidence** summary for the area breakdown and individual requirements.\n'

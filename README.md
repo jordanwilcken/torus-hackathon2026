@@ -1,5 +1,13 @@
 # Sunchaser
 
+[![Build and score reporting](https://github.com/jordanwilcken/torus-hackathon2026/actions/workflows/requirements.yml/badge.svg?branch=main)](https://github.com/jordanwilcken/torus-hackathon2026/actions/workflows/requirements.yml?query=branch%3Amain)
+
+**[See the latest score and progress →](https://github.com/jordanwilcken/torus-hackathon2026/actions/workflows/requirements.yml?query=branch%3Amain)**
+Open the latest run: the **Score** job shows the numeric result; the run summary
+shows progress by area and every requirement's result. Each run records its commit,
+so earlier runs show how the implementation is progressing. The badge above shows
+build/reporting health, not the rubric score.
+
 TypeScript, React and Vite setup for the Torus hackathon. The current UI is a launch
 shell. The planner, market, simulator and reporting behavior are still to implement.
 
@@ -41,9 +49,17 @@ commit SHA, build stages, test outcomes and internal automated rubric points,
 then uploads the raw evidence and browser traces. One push with several commits
 tests its resulting revision, not each intermediate commit.
 
-The workflow is advisory: no PR flow, deployment, hooks or required checks are
-configured. A failing suite retains a red conclusion after reports are published;
-it does not prevent the next direct commit or push.
+The summary links to a **`readiness-score-<commit>-attempt-<n>`** artifact containing the
+readable `score.md`, machine-readable `score.json`, and the exact `rubric.json`
+used for that run. The separate **`requirements-<commit>-attempt-<n>`** artifact keeps
+the runner logs, reports and browser traces. Attempts have distinct names so a
+rerun preserves earlier evidence. Both are retained for 14 days.
+
+Requirement failures are advisory: they remain **RED** in the scorecard and earn
+zero points, while the reporting workflow can succeed. Build, tooling, browser
+setup and invalid/missing score evidence still fail CI. An unavailable score is
+shown as **unavailable**, never as a measured zero. No PR flow, deployment, hooks
+or required checks are configured.
 
 `rubric.json` fixes 100 internal points across routing/reporting (40),
 bidding/execution (40) and the live map (20). Only successful requirement cases
