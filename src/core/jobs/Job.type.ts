@@ -14,8 +14,6 @@ export type Job = {
     workGpuH: number;
     remainingGpuH: number;
     maxGpus: number;
-    budgetLeftUsd: number;
-    carbonTargetGPerKWh?: number | undefined;
     dataGB: number;
     state: JobState;
 };

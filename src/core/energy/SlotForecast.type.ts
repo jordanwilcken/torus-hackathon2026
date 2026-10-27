@@ -1,5 +1,5 @@
-import type { Forecast } from "../energy/Forecast.type.js";
-export type BidForecast = {
+import type { Forecast } from "./Forecast.type.js";
+export type SlotForecast = {
     carbon?: Forecast | undefined;
     demand?: Forecast | undefined;
     solar?: Forecast | undefined;

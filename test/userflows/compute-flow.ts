@@ -32,8 +32,8 @@ export class ComputeFlow {
     this.unimplemented('execute the selected work and open the impact report');
   }
 
-  async offeredSites(): Promise<string[]> {
-    return this.unimplemented('read the offered sites from the map or offer list');
+  async postedPrices(): Promise<Array<{ site: string; usdPerGpuHour: number }>> {
+    return this.unimplemented('read the sites and posted hourly prices from the map or price board');
   }
 
   async selectedSite(): Promise<string | null> {

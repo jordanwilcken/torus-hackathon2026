@@ -1,7 +1,7 @@
 {
   "id": "torus-internal-readiness",
-  "version": "1.0.0",
-  "description": "Internal automated readiness rubric, not the sponsor's judging weights or an official competition score.",
+  "version": "2.0.0",
+  "description": "Internal automated readiness rubric, not the sponsor's judging weights or an official competition score. The three group labels retain the literal bounty capabilities. Clean-slot bidding is demonstrated through posted-price choice using supplied forecast evidence, not an auction or measured execution emissions. Compare scores only within the same rubric version.",
   "humanReview": [
     "Creativity",
     "Clarity of insight",
@@ -10,7 +10,7 @@
   "cases": [
     {
       "id": "ROUTER-01",
-      "group": "Router and reporting",
+      "group": "A job router that shows carbon saved",
       "points": 20,
       "runner": "vitest",
       "file": "test/core/reporting/reporting.test.ts",
@@ -19,7 +19,7 @@
     },
     {
       "id": "ROUTER-02",
-      "group": "Router and reporting",
+      "group": "A job router that shows carbon saved",
       "points": 5,
       "runner": "vitest",
       "file": "test/core/reporting/reporting.test.ts",
@@ -28,7 +28,7 @@
     },
     {
       "id": "ROUTER-03",
-      "group": "Router and reporting",
+      "group": "A job router that shows carbon saved",
       "points": 5,
       "runner": "vitest",
       "file": "test/core/reporting/reporting.test.ts",
@@ -37,7 +37,7 @@
     },
     {
       "id": "ROUTER-04",
-      "group": "Router and reporting",
+      "group": "A job router that shows carbon saved",
       "points": 10,
       "runner": "playwright",
       "file": "test/userflows/reporting/reporting.test.ts",
@@ -45,44 +45,71 @@
       "title": "[FLOW-02] executes work and sees a comparable carbon report"
     },
     {
-      "id": "BID-01",
-      "group": "Bidding and execution",
-      "points": 10,
+      "id": "SCHEDULE-07",
+      "group": "Agents that bid for the cleanest slots",
+      "points": 8,
       "runner": "vitest",
-      "file": "test/core/market/market.test.ts",
+      "file": "test/core/scheduling/scheduling.test.ts",
       "project": "",
-      "title": "a site with only protected stored energy makes no execution offer this hour"
+      "title": "a job selects the lower-carbon eligible slot at its posted price"
     },
     {
-      "id": "BID-02",
-      "group": "Bidding and execution",
-      "points": 10,
+      "id": "SCHEDULE-01",
+      "group": "Agents that bid for the cleanest slots",
+      "points": 6,
       "runner": "vitest",
-      "file": "test/core/market/market.test.ts",
+      "file": "test/core/scheduling/scheduling.test.ts",
       "project": "",
-      "title": "a job declines an available site offer it cannot afford"
+      "title": "a site with only protected stored energy receives no allocation this hour"
     },
     {
-      "id": "BID-03",
-      "group": "Bidding and execution",
-      "points": 10,
+      "id": "SCHEDULE-02",
+      "group": "Agents that bid for the cleanest slots",
+      "points": 6,
+      "runner": "vitest",
+      "file": "test/core/scheduling/scheduling.test.ts",
+      "project": "",
+      "title": "posted-price allocation uses only the GPUs remaining in the slot"
+    },
+    {
+      "id": "SCHEDULE-03",
+      "group": "Agents that bid for the cleanest slots",
+      "points": 4,
+      "runner": "vitest",
+      "file": "test/core/scheduling/scheduling.test.ts",
+      "project": "",
+      "title": "urgency and a clean forecast cannot override a utility import commitment"
+    },
+    {
+      "id": "SCHEDULE-04",
+      "group": "Agents that bid for the cleanest slots",
+      "points": 4,
+      "runner": "vitest",
+      "file": "test/core/scheduling/scheduling.test.ts",
+      "project": "",
+      "title": "a remote slot is rejected when transfer and work cannot meet the deadline"
+    },
+    {
+      "id": "SCHEDULE-05",
+      "group": "Agents that bid for the cleanest slots",
+      "points": 6,
       "runner": "vitest",
       "file": "test/core/execution/execution.test.ts",
       "project": "",
       "title": "the executor accounts only for the remaining work in a partial final tick"
     },
     {
-      "id": "BID-04",
-      "group": "Bidding and execution",
-      "points": 10,
+      "id": "SCHEDULE-06",
+      "group": "Agents that bid for the cleanest slots",
+      "points": 6,
       "runner": "playwright",
-      "file": "test/userflows/market/market.test.ts",
+      "file": "test/userflows/scheduling/scheduling.test.ts",
       "project": "chromium",
-      "title": "[FLOW-01] inspects hourly offers and selects a site before work executes"
+      "title": "[FLOW-01] inspects posted prices and selects a site before work executes"
     },
     {
       "id": "MAP-01",
-      "group": "Map freshness",
+      "group": "A live map of where to train right now",
       "points": 10,
       "runner": "vitest",
       "file": "test/core/energy/energy.test.ts",
@@ -91,12 +118,19 @@
     },
     {
       "id": "MAP-02",
-      "group": "Map freshness",
+      "group": "A live map of where to train right now",
       "points": 10,
       "runner": "playwright",
       "file": "test/userflows/energy/energy.test.ts",
       "project": "chromium",
       "title": "[FLOW-03] distinguishes stale site evidence from a current recommendation"
     }
+  ],
+  "changes": [
+    "Keeps the literal bounty capabilities and 100 total points: A job router that shows carbon saved 40; Agents that bid for the cleanest slots 40; A live map of where to train right now 20.",
+    "Retains the bounty capability Agents that bid for the cleanest slots. Its implementation uses posted-price choice with forecast evidence; it does not require an auction or Bid abstraction.",
+    "Retires the unaffordable-bid check because jobs no longer have auction budgets; adds direct cleaner-slot selection, remaining-capacity, utility-commitment and transfer-deadline requirements.",
+    "Clean-slot capability weights are 8 cleaner eligible choice, 6 protected energy, 6 remaining GPUs, 4 utility commitment, 4 transfer deadline, 6 partial execution and 6 browser selection. Version 1 weights were four auction/execution cases at 10 each.",
+    "Reporting retains equal-work, equal-ending-storage and unknown-evidence safeguards, and now checks the separate modeled dollar headline."
   ]
 }

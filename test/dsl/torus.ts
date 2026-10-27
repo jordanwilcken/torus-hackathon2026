@@ -5,14 +5,14 @@ import { Job } from "../../src/core/jobs/Job.type.js";
 export class Torus {
   constructor(private readonly driver: TorusDriver) {}
 
-  async jobForHours(id: string, requiredGpuHours: number, maximumGpus: number, hoursUntilDeadline: number, kWhPerGpuHour: number, budgetUsd: number): Promise<Job> {
-    return await this.driver.jobForHours(id, requiredGpuHours, maximumGpus, hoursUntilDeadline, kWhPerGpuHour, budgetUsd);
+  async jobForHours(id: string, requiredGpuHours: number, maximumGpus: number, hoursUntilDeadline: number, kWhPerGpuHour: number): Promise<Job> {
+    return await this.driver.jobForHours(id, requiredGpuHours, maximumGpus, hoursUntilDeadline, kWhPerGpuHour);
   }
   async jobPlacement(job: Job, home: string, allowedSites: Array<string>): Promise<void> {
     return await this.driver.jobPlacement(job, home, allowedSites);
   }
-  async siteForCurrentHour(site: string, availableGpus: number, solarKWh: number, fixedLoadKWh: number, gridImportLimitKW: number, facilityPowerLimitKW: number): Promise<void> {
-    return await this.driver.siteForCurrentHour(site, availableGpus, solarKWh, fixedLoadKWh, gridImportLimitKW, facilityPowerLimitKW);
+  async siteForCurrentHour(site: string, capGpus: number, solarKWh: number, fixedLoadKWh: number, gridImportLimitKW: number, facilityPowerLimitKW: number): Promise<void> {
+    return await this.driver.siteForCurrentHour(site, capGpus, solarKWh, fixedLoadKWh, gridImportLimitKW, facilityPowerLimitKW);
   }
   async siteStorage(site: string, capacityKWh: number, storedKWh: number, protectedKWh: number, chargeLimitKW: number, dischargeLimitKW: number, chargeEfficiency: number, dischargeEfficiency: number): Promise<void> {
     return await this.driver.siteStorage(site, capacityKWh, storedKWh, protectedKWh, chargeLimitKW, dischargeLimitKW, chargeEfficiency, dischargeEfficiency);
@@ -29,11 +29,8 @@ export class Torus {
   async homeSiteFifoBaselineWithSameAssetsAndDispatch(): Promise<void> {
     return await this.driver.homeSiteFifoBaselineWithSameAssetsAndDispatch();
   }
-  async preferLowestEstimatedCarbon(): Promise<void> {
-    return await this.driver.preferLowestEstimatedCarbon();
-  }
-  async siteOfferPrice(site: string, usdPerGpuHour: number): Promise<void> {
-    return await this.driver.siteOfferPrice(site, usdPerGpuHour);
+  async sitePostedPrice(site: string, usdPerGpuHour: number): Promise<void> {
+    return await this.driver.sitePostedPrice(site, usdPerGpuHour);
   }
   async siteCarbonForecast(site: string, gramsCO2PerKWh: number, source: string): Promise<void> {
     return await this.driver.siteCarbonForecast(site, gramsCO2PerKWh, source);
@@ -83,20 +80,14 @@ export class Torus {
   async routingSelected(): Promise<boolean> {
     return await this.driver.routingSelected();
   }
-  async hasSelectedBid(): Promise<boolean> {
-    return await this.driver.hasSelectedBid();
+  async hasAllocation(): Promise<boolean> {
+    return await this.driver.hasAllocation();
   }
-  async siteOfferCount(site: string): Promise<number> {
-    return await this.driver.siteOfferCount(site);
+  async allocationCarbonForecastValue(site: string): Promise<number> {
+    return await this.driver.allocationCarbonForecastValue(site);
   }
-  async jobCapacityBidCount(job: Job): Promise<number> {
-    return await this.driver.jobCapacityBidCount(job);
-  }
-  async bidCarbonForecastValue(site: string): Promise<number> {
-    return await this.driver.bidCarbonForecastValue(site);
-  }
-  async bidCarbonForecastSource(site: string): Promise<string> {
-    return await this.driver.bidCarbonForecastSource(site);
+  async allocationCarbonForecastSource(site: string): Promise<string> {
+    return await this.driver.allocationCarbonForecastSource(site);
   }
   async completedJobs(arm: string): Promise<number> {
     return await this.driver.completedJobs(arm);
@@ -119,8 +110,8 @@ export class Torus {
   async curtailedSolarKWh(arm: string, site: string): Promise<number> {
     return await this.driver.curtailedSolarKWh(arm, site);
   }
-  async marketPaymentUsd(job: Job): Promise<number> {
-    return await this.driver.marketPaymentUsd(job);
+  async postedChargeUsd(job: Job): Promise<number> {
+    return await this.driver.postedChargeUsd(job);
   }
   async electricityChargeUsd(arm: string, site: string): Promise<number> {
     return await this.driver.electricityChargeUsd(arm, site);
@@ -145,22 +136,16 @@ export class Torus {
   }
   async expectSelectedSite(expected: string): Promise<void> {
     expectData(await this.driver.routingSelected(), true);
-    expectData(await this.driver.hasSelectedBid(), true);
+    expectData(await this.driver.hasAllocation(), true);
     expectData(await this.driver.selectedSite(), expected);
   }
   async expectNoSelection(): Promise<void> {
     expectData(await this.driver.routingSelected(), false);
-    expectData(await this.driver.hasSelectedBid(), false);
+    expectData(await this.driver.hasAllocation(), false);
   }
-  async expectSiteOfferCount(site: string, expected: number): Promise<void> {
-    expectData(await this.driver.siteOfferCount(site), expected);
-  }
-  async expectCapacityBidCount(job: Job, expected: number): Promise<void> {
-    expectData(await this.driver.jobCapacityBidCount(job), expected);
-  }
-  async expectBidCarbonForecast(site: string, gramsCO2PerKWh: number, source: string): Promise<void> {
-    expectData(await this.driver.bidCarbonForecastValue(site), gramsCO2PerKWh);
-    expectData(await this.driver.bidCarbonForecastSource(site), source);
+  async expectAllocationCarbonForecast(site: string, gramsCO2PerKWh: number, source: string): Promise<void> {
+    expectData(await this.driver.allocationCarbonForecastValue(site), gramsCO2PerKWh);
+    expectData(await this.driver.allocationCarbonForecastSource(site), source);
   }
   async expectCompletedWork(arm: string, job: Job, jobs: number, gpuHours: number): Promise<void> {
     expectData(await this.driver.completedJobs(arm), jobs);
@@ -192,9 +177,9 @@ export class Torus {
     expect((finiteNumber(await this.driver.curtailedSolarKWh(arm, site), "left at test/dsl/torus.ts:192") >= finiteNumber(finiteNumber((finiteNumber(kWh, "left at test/dsl/torus.ts:192") - finiteNumber(0.000000001, "right at test/dsl/torus.ts:192")), "result at test/dsl/torus.ts:192"), "right at test/dsl/torus.ts:192"))).toBe(true);
     expect((finiteNumber(await this.driver.curtailedSolarKWh(arm, site), "left at test/dsl/torus.ts:193") <= finiteNumber(finiteNumber((finiteNumber(kWh, "left at test/dsl/torus.ts:193") + finiteNumber(0.000000001, "right at test/dsl/torus.ts:193")), "result at test/dsl/torus.ts:193"), "right at test/dsl/torus.ts:193"))).toBe(true);
   }
-  async expectExecutionCharges(job: Job, site: string, marketUsd: number, energyUsd: number): Promise<void> {
-    expect((finiteNumber(await this.driver.marketPaymentUsd(job), "left at test/dsl/torus.ts:196") >= finiteNumber(finiteNumber((finiteNumber(marketUsd, "left at test/dsl/torus.ts:196") - finiteNumber(0.000000001, "right at test/dsl/torus.ts:196")), "result at test/dsl/torus.ts:196"), "right at test/dsl/torus.ts:196"))).toBe(true);
-    expect((finiteNumber(await this.driver.marketPaymentUsd(job), "left at test/dsl/torus.ts:197") <= finiteNumber(finiteNumber((finiteNumber(marketUsd, "left at test/dsl/torus.ts:197") + finiteNumber(0.000000001, "right at test/dsl/torus.ts:197")), "result at test/dsl/torus.ts:197"), "right at test/dsl/torus.ts:197"))).toBe(true);
+  async expectExecutionCharges(job: Job, site: string, postedUsd: number, energyUsd: number): Promise<void> {
+    expect((finiteNumber(await this.driver.postedChargeUsd(job), "left at test/dsl/torus.ts:196") >= finiteNumber(finiteNumber((finiteNumber(postedUsd, "left at test/dsl/torus.ts:196") - finiteNumber(0.000000001, "right at test/dsl/torus.ts:196")), "result at test/dsl/torus.ts:196"), "right at test/dsl/torus.ts:196"))).toBe(true);
+    expect((finiteNumber(await this.driver.postedChargeUsd(job), "left at test/dsl/torus.ts:197") <= finiteNumber(finiteNumber((finiteNumber(postedUsd, "left at test/dsl/torus.ts:197") + finiteNumber(0.000000001, "right at test/dsl/torus.ts:197")), "result at test/dsl/torus.ts:197"), "right at test/dsl/torus.ts:197"))).toBe(true);
     expect((finiteNumber(await this.driver.electricityChargeUsd("selected", site), "left at test/dsl/torus.ts:198") >= finiteNumber(finiteNumber((finiteNumber(energyUsd, "left at test/dsl/torus.ts:198") - finiteNumber(0.000000001, "right at test/dsl/torus.ts:198")), "result at test/dsl/torus.ts:198"), "right at test/dsl/torus.ts:198"))).toBe(true);
     expect((finiteNumber(await this.driver.electricityChargeUsd("selected", site), "left at test/dsl/torus.ts:199") <= finiteNumber(finiteNumber((finiteNumber(energyUsd, "left at test/dsl/torus.ts:199") + finiteNumber(0.000000001, "right at test/dsl/torus.ts:199")), "result at test/dsl/torus.ts:199"), "right at test/dsl/torus.ts:199"))).toBe(true);
   }
@@ -206,13 +191,50 @@ export class Torus {
     expectData(await this.driver.siteFreshness(site), "current");
     expectData(await this.driver.recommendedNow(site), true);
   }
-  async expectUnequalWorkNotComparable(): Promise<void> {
+  async expectNotComparable(): Promise<void> {
     expectData(await this.driver.reportIsComparable(), false);
     expectData(await this.driver.reductionIsAvailable(), false);
+    expectData(await this.driver.costReductionIsAvailable(), false);
   }
   async expectSelectedCarbonUnknown(): Promise<void> {
     expectData(await this.driver.carbonIsAvailable("baseline"), true);
     expectData(await this.driver.carbonIsAvailable("selected"), false);
     expectData(await this.driver.reductionIsAvailable(), false);
+  }
+  async siteUsedGpus(site: string, usedGpus: number): Promise<void> {
+    return await this.driver.siteUsedGpus(site, usedGpus);
+  }
+  async siteUtilityImportLimit(site: string, maximumKW: number): Promise<void> {
+    return await this.driver.siteUtilityImportLimit(site, maximumKW);
+  }
+  async modeledCarbonPriceUsdPerTonne(usd: number): Promise<void> {
+    return await this.driver.modeledCarbonPriceUsdPerTonne(usd);
+  }
+  async allocatedGpus(): Promise<number> {
+    return await this.driver.allocatedGpus();
+  }
+  async costComparisonValue(field: string): Promise<number> {
+    return await this.driver.costComparisonValue(field);
+  }
+  async costReductionIsAvailable(): Promise<boolean> {
+    return await this.driver.costReductionIsAvailable();
+  }
+  async expectAllocationGpus(expected: number): Promise<void> {
+    expectData(await this.driver.allocatedGpus(), expected);
+  }
+  async expectEstimatedCosts(baselineModeledUsd: number, selectedModeledUsd: number, baselineElectricityUsd: number, selectedElectricityUsd: number): Promise<void> {
+    expectData(await this.driver.reportIsComparable(), true);
+    expectData(await this.driver.costReductionIsAvailable(), true);
+    expect(await this.driver.costComparisonValue("baseline modeled USD")).toBeCloseTo(baselineModeledUsd, 9);
+    expect(await this.driver.costComparisonValue("selected modeled USD")).toBeCloseTo(selectedModeledUsd, 9);
+    expect(await this.driver.costComparisonValue("modeled reduction USD")).toBeCloseTo(baselineModeledUsd - selectedModeledUsd, 9);
+    expect(await this.driver.costComparisonValue("baseline electricity USD")).toBeCloseTo(baselineElectricityUsd, 9);
+    expect(await this.driver.costComparisonValue("selected electricity USD")).toBeCloseTo(selectedElectricityUsd, 9);
+  }
+  async costEvidence(arm: string, job: Job, modeledUsd: number, electricityUsd: number): Promise<void> {
+    return await this.driver.costEvidence(arm, job, modeledUsd, electricityUsd);
+  }
+  async expectSelectedPostedPrice(expected: number): Promise<void> {
+    expect(await this.driver.selectedPostedPrice()).toBeCloseTo(expected, 9);
   }
 }

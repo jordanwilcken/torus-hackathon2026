@@ -15,7 +15,7 @@ scorecard and exact rubric. The badge above shows build/reporting health,
 not the rubric score.
 
 TypeScript, React and Vite setup for the Torus hackathon. The current UI is a launch
-shell. The planner, market, simulator and reporting behavior are still to implement.
+shell. The planner, scheduler, simulator and reporting behavior are still to implement.
 
 Use Node **24.19.0** and npm **11.20.0**:
 
@@ -68,19 +68,39 @@ setup and invalid/missing score evidence still fail CI. An unavailable score is
 shown as **unavailable**, never as a measured zero. No PR flow, deployment, hooks
 or required checks are configured.
 
-`rubric.json` fixes 100 internal points across routing/reporting (40),
-bidding/execution (40) and the live map (20). Only successful requirement cases
-earn points; build and smoke tests earn none. Missing cases stay in
-the denominator. This is not an official judging score or a percentage of product
-completion. Creativity and clarity of insight need human review.
+`rubric.json` fixes 100 internal points under the literal bounty capabilities:
+
+- **A job router that shows carbon saved** — 40 points.
+- **Agents that bid for the cleanest slots** — 40 points.
+- **A live map of where to train right now** — 20 points.
+
+Only successful requirement cases earn points; build and smoke tests earn none.
+Missing cases stay in the denominator. This is not an official judging score or a
+percentage of product completion. Creativity and clarity of insight need human review.
+
+The bounty capability stays visible in the scorecard. We demonstrate it through
+posted-price selection: a job chooses a lower-carbon eligible slot from supplied
+prices and forecasts, retains that evidence and accepts its posted price. This
+routing example does not claim an auction, price generation or measured emissions;
+execution and reporting have separate checks.
+
+Rubric **2.0.0** retains that capability while retiring auction mechanics and per-job
+bidding budgets. Its 40 points cover cleaner eligible choice (8), protected energy
+(6), remaining GPUs (6), utility commitments (4), transfer deadlines (4), partial
+execution (6) and the posted-price user flow (6). Reporting also checks the modeled
+dollar headline separately from electricity expenditure. Compare progress within
+one rubric version; version changes are not implementation gains. The exact
+migration notes travel with the rubric artifact.
+The additional depleted-storage comparison guard earns no points but must pass
+before CI reports all tests green.
 
 `src/core/` holds contracts and application code; `src/ui/` holds UI features.
-Both use `jobs`, `energy`, `market`, `execution` and `reporting` folders.
+Both use `jobs`, `energy`, `scheduling`, `execution` and `reporting` folders.
 Core acceptance tests mirror those features under `test/core/`; browser flows
 mirror them under `test/userflows/`. Shared test mechanics live in `test/dsl/`
 and `test/driver/`. Empty UI folders are placeholders, not implementations.
 
-Router and site-agent signatures are asynchronous. Native input types belong to
+Routing returns a selected allocation or an explanation; posted prices replace the auction mechanism. Native input types belong to
 their energy or reporting feature. The TypeScript target and library use `ESNext`.
 Tests use `.test.ts`; interface-only files use `.interface.ts`; type aliases use `.type.ts`.
 

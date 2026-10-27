@@ -3,7 +3,7 @@ export type Forecast = {
     source: string;
     scope: string;
     basis: string;
-    unit: "gCO2/kWh" | "MW" | "kW";
+    unit: "gCO2/kWh" | "gCO2e/kWh" | "MW" | "kW";
     issuedAt?: string | undefined;
     retrievedAt: string;
     simulated: boolean;

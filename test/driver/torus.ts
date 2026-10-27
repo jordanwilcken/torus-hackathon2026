@@ -1,12 +1,12 @@
 import { Job } from "../../src/core/jobs/Job.type.js";
 export class TorusDriver {
-  async jobForHours(id: string, requiredGpuHours: number, maximumGpus: number, hoursUntilDeadline: number, kWhPerGpuHour: number, budgetUsd: number): Promise<Job> {
+  async jobForHours(id: string, requiredGpuHours: number, maximumGpus: number, hoursUntilDeadline: number, kWhPerGpuHour: number): Promise<Job> {
     throw new Error("Not implemented: torus.jobForHours");
   }
   async jobPlacement(job: Job, home: string, allowedSites: Array<string>): Promise<void> {
     throw new Error("Not implemented: torus.jobPlacement");
   }
-  async siteForCurrentHour(site: string, availableGpus: number, solarKWh: number, fixedLoadKWh: number, gridImportLimitKW: number, facilityPowerLimitKW: number): Promise<void> {
+  async siteForCurrentHour(site: string, capGpus: number, solarKWh: number, fixedLoadKWh: number, gridImportLimitKW: number, facilityPowerLimitKW: number): Promise<void> {
     throw new Error("Not implemented: torus.siteForCurrentHour");
   }
   async siteStorage(site: string, capacityKWh: number, storedKWh: number, protectedKWh: number, chargeLimitKW: number, dischargeLimitKW: number, chargeEfficiency: number, dischargeEfficiency: number): Promise<void> {
@@ -24,11 +24,8 @@ export class TorusDriver {
   async homeSiteFifoBaselineWithSameAssetsAndDispatch(): Promise<void> {
     throw new Error("Not implemented: torus.homeSiteFifoBaselineWithSameAssetsAndDispatch");
   }
-  async preferLowestEstimatedCarbon(): Promise<void> {
-    throw new Error("Not implemented: torus.preferLowestEstimatedCarbon");
-  }
-  async siteOfferPrice(site: string, usdPerGpuHour: number): Promise<void> {
-    throw new Error("Not implemented: torus.siteOfferPrice");
+  async sitePostedPrice(site: string, usdPerGpuHour: number): Promise<void> {
+    throw new Error("Not implemented: torus.sitePostedPrice");
   }
   async siteCarbonForecast(site: string, gramsCO2PerKWh: number, source: string): Promise<void> {
     throw new Error("Not implemented: torus.siteCarbonForecast");
@@ -78,20 +75,14 @@ export class TorusDriver {
   async routingSelected(): Promise<boolean> {
     throw new Error("Not implemented: torus.routingSelected");
   }
-  async hasSelectedBid(): Promise<boolean> {
-    throw new Error("Not implemented: torus.hasSelectedBid");
+  async hasAllocation(): Promise<boolean> {
+    throw new Error("Not implemented: torus.hasAllocation");
   }
-  async siteOfferCount(site: string): Promise<number> {
-    throw new Error("Not implemented: torus.siteOfferCount");
+  async allocationCarbonForecastValue(site: string): Promise<number> {
+    throw new Error("Not implemented: torus.allocationCarbonForecastValue");
   }
-  async jobCapacityBidCount(job: Job): Promise<number> {
-    throw new Error("Not implemented: torus.jobCapacityBidCount");
-  }
-  async bidCarbonForecastValue(site: string): Promise<number> {
-    throw new Error("Not implemented: torus.bidCarbonForecastValue");
-  }
-  async bidCarbonForecastSource(site: string): Promise<string> {
-    throw new Error("Not implemented: torus.bidCarbonForecastSource");
+  async allocationCarbonForecastSource(site: string): Promise<string> {
+    throw new Error("Not implemented: torus.allocationCarbonForecastSource");
   }
   async completedJobs(arm: string): Promise<number> {
     throw new Error("Not implemented: torus.completedJobs");
@@ -114,8 +105,8 @@ export class TorusDriver {
   async curtailedSolarKWh(arm: string, site: string): Promise<number> {
     throw new Error("Not implemented: torus.curtailedSolarKWh");
   }
-  async marketPaymentUsd(job: Job): Promise<number> {
-    throw new Error("Not implemented: torus.marketPaymentUsd");
+  async postedChargeUsd(job: Job): Promise<number> {
+    throw new Error("Not implemented: torus.postedChargeUsd");
   }
   async electricityChargeUsd(arm: string, site: string): Promise<number> {
     throw new Error("Not implemented: torus.electricityChargeUsd");
@@ -137,5 +128,29 @@ export class TorusDriver {
   }
   async recommendedNow(site: string): Promise<boolean> {
     throw new Error("Not implemented: torus.recommendedNow");
+  }
+  async siteUsedGpus(site: string, usedGpus: number): Promise<void> {
+    throw new Error("Not implemented: torus.siteUsedGpus");
+  }
+  async siteUtilityImportLimit(site: string, maximumKW: number): Promise<void> {
+    throw new Error("Not implemented: torus.siteUtilityImportLimit");
+  }
+  async modeledCarbonPriceUsdPerTonne(usd: number): Promise<void> {
+    throw new Error("Not implemented: torus.modeledCarbonPriceUsdPerTonne");
+  }
+  async allocatedGpus(): Promise<number> {
+    throw new Error("Not implemented: torus.allocatedGpus");
+  }
+  async costComparisonValue(field: string): Promise<number> {
+    throw new Error("Not implemented: torus.costComparisonValue");
+  }
+  async costReductionIsAvailable(): Promise<boolean> {
+    throw new Error("Not implemented: torus.costReductionIsAvailable");
+  }
+  async costEvidence(arm: string, job: Job, modeledUsd: number, electricityUsd: number): Promise<void> {
+    throw new Error("Not implemented: torus.costEvidence");
+  }
+  async selectedPostedPrice(): Promise<number> {
+    throw new Error("Not implemented: torus.selectedPostedPrice");
   }
 }

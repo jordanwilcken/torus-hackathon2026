@@ -16,7 +16,7 @@ const metadata = {
 const rubric = (runner: 'vitest' | 'playwright' = 'vitest') => ({
   id: 'test-only', version: '1', description: 'Internal test rubric', humanReview: [],
   cases: [{ id: 'A', group: 'Example', points: 100, runner,
-    file: runner === 'vitest' ? 'test/core/example/example.test.ts' : 'test/userflows/market/market.test.ts',
+    file: runner === 'vitest' ? 'test/core/example/example.test.ts' : 'test/userflows/scheduling/scheduling.test.ts',
     project: runner === 'vitest' ? '' : 'chromium', title: 'does useful work' }],
 });
 const vitestReport = (results: ReturnType<typeof assertion>[] = []) => ({ success: true, testResults: [{
@@ -29,7 +29,7 @@ const assertion = (status = 'passed', failureMessages: string[] = []) => ({
 });
 const playwrightReport = (expectedStatus = 'passed', results = [{ status: 'passed', retry: 0 }]) => ({
   config: { rootDir: path.join(root, 'test/userflows') }, errors: [], stats: { unexpected: 0 }, suites: [{
-    title: 'market.test.ts', file: 'market/market.test.ts', specs: [{ title: 'does useful work', file: 'market/market.test.ts', ok: true,
+    title: 'scheduling.test.ts', file: 'scheduling/scheduling.test.ts', specs: [{ title: 'does useful work', file: 'scheduling/scheduling.test.ts', ok: true,
       tests: [{ projectName: 'chromium', expectedStatus, status: 'expected', results }],
     }],
   }],

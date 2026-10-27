@@ -7,7 +7,8 @@ export type TransferObservation = {
     toLocation: string;
     window: TimeWindow;
     energyKWh: number;
-    operationalCarbonKg?: number | undefined;
+    accountingBasis: string;
+    carbonKg?: number | undefined;
     electricityUsd?: number | undefined;
     jobChargeUsd: number;
 };

@@ -11,6 +11,7 @@ export type SiteMeter = {
     fixedLoadKWh: number;
     computeKWh: number;
     endingStoredKWh: number;
-    operationalCarbonKg?: number | undefined;
+    accountingBasis: string;
+    carbonKg?: number | undefined;
     electricityUsd?: number | undefined;
 };

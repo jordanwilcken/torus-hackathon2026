@@ -1,13 +1,9 @@
 import { test } from "../../dsl/torus.fixture.js";
 
-import { expect } from "vitest";
-
-import { expectData, comparisonEqual, finiteNumber } from "../../dsl/comparison.js";
-
 
 test("the live map does not recommend a location from stale evidence", async ({ torus }) => {
   await torus.currentTimeIs("2026-10-27T12:06:00Z");
-  const job = await torus.jobForHours("training", 1, 1, 1, 1, 10);
+  const job = await torus.jobForHours("training", 1, 1, 1, 1);
   await torus.jobPlacement(job, "A", ["A", "B"]);
   await torus.siteForCurrentHour("A", 1, 0, 0, 2, 2);
   await torus.siteStorage("A", 0, 0, 0, 0, 0, 1, 1);

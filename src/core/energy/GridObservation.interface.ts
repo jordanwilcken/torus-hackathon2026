@@ -1,11 +1,12 @@
 import type { TimeWindow } from "../TimeWindow.type.js";
 export interface GridObservation {
   regionId: string;
-  metric: 'consumption-carbon-intensity' | 'demand' | 'generation' | 'interchange';
+  metric: 'generation-carbon-intensity' | 'consumption-carbon-intensity' | 'demand' | 'generation' | 'interchange';
   value: number | null;
-  unit: 'gCO2/kWh' | 'MW';
+  unit: 'gCO2/kWh' | 'gCO2e/kWh' | 'MW';
   window: TimeWindow;
   source: string;
+  basis: string;
   observedAt: string;
   simulated: boolean;
 }

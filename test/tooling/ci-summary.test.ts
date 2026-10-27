@@ -11,7 +11,7 @@ function report(earned = 35, allGreen = false) {
   const cases = [
     { id: 'FIRST', title: 'First requirement', group: 'Routing', points: 35,
       earned: earned >= 35 ? 35 : 0, classification: earned >= 35 ? 'passed' : 'unimplemented' },
-    { id: 'SECOND', title: 'Second requirement', group: 'Bidding', points: 65,
+    { id: 'SECOND', title: 'Second requirement', group: 'Scheduling', points: 65,
       earned: earned === 100 ? 65 : 0, classification: earned === 100 ? 'passed' : 'unimplemented' },
   ];
   return {
@@ -120,7 +120,7 @@ test('the scorecard shows total and area progress without rounding up points', (
   assert.match(text, /35\/100/);
   assert.match(text, /1\/2 requirements passed/);
   assert.match(text, /Routing.*35.*35.*█/);
-  assert.match(text, /Bidding.*0.*65.*░/);
+  assert.match(text, /Scheduling.*0.*65.*░/);
   assert.match(text, /unimplemented/);
 });
 

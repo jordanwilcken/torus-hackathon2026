@@ -9,5 +9,5 @@ export type JobExecution = {
     remainingGpuH: number;
     state: JobState;
     computeKWh: number;
-    marketPaymentUsd: number;
+    postedChargeUsd: number;
 };

@@ -4,7 +4,6 @@ export interface JobInput {
   maxGpus: number;
   deadlineHours: number;
   allowedLocations: string[];
-  budgetUsd: number;
 }
 
 export interface ImpactView {
@@ -12,5 +11,8 @@ export interface ImpactView {
   baselineCarbonKg: number | null;
   selectedCarbonKg: number | null;
   reductionKg: number | null;
+  baselineModeledCostUsd: number | null;
+  selectedModeledCostUsd: number | null;
+  modeledCostReductionUsd: number | null;
   completedGpuH: number;
 }
