@@ -1,0 +1,13 @@
+{
+  "name": "site-energy-math",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "node generate.mjs",
+    "check": "node generate.mjs --check",
+    "test": "node --test generate.test.mjs"
+  },
+  "devDependencies": {
+    "@cortex-js/compute-engine": "0.171.0"
+  }
+}
