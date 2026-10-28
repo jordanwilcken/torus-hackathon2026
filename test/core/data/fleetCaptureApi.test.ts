@@ -58,6 +58,74 @@ const save = (url: string, value: unknown, headers: Record<string, string> = {})
   method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(value),
 });
 
+async function enrichedFrozen(): Promise<FrozenFleetSnapshot> {
+  // Retain the provider capture and explicitly declare synthetic extra hours/metrics
+  // for this contract example. These additions are not recorded public observations.
+  const response = weatherEvidence.response.map(location => {
+    const copy = structuredClone(location);
+    for (let index = copy.hourly.time.length; index < 168; index++) {
+      copy.hourly.time.push(new Date(Date.parse('2026-10-28T00:00:00Z') + index * 3_600_000).toISOString().slice(0,16));
+      copy.hourly.shortwave_radiation.push(321);
+    }
+    return { ...copy, hourly_units:{...copy.hourly_units,shortwave_radiation_instant:'W/m²',temperature_2m:'°C',cloud_cover:'%'},
+      hourly:{...copy.hourly,shortwave_radiation_instant:Array(168).fill(250),temperature_2m:Array(168).fill(20),cloud_cover:Array(168).fill(25)} };
+  });
+  response[0].hourly.temperature_2m[17] = null;
+  const expanded = parseSiteWeatherResponse(response, weatherEvidence.retrievedAt, {selection:{
+    sites:weather.sites.map(({locationId,latitude,longitude})=>({id:locationId,latitude,longitude})),forecastDays:7,
+    variables:['shortwave_radiation','shortwave_radiation_instant','temperature_2m','cloud_cover'],
+  }});
+  const selected = captureLiveFleet(feed(expanded), feed(market), Date.parse(capturedAt));
+  if (!selected.available) throw new Error(selected.reason);
+  const {map:_ignored,...expandedProgress} = await createPairedReplaySession(selected.capture.scenario).step();
+  const bundle = {...sourceBundle,weather:{status:'ready' as const,revision:snapshotRevision(expanded),snapshot:expanded}};
+  return {schemaVersion:1,capturedAt:'2026-10-28T16:27:00.000Z',runInputs:bundle,
+    latestContext:{...bundle,capturedAt:'2026-10-28T16:27:00.000Z',eia:null},progress:expandedProgress} as FrozenFleetSnapshot;
+}
+
+test('a seven-day multi-metric forecast survives freezing and a new server with its exact provenance and missing readings', async () => {
+  const original = await enrichedFrozen();
+  const snapshot = original.runInputs.weather!.snapshot;
+  expect(snapshot.sites[0].intervals).toHaveLength(168);
+  expect(snapshot.sites[0].instantaneous![17].temperatureC).toBeNull();
+  expect(snapshot.metadata).toMatchObject({sourceKind:'forecast',issuedAt:null,selection:{forecastDays:7}});
+  const saved = await save(await application(),original);
+  expect(saved.status).toBe(201);
+  const receipt = await saved.json();
+  expect(receipt).toEqual({revision:snapshotRevision(original),capture:original});
+  const restarted = await application();
+  const read = await fetch(restarted+'?revision='+receipt.revision);
+  expect(read.status).toBe(200);
+  expect(await read.json()).toEqual(receipt);
+});
+
+test('enriched weather rejects unknown fields, forged coverage, changed units and readings at a different hour', async () => {
+  const url = await application();
+  const original = await enrichedFrozen();
+  const changes = [
+    (snapshot: Record<string, any>) => { snapshot.metadata.privateLocation = 'unrelated'; },
+    (snapshot: Record<string, any>) => { snapshot.metadata.selection.privateLocation = 'unrelated'; },
+    (snapshot: Record<string, any>) => { snapshot.metadata.selection.sites[0].privateLocation = 'unrelated'; },
+    (snapshot: Record<string, any>) => { snapshot.metadata.variables.temperature_2m.privateLocation = 'unrelated'; },
+    (snapshot: Record<string, any>) => { snapshot.metadata.variables.temperature_2m.unit = '°F'; },
+    (snapshot: Record<string, any>) => { snapshot.sites[0].coverage[2].availableHours = 168; },
+    (snapshot: Record<string, any>) => { snapshot.sites[0].instantaneous[17].at = '2026-10-28T18:00:00.000Z'; },
+    (snapshot: Record<string, any>) => { snapshot.sites[0].instantaneous[17].privateLocation = 'unrelated'; },
+    (snapshot: Record<string, any>) => { snapshot.sites[0].instantaneous[17].cloudCoverPercent = 101; },
+    (snapshot: Record<string, any>) => { snapshot.metadata.apiKey = 'never-store-this'; },
+  ];
+  for (const change of changes) {
+    const invalid = structuredClone(original);
+    // Latest context is independent of pinned run inputs. Recompute its checksum so
+    // rejection exercises the source-field contract, not an unrelated revision guard.
+    invalid.latestContext.weather = structuredClone(original.latestContext.weather);
+    change(invalid.latestContext.weather!.snapshot);
+    invalid.latestContext.weather!.revision = snapshotRevision(invalid.latestContext.weather!.snapshot);
+    expect((await save(url,invalid)).status).toBe(400);
+  }
+  expect(await archive().latest()).toBeNull();
+});
+
 test('a paused capture keeps source evidence and progress exactly across immutable retries and a new archive/server instance', async () => {
   const url = await application();
   const original = frozen();
