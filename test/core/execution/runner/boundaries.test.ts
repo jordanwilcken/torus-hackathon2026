@@ -44,8 +44,12 @@ describe("executor arrival and numeric boundaries", () => {
         const waiting = job({ id: "waiting", homeLocation: "B", currentLocation: "B" });
         const originalDispatch = destination.executionSite.ledger.dispatch;
         destination.executionSite.ledger.dispatch = () => { throw new Error("Supply provider failed"); };
-        const runner = executor([waiting], [home, destination]);
+        const active = job({ workGpuH: 1, remainingGpuH: 1 });
+        const runner = executor([active, waiting], [home, destination]);
+        expect(runner.accept(selection(active, home))).toBe(true);
         expect(() => runner.tick(hour(0))).toThrow("Supply provider failed");
+        expect(runner.job(active.id)).toMatchObject({ state: "done", remainingGpuH: 0 });
+        expect(home.ledger.state().nextWindow).toEqual(hour(1));
         destination.executionSite.ledger.dispatch = originalDispatch;
         const before = destination.ledger.state();
         expect(runner.accept(selection(waiting, destination))).toBe(false);

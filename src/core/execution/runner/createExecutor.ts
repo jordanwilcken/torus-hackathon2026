@@ -2,13 +2,12 @@ import type { ExecutorInputs, ExecutionRunner } from "./Executor.types.js";
 import type { Job } from "../../jobs/Job.type.js";
 import type { TimeWindow } from "../../TimeWindow.type.js";
 import type { TickObservation } from "../TickObservation.type.js";
-import type { JobExecution } from "../JobExecution.type.js";
 import type { StartedTransfer, TransferOutcome } from "../TransferOutcome.type.js";
 import { allocationKey, allocationSignature, prepareAllocation, type AcceptedAllocation } from "./acceptAllocation.js";
 import { prepareTransfer } from "./prepareTransfer.js";
-import { bounds, near, sameWindow, windowAt } from "./executionTime.js";
+import { bounds, sameWindow, windowAt } from "./executionTime.js";
+import { dispatchSiteTick, applyAllocationUsage, type CompletedWork } from "./settleSite.js";
 import * as time from "./math/time.generated.js";
-import * as work from "./math/execution.generated.js";
 
 /** A labeled simulation runner over exclusively owned real ledgers, never a hardware worker.
  * Every site settles independently. Idle infeasibility stops this run; receipts preserve any
@@ -72,40 +71,23 @@ export function createExecutor(inputs: ExecutorInputs): ExecutionRunner {
                 if (admissionTime.get(job.id)! < end) arrived.add(job.id);
             }
             for (const job of jobs.values()) arrive(job, start);
-            const progress = new Map<string, Pick<JobExecution, "completedGpuH" | "computeKWh" | "postedChargeUsd">>();
+            const progress = new Map<string, CompletedWork>();
             const observation: TickObservation = { feasible: true, executions: [], meters: [] };
             const explanations: string[] = [];
             // Exceptions can occur after a prior site settled. Fail closed until a complete receipt is captured.
             stopped = true;
             for (const site of sites) {
                 const allocations = [...active.values()].filter(a => a.site === site);
-                const loads = allocations.filter(a => jobs.get(a.selection.allocation.jobId)!.state === "running").map(a => a.load);
-                let result = site.ledger.dispatch({ window, loads });
-                const executed = result.feasible;
-                if (!executed && loads.length) {
-                    explanations.push(`${site.locationId}: accepted compute paused after revalidation (${result.reason}).`);
-                    // Failed dispatch does not mutate the ledger. The same canonical tick may still serve fixed load.
-                    result = site.ledger.dispatch({ window, loads: [] });
-                }
-                if (!result.feasible) {
-                    observation.feasible = false;
-                    explanations.push(`${site.locationId}: ${result.reason ?? "Site supply is infeasible."}`);
-                }
-                observation.meters.push(...result.meters);
+                const loads = allocations.filter(a => jobs.get(a.jobId)!.state === "running").map(a => a.load);
+                const settlement = dispatchSiteTick(site, window, loads);
+                if (!settlement.result.feasible) observation.feasible = false;
+                observation.meters.push(...settlement.result.meters);
+                explanations.push(...settlement.explanations);
                 for (const allocation of allocations) {
-                    const job = jobs.get(allocation.selection.allocation.jobId)!;
-                    if (executed && job.state === "running") {
-                        const [from, to] = bounds(allocation.load.window)!;
-                        const completedGpuH = work.completedWork({ remainingGpuH: job.remainingGpuH, gpus: allocation.load.gpus,
-                            durationMs: time.elapsedMilliseconds({ start: from, end: to }) });
-                        const remaining = work.remainingWork({ remainingGpuH: job.remainingGpuH, completedGpuH });
-                        job.remainingGpuH = near(remaining, 0) ? 0 : remaining;
-                        job.state = job.remainingGpuH === 0 ? "done" : "running";
-                        const usage = result.usage[allocation.load.id];
-                        const directKWh = work.directComputeEnergy(usage);
-                        progress.set(job.id, { completedGpuH,
-                            computeKWh: work.totalComputeEnergy({ directKWh, batteryKWh: usage.batteryKWh }),
-                            postedChargeUsd: work.postedCharge({ completedGpuH, postedUsdPerGpuHour: allocation.selection.allocation.postedUsdPerGpuHour }) });
+                    const job = jobs.get(allocation.jobId)!;
+                    if (settlement.computeExecuted && job.state === "running") {
+                        const usage = settlement.result.usage[allocation.load.id];
+                        progress.set(job.id, applyAllocationUsage(job, allocation, usage));
                     } else if (job.state === "running") job.state = "paused";
                     active.delete(job.id);
                 }
@@ -126,15 +108,21 @@ export function createExecutor(inputs: ExecutorInputs): ExecutionRunner {
         },
         move(request, destination, startsAt): TransferOutcome {
             const reject = (explanation: string): TransferOutcome => ({ started: false, explanation });
-            const key = JSON.stringify([request.id, destination, Date.parse(startsAt)]);
+            const start = Date.parse(startsAt);
+            const key = JSON.stringify([request.id, destination, start]);
+            const requestSignature = jobSignature(request);
             const job = jobs.get(request.id), prior = transfers.get(key);
-            if (prior) return prior.request === jobSignature(request) || job && jobSignature(job) === jobSignature(request)
-                ? structuredClone(prior.result) : reject("Transfer retry changed the job's inputs.");
+            const matchesCurrentSnapshot = job !== undefined && jobSignature(job) === requestSignature;
+            if (prior) {
+                const matchesOriginalRequest = prior.request === requestSignature;
+                return matchesOriginalRequest || matchesCurrentSnapshot
+                    ? structuredClone(prior.result) : reject("Transfer retry changed the job's inputs.");
+            }
             const site = sites.find(s => s.locationId === destination);
-            if (stopped || !job || jobSignature(job) !== jobSignature(request)) return reject("Use the runner's current job snapshot.");
+            if (stopped || !job || !matchesCurrentSnapshot) return reject("Use the runner's current job snapshot.");
             if (!site || !job.allowedLocations.includes(destination) || destination === job.currentLocation ||
                 site.computeProfile !== job.computeProfile || !["queued", "running", "paused"].includes(job.state) || job.remainingGpuH <= 0 ||
-                Date.parse(startsAt) !== nextStart || nextStart < time.readyTime({ readyAt: Date.parse(job.readyAt), windowStart: Date.parse(job.window.startAt) }) ||
+                start !== nextStart || nextStart < time.readyTime({ readyAt: Date.parse(job.readyAt), windowStart: Date.parse(job.window.startAt) }) ||
                 !sameWindow(site.ledger.state().nextWindow, currentWindow())) return reject("The job, destination or transfer start is not eligible.");
             const terms = transferTerms(job.currentLocation, destination, startsAt);
             const source = sites.find(s => s.locationId === job.currentLocation)!;
@@ -144,7 +132,7 @@ export function createExecutor(inputs: ExecutorInputs): ExecutionRunner {
             const reservation = active.get(job.id);
             if (reservation && !reservation.site.ledger.release(reservation.load.id)) return reject("The existing reservation could not be released.");
             active.delete(job.id);
-            transfers.set(key, { request: jobSignature(request), result: structuredClone(result) });
+            transfers.set(key, { request: requestSignature, result: structuredClone(result) });
             arrived.add(job.id);
             job.state = "moving";
             job.transferToLocation = destination;

@@ -8,7 +8,8 @@ import * as time from "./math/time.generated.js";
 import * as work from "./math/execution.generated.js";
 
 export type AcceptedAllocation = {
-    selection: SelectedJobOutcome;
+    jobId: string;
+    postedUsdPerGpuHour: number;
     site: ExecutionSite;
     load: SiteEnergyLoad;
 };
@@ -63,6 +64,6 @@ export function prepareAllocation(selection: SelectedJobOutcome, job: Job, site:
     const duration = work.loadDuration({ windowMs, remainingMs });
     if (duration <= 0) return undefined;
     const endsAt = time.timeAfter({ start: interval[0], durationMs: duration });
-    return { selection: structuredClone(selection), site,
+    return { jobId: a.jobId, postedUsdPerGpuHour: a.postedUsdPerGpuHour, site,
         load: { id: allocationKey(selection), gpus: a.allocatedGpus, window: windowAt(interval[0], endsAt) } };
 }
