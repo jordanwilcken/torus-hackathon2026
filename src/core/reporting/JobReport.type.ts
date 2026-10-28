@@ -1,3 +1,5 @@
+import type { Job } from "../jobs/Job.type.js";
+import type { JobOutcome } from "../scheduling/JobOutcome.type.js";
 import type { CarbonReport } from "./CarbonReport.type.js";
 import type { CostReport } from "./CostReport.type.js";
 
@@ -6,6 +8,9 @@ export type JobReport = {
     fake: boolean;
     label: string;
     jobId: string;
+    submittedJob?: Job;
+    routingOutcome?: JobOutcome;
+    routingFailure?: string;
     comparison: "illustrative" | "comparable" | "not-comparable" | "unavailable";
     scenario: string;
     carbon: CarbonReport;

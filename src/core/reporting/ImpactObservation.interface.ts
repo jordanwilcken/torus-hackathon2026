@@ -1,5 +1,4 @@
 import type { TimeWindow } from "../TimeWindow.type.js";
-/** Both arms must share inputRevision, cohort, horizon and accountingBasis. */
 export interface ImpactObservation {
   comparisonId: string;
   inputRevision: string;
@@ -11,10 +10,8 @@ export interface ImpactObservation {
   simulated: boolean;
   feasible: boolean;
   carbonKg: number | null;
-  /** Optional until available; null/absent must never become zero. Includes transfer effects. */
   electricityUsd?: number | null;
   modeledCostUsd?: number | null;
-  /** Shared realized price policy and carbon price; never compare differently priced arms. */
   costBasis?: string;
   work: readonly {
     jobId: string;

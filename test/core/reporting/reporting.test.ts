@@ -81,3 +81,20 @@ test("lower carbon and cost from draining stored energy are not a comparable red
   await torus.readImpactReport(job);
   await torus.expectNotComparable();
 });
+
+test("recorded equal-work observations yield separate carbon and cost differences", async ({ torus }) => {
+  const job = await torus.jobForHours("training", 1, 1, 1, 1);
+  await torus.sameAverageOperationalCO2Basis();
+  await torus.reportingHorizon("2026-10-27T12:00:00Z", "2026-10-27T13:00:00Z");
+  await torus.reportingInventory("baseline", "A", 1, 1);
+  await torus.reportingInventory("selected", "A", 1, 1);
+  await torus.completedWorkEvidence("baseline", job, 1);
+  await torus.completedWorkEvidence("selected", job, 1);
+  await torus.carbonEvidence("baseline", job, 0.4);
+  await torus.carbonEvidence("selected", job, 0);
+  await torus.costEvidence("baseline", job, 0.09, 0.05);
+  await torus.costEvidence("selected", job, 0, 0);
+  await torus.readImpactReport(job);
+  await torus.expectEstimatedCarbon(0.4, 0, 0.4);
+  await torus.expectEstimatedCosts(0.09, 0, 0.05, 0);
+});

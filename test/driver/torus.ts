@@ -1,7 +1,44 @@
+import type { TimeWindow } from "../../src/core/TimeWindow.type.js";
+import type { ImpactObservation } from "../../src/core/reporting/ImpactObservation.interface.js";
+import type { JobReport } from "../../src/core/reporting/JobReport.type.js";
+import { createJobReport } from "../../src/core/reporting/getJobReport.js";
+import { carbonReductionKg, modeledCostReductionUsd } from "../../src/core/reporting/impact/compareImpact.js";
+import { reportableJob } from "../../src/core/reporting/impact/reportableJob.js";
 import { Job } from "../../src/core/jobs/Job.type.js";
 export class TorusDriver {
+  private comparisonHorizon?: TimeWindow;
+  private comparisonBasis?: string;
+  private recordedEvidence = new Map<string, Partial<ImpactObservation>>();
+  private recordedInventory: Record<ImpactObservation["arm"], Map<string, ImpactObservation["inventory"][number]>> = {
+    baseline: new Map(), selected: new Map(),
+  };
+  private impact?: JobReport;
+
+  private comparisonArm(arm: string): ImpactObservation["arm"] {
+    if (arm !== "baseline" && arm !== "selected") throw new Error("Unknown comparison arm.");
+    return arm;
+  }
+
+  private evidenceFor(arm: string, job: Job): Partial<ImpactObservation> {
+    const key = this.comparisonArm(arm) + ":" + job.id;
+    if (!this.recordedEvidence.has(key)) this.recordedEvidence.set(key, {});
+    return this.recordedEvidence.get(key)!;
+  }
+
+  private currentReport(): JobReport {
+    if (!this.impact) throw new Error("Read the impact report before inspecting it.");
+    return this.impact;
+  }
+
   async jobForHours(id: string, requiredGpuHours: number, maximumGpus: number, hoursUntilDeadline: number, kWhPerGpuHour: number): Promise<Job> {
-    throw new Error("Not implemented: torus.jobForHours");
+    const startAt = "2026-10-27T12:00:00Z";
+    return {
+      id, workloadRef: id, computeProfile: `test-${kWhPerGpuHour}-kWh-per-GPUh`,
+      window: { startAt, endAt: new Date(Date.parse(startAt) + hoursUntilDeadline * 3_600_000).toISOString() },
+      allowedLocations: [], homeLocation: "", currentLocation: "", readyAt: startAt,
+      workGpuH: requiredGpuHours, remainingGpuH: requiredGpuHours, maxGpus: maximumGpus,
+      dataGB: 0, state: "queued",
+    };
   }
   async jobPlacement(job: Job, home: string, allowedSites: Array<string>): Promise<void> {
     throw new Error("Not implemented: torus.jobPlacement");
@@ -19,7 +56,7 @@ export class TorusDriver {
     throw new Error("Not implemented: torus.transferAssumptions");
   }
   async sameAverageOperationalCO2Basis(): Promise<void> {
-    throw new Error("Not implemented: torus.sameAverageOperationalCO2Basis");
+    this.comparisonBasis = "average operational CO2 including fleet and transfer effects";
   }
   async homeSiteFifoBaselineWithSameAssetsAndDispatch(): Promise<void> {
     throw new Error("Not implemented: torus.homeSiteFifoBaselineWithSameAssetsAndDispatch");
@@ -40,19 +77,21 @@ export class TorusDriver {
     throw new Error("Not implemented: torus.maximumEvidenceAgeIs");
   }
   async reportingHorizon(startAt: string, endAt: string): Promise<void> {
-    throw new Error("Not implemented: torus.reportingHorizon");
+    this.comparisonHorizon = { startAt, endAt };
   }
   async reportingInventory(arm: string, site: string, initialStoredKWh: number, finalStoredKWh: number): Promise<void> {
-    throw new Error("Not implemented: torus.reportingInventory");
+    this.recordedInventory[this.comparisonArm(arm)].set(site, {
+      locationId: site, initialStoredKWh: initialStoredKWh, endingStoredKWh: finalStoredKWh,
+    });
   }
   async completedWorkEvidence(arm: string, job: Job, completedGpuHours: number): Promise<void> {
-    throw new Error("Not implemented: torus.completedWorkEvidence");
+    this.evidenceFor(arm, job).work = [{ jobId: job.id, requiredGpuH: job.workGpuH, completedGpuH: completedGpuHours }];
   }
   async carbonEvidence(arm: string, job: Job, carbonKg: number): Promise<void> {
-    throw new Error("Not implemented: torus.carbonEvidence");
+    this.evidenceFor(arm, job).carbonKg = carbonKg;
   }
   async unavailableCarbonEvidence(arm: string, job: Job): Promise<void> {
-    throw new Error("Not implemented: torus.unavailableCarbonEvidence");
+    this.evidenceFor(arm, job).carbonKg = null;
   }
   async routeCurrentSlot(job: Job): Promise<void> {
     throw new Error("Not implemented: torus.routeCurrentSlot");
@@ -64,7 +103,21 @@ export class TorusDriver {
     throw new Error("Not implemented: torus.simulateBothPolicies");
   }
   async readImpactReport(job: Job): Promise<void> {
-    throw new Error("Not implemented: torus.readImpactReport");
+    if (!this.comparisonHorizon || !this.comparisonBasis) throw new Error("Supply the comparison horizon and carbon basis.");
+    const observer = reportableJob(job.id);
+    for (const arm of ["baseline", "selected"] as const) {
+      const recorded = this.evidenceFor(arm, job);
+      observer.observe({
+        comparisonId: "recorded-comparison", inputRevision: "recorded-inputs-v1", arm, jobId: job.id,
+        horizon: this.comparisonHorizon, accountingBasis: this.comparisonBasis,
+        source: "supplied recorded comparison evidence", simulated: true, feasible: true,
+        carbonKg: recorded.carbonKg ?? null, modeledCostUsd: recorded.modeledCostUsd,
+        electricityUsd: recorded.electricityUsd, costBasis: recorded.costBasis,
+        work: recorded.work ?? [], inventory: [...this.recordedInventory[arm].values()],
+        storageToleranceKWh: 1e-9,
+      });
+    }
+    this.impact = createJobReport(observer.readObservations());
   }
   async findWhereToRunNow(job: Job): Promise<void> {
     throw new Error("Not implemented: torus.findWhereToRunNow");
@@ -112,16 +165,25 @@ export class TorusDriver {
     throw new Error("Not implemented: torus.electricityChargeUsd");
   }
   async carbonComparisonValue(field: string): Promise<number> {
-    throw new Error("Not implemented: torus.carbonComparisonValue");
+    const report = this.currentReport();
+    const totals = report.carbon;
+    const values: Record<string, number | undefined> = {
+      "baseline kg CO2": totals.baselineCarbonKg, "selected kg CO2": totals.selectedCarbonKg,
+      "estimated reduction kg CO2": carbonReductionKg(report.carbon),
+    };
+    const value = values[field];
+    if (value === undefined) throw new Error(`Carbon field is unavailable: ${field}`);
+    return value;
   }
   async reportIsComparable(): Promise<boolean> {
-    throw new Error("Not implemented: torus.reportIsComparable");
+    return this.currentReport().comparison === "comparable";
   }
   async reductionIsAvailable(): Promise<boolean> {
-    throw new Error("Not implemented: torus.reductionIsAvailable");
+    return carbonReductionKg(this.currentReport().carbon) !== undefined;
   }
   async carbonIsAvailable(arm: string): Promise<boolean> {
-    throw new Error("Not implemented: torus.carbonIsAvailable");
+    const report = this.currentReport().carbon;
+    return (this.comparisonArm(arm) === "baseline" ? report.baselineCarbonKg : report.selectedCarbonKg) !== undefined;
   }
   async siteFreshness(site: string): Promise<string> {
     throw new Error("Not implemented: torus.siteFreshness");
@@ -142,13 +204,24 @@ export class TorusDriver {
     throw new Error("Not implemented: torus.allocatedGpus");
   }
   async costComparisonValue(field: string): Promise<number> {
-    throw new Error("Not implemented: torus.costComparisonValue");
+    const report = this.currentReport();
+    const totals = report.cost;
+    const values: Record<string, number | undefined> = {
+      "baseline modeled USD": totals.baselineModeledCostUsd, "selected modeled USD": totals.selectedModeledCostUsd,
+      "modeled reduction USD": modeledCostReductionUsd(report.cost),
+      "baseline electricity USD": totals.baselineElectricityUsd, "selected electricity USD": totals.selectedElectricityUsd,
+    };
+    const value = values[field];
+    if (value === undefined) throw new Error(`Cost field is unavailable: ${field}`);
+    return value;
   }
   async costReductionIsAvailable(): Promise<boolean> {
-    throw new Error("Not implemented: torus.costReductionIsAvailable");
+    return modeledCostReductionUsd(this.currentReport().cost) !== undefined;
   }
   async costEvidence(arm: string, job: Job, modeledUsd: number, electricityUsd: number): Promise<void> {
-    throw new Error("Not implemented: torus.costEvidence");
+    Object.assign(this.evidenceFor(arm, job), {
+      modeledCostUsd: modeledUsd, electricityUsd, costBasis: "shared recorded electricity and modeled-carbon price policy",
+    });
   }
   async selectedPostedPrice(): Promise<number> {
     throw new Error("Not implemented: torus.selectedPostedPrice");

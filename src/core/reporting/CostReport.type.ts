@@ -1,4 +1,3 @@
-/** Raw totals only; ReportableJob derives differences after checking comparability. */
 export type CostReport = {
     costBasis?: string;
     unavailableReason?: string;
