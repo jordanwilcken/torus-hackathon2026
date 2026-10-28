@@ -26,3 +26,10 @@ export interface SnapshotStore<T> {
   latest(): Promise<StoredSnapshot<T> | null>;
   read(revision: string): Promise<StoredSnapshot<T> | null>;
 }
+
+/** Optional history capability; ordinary feed publishers only need SnapshotStore.
+ * Enumerates immutable revision identities. Implementations reject an oversized history
+ * rather than silently omitting revisions that a replay decision might need. */
+export interface SnapshotHistoryStore<T> extends SnapshotStore<T> {
+  revisions(): Promise<string[]>;
+}

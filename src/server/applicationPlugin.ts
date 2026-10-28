@@ -12,7 +12,8 @@ import { parseEiaApiResponse, type EiaApiSnapshot } from '../core/energy/data/ei
 import { parseCaisoCsv, type CaisoSnapshot } from './caiso.ts';
 import type { StoredSnapshot } from './SnapshotStore.type.ts';
 import { snapshotRevision } from './snapshotRevision.ts';
-import type { SiteWeatherSnapshot } from '../data/SiteWeather.type.ts';
+import type { SiteWeatherSnapshot, SiteWeatherSelection } from '../data/SiteWeather.type.ts';
+import { modeledSites } from '../data/modeledSites.ts';
 import { createSiteWeatherFeed, parseSiteWeatherResponse } from './siteWeather.ts';
 import { createSiteWeatherApi } from './siteWeatherApi.ts';
 import { createFleetCaptureApi } from './fleetCaptureApi.ts';
@@ -22,6 +23,7 @@ type RecordedInputs = { asOf: string; eia: StoredSnapshot<EiaApiSnapshot>; caiso
 export function createApplicationPlugin(options: {
   apiKey: string; archiveDirectory: string; runDirectory: string; offline?: boolean;
   recorded?: RecordedInputs; recordedWeather?: StoredSnapshot<SiteWeatherSnapshot>;
+  weatherSelection?: SiteWeatherSelection;
 }): Plugin {
   async function install(server: ViteDevServer | PreviewServer) {
     await mkdir(resolve(options.runDirectory), { recursive: true });
@@ -44,18 +46,24 @@ export function createApplicationPlugin(options: {
     const weatherStore = createSnapshotArchive<SiteWeatherSnapshot>(options.archiveDirectory, 'open-meteo');
     if (options.recordedWeather) {
       const supplied = options.recordedWeather.evidence.body as { response: unknown; retrievedAt: string };
-      const weather = parseSiteWeatherResponse(supplied.response, supplied.retrievedAt);
+      const weather = parseSiteWeatherResponse(supplied.response, supplied.retrievedAt,
+        options.recordedWeather.snapshot.metadata ? { selection:options.recordedWeather.snapshot.metadata.selection } : {});
       if (snapshotRevision(weather) !== options.recordedWeather.revision) throw new Error('Captured weather evidence does not reproduce its revision');
       await weatherStore.save(weather, options.recordedWeather.evidence);
     }
     const weather = createSiteWeatherFeed(weatherStore, {
       offline: options.offline || Boolean(options.recorded), recorded: Boolean(options.recordedWeather),
+      ...(options.recordedWeather?.snapshot.metadata ? { selection:options.recordedWeather.snapshot.metadata.selection } : {}),
+      ...(!options.recordedWeather && !options.offline && !options.recorded ? { selection:options.weatherSelection ?? {
+        sites:modeledSites.map(({id,latitude,longitude}) => ({id,latitude,longitude})), forecastDays:7,
+        variables:['shortwave_radiation','shortwave_radiation_instant','temperature_2m','cloud_cover'],
+      } as SiteWeatherSelection } : {}),
     });
     const runStore = createSqliteJobRunStore<LocalRun>(join(options.runDirectory, 'runs.sqlite'));
     const jobs = createLocalRuns({ store: runStore, snapshots: stores, feeds, recordedAsOf: options.recorded?.asOf });
     server.middlewares.use(createGridApi(options.apiKey, stores, { feeds, offline: options.offline && !options.recorded }));
     server.middlewares.use(createJobsApi(jobs));
-    server.middlewares.use(createSiteWeatherApi(weather));
+    server.middlewares.use(createSiteWeatherApi(weather, weatherStore));
     server.middlewares.use(createFleetCaptureApi(createSnapshotArchive<FrozenFleetSnapshot>(options.archiveDirectory, 'fleet-captures')));
     server.httpServer?.once('close', () => { void jobs.close().finally(() => runStore.close()); });
   }
