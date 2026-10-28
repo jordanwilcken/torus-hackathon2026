@@ -6,7 +6,7 @@ This adapter uses the existing admission policy and storage contracts. It execut
 
 ## Account and deployment
 
-Paid hosting is not authorized. Confirm the **Workers Free** plan in the intended account before publishing; an existing domain/Pages plan does not establish Workers billing. Do not upgrade a plan or enable Containers, R2 or D1 for this demo. The configuration uses only Workers assets and a SQLite-backed Durable Object. Free-plan quota exhaustion must remain a visible availability failure.
+This is a **free-only deployment**. Confirm the **Workers Free** plan in the intended account before publishing. No paid tier, payment-method setup, verification hold, purchased domain, metered overage or automatic upgrade is allowed. Do not enable Containers, R2, D1 or another hosting service for this demo. The configuration uses only Workers assets and a SQLite-backed Durable Object. Free-plan quota exhaustion must remain a visible availability failure; use the local demo if free hosting cannot be used.
 
 Build and test the reviewed commit before publishing. Wrangler's configuration is `wrangler.jsonc`; `assets.run_worker_first: true` is required so assets cannot bypass the demo login.
 
@@ -18,7 +18,7 @@ Configure these private Worker secrets through the authenticated Cloudflare work
 
 `wrangler secret put NAME` prompts for one value. Supply secrets through the approved private input mechanism. The app refuses to serve a purported live demo when these settings are missing. HTTPS requests use their actual request origin for POST validation; forwarded host/protocol headers grant no authority.
 
-A local bundle check is `wrangler deploy --dry-run`. Publishing is a separate authorized action using `wrangler deploy`, after account/plan and test evidence are resolved. The public address is the deployed Worker's `workers.dev` URL unless an owned domain is deliberately attached.
+A local bundle check is `wrangler deploy --dry-run`. Publishing is a separate authorized action using `wrangler deploy`, after account/plan and test evidence are resolved. Use the deployed Worker's included `workers.dev` address; no domain purchase or DNS setup is part of this task.
 
 ## CI deployment setup
 
