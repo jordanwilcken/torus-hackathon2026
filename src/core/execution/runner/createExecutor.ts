@@ -6,7 +6,9 @@ import type { JobExecution } from "../JobExecution.type.js";
 import type { StartedTransfer, TransferOutcome } from "../TransferOutcome.type.js";
 import { allocationKey, allocationSignature, prepareAllocation, type AcceptedAllocation } from "./acceptAllocation.js";
 import { prepareTransfer } from "./prepareTransfer.js";
-import { bounds, hour, near, sameWindow, windowAt } from "./executionTime.js";
+import { bounds, near, sameWindow, windowAt } from "./executionTime.js";
+import * as time from "./math/time.generated.js";
+import * as work from "./math/execution.generated.js";
 
 /** A labeled simulation runner over exclusively owned real ledgers, never a hardware worker.
  * Every site settles independently. Idle infeasibility stops this run; receipts preserve any
@@ -29,12 +31,13 @@ export function createExecutor(inputs: ExecutorInputs): ExecutionRunner {
         jobs.set(job.id, job);
     }
     const maximumAgeMinutes = inputs.maximumAgeMinutes, transferTerms = inputs.transferTerms;
-    const grid = { origin: interval[0], duration: interval[1] - interval[0] };
+    const grid = { origin: interval[0], duration: time.elapsedMilliseconds({ start: interval[0], end: interval[1] }) };
     let nextStart = grid.origin, stopped = false;
-    const currentWindow = (): TimeWindow => windowAt(nextStart, nextStart + grid.duration);
+    const currentWindow = (): TimeWindow => windowAt(nextStart, time.timeAfter({ start: nextStart, durationMs: grid.duration }));
     const active = new Map<string, AcceptedAllocation>();
     const arrived = new Set<string>();
-    const admissionTime = new Map([...jobs.values()].map(job => [job.id, Math.max(Date.parse(job.window.startAt), Date.parse(job.readyAt))]));
+    const admissionTime = new Map([...jobs.values()].map(job => [job.id,
+        time.readyTime({ windowStart: Date.parse(job.window.startAt), readyAt: Date.parse(job.readyAt) })]));
     const accepted = new Map<string, string>();
     const ticks = new Map<string, TickObservation>();
     const transfers = new Map<string, { request: string; result: StartedTransfer }>();
@@ -93,14 +96,16 @@ export function createExecutor(inputs: ExecutorInputs): ExecutionRunner {
                     const job = jobs.get(allocation.selection.allocation.jobId)!;
                     if (executed && job.state === "running") {
                         const [from, to] = bounds(allocation.load.window)!;
-                        const work = Math.min(job.remainingGpuH, allocation.load.gpus * (to - from) / hour);
-                        const remaining = job.remainingGpuH - work;
+                        const completedGpuH = work.completedWork({ remainingGpuH: job.remainingGpuH, gpus: allocation.load.gpus,
+                            durationMs: time.elapsedMilliseconds({ start: from, end: to }) });
+                        const remaining = work.remainingWork({ remainingGpuH: job.remainingGpuH, completedGpuH });
                         job.remainingGpuH = near(remaining, 0) ? 0 : remaining;
                         job.state = job.remainingGpuH === 0 ? "done" : "running";
                         const usage = result.usage[allocation.load.id];
-                        progress.set(job.id, { completedGpuH: work,
-                            computeKWh: usage.solarKWh + usage.gridKWh + usage.batteryKWh,
-                            postedChargeUsd: work * allocation.selection.allocation.postedUsdPerGpuHour });
+                        const directKWh = work.directComputeEnergy(usage);
+                        progress.set(job.id, { completedGpuH,
+                            computeKWh: work.totalComputeEnergy({ directKWh, batteryKWh: usage.batteryKWh }),
+                            postedChargeUsd: work.postedCharge({ completedGpuH, postedUsdPerGpuHour: allocation.selection.allocation.postedUsdPerGpuHour }) });
                     } else if (job.state === "running") job.state = "paused";
                     active.delete(job.id);
                 }
@@ -129,7 +134,7 @@ export function createExecutor(inputs: ExecutorInputs): ExecutionRunner {
             if (stopped || !job || jobSignature(job) !== jobSignature(request)) return reject("Use the runner's current job snapshot.");
             if (!site || !job.allowedLocations.includes(destination) || destination === job.currentLocation ||
                 site.computeProfile !== job.computeProfile || !["queued", "running", "paused"].includes(job.state) || job.remainingGpuH <= 0 ||
-                Date.parse(startsAt) !== nextStart || nextStart < Math.max(Date.parse(job.readyAt), Date.parse(job.window.startAt)) ||
+                Date.parse(startsAt) !== nextStart || nextStart < time.readyTime({ readyAt: Date.parse(job.readyAt), windowStart: Date.parse(job.window.startAt) }) ||
                 !sameWindow(site.ledger.state().nextWindow, currentWindow())) return reject("The job, destination or transfer start is not eligible.");
             const terms = transferTerms(job.currentLocation, destination, startsAt);
             const source = sites.find(s => s.locationId === job.currentLocation)!;

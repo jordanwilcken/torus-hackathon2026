@@ -49,3 +49,15 @@ A successful move releases its source reservation, retains remaining work, and b
 Automatic destination selection, actual process execution and application wiring are separate tasks. The existing simulation clock currently copies only `remainingGpuH` and `state` from execution observations. Integration must also consume the runner's authoritative `currentLocation`, `transferToLocation` and `readyAt` snapshots before subsequent routing. The runner does not edit clock state or install a second clock.
 
 The original partial-final-tick acceptance example and the scoped runner examples use the real chooser/ledger or explicit caller-supplied selections. They do not use recorded reporting evidence as execution.
+
+## Authored math
+
+All runner formulas live in [math/execution.math.md](math/execution.math.md),
+[math/transfer.math.md](math/transfer.math.md) and [math/time.math.md](math/time.math.md).
+Edit those equations, then run `npm run generate:execution-math`; ordinary builds
+also regenerate them. `npm run check:execution-math` detects stale output.
+The runner imports the committed standalone `.generated.js` files, with no math
+runtime. The existing site-energy scalar emitter is reused unchanged at build time.
+Parsing, evidence checks, reservations, receipts and job-state transitions stay in
+TypeScript. Formula boundaries preserve binary64 evaluation order and the existing
+whole-millisecond acceptance contract.

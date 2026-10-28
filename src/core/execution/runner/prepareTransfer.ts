@@ -1,7 +1,10 @@
 import type { Job } from "../../jobs/Job.type.js";
 import type { StartedTransfer, TransferOutcome } from "../TransferOutcome.type.js";
 import type { ExecutionSite, TransferTerms } from "./Executor.types.js";
-import { bounds, hour, near } from "./executionTime.js";
+import { bounds, near } from "./executionTime.js";
+import * as time from "./math/time.generated.js";
+import * as work from "./math/execution.generated.js";
+import * as transfer from "./math/transfer.generated.js";
 
 /** Known future capacity is a necessary check, never an acceptance or future reservation. */
 export function prepareTransfer(job: Job, destination: ExecutionSite, startsAt: string, terms: TransferTerms,
@@ -12,13 +15,21 @@ export function prepareTransfer(job: Job, destination: ExecutionSite, startsAt: 
         [terms.kWhPerGB, terms.jobChargeUsdPerGB, terms.carbonGPerKWh ?? 0, terms.electricityUsdPerMWh ?? 0]
             .some(n => !Number.isFinite(n) || n < 0)) return reject("Transfer terms are incomplete or incompatible.");
     const start = Date.parse(startsAt), deadline = Date.parse(job.window.endAt);
-    const duration = job.dataGB / terms.bandwidthGBPerHour * hour;
-    const ready = grid.origin + Math.ceil((start + duration - grid.origin) / grid.duration) * grid.duration;
-    const energyKWh = job.dataGB * terms.kWhPerGB, jobChargeUsd = job.dataGB * terms.jobChargeUsdPerGB;
-    const carbonKg = energyKWh === 0 ? 0 : terms.carbonGPerKWh === undefined ? undefined : energyKWh * terms.carbonGPerKWh / 1000;
-    const electricityUsd = energyKWh === 0 ? 0 : terms.electricityUsdPerMWh === undefined ? undefined : energyKWh * terms.electricityUsdPerMWh / 1000;
+    const transferHours = transfer.transferHours({ dataGB: job.dataGB, bandwidthGBPerHour: terms.bandwidthGBPerHour });
+    const durationMs = time.millisecondsForHours({ durationHours: transferHours });
+    const arrival = time.timeAfter({ start, durationMs });
+    const ready = transfer.gridReadyTime({ origin: grid.origin, arrival, tickMs: grid.duration });
+    const energyKWh = transfer.transferEnergy({ dataGB: job.dataGB, kWhPerGB: terms.kWhPerGB });
+    const jobChargeUsd = transfer.transferCharge({ dataGB: job.dataGB, usdPerGB: terms.jobChargeUsdPerGB });
+    const carbonKg = energyKWh === 0 ? 0 : terms.carbonGPerKWh === undefined ? undefined :
+        transfer.carbonKilograms({ energyKWh, gramsPerKWh: terms.carbonGPerKWh });
+    const electricityUsd = energyKWh === 0 ? 0 : terms.electricityUsdPerMWh === undefined ? undefined :
+        transfer.electricityDollars({ energyKWh, usdPerMWh: terms.electricityUsdPerMWh });
+    const minimumWorkHours = work.requiredHours({ remainingGpuH: job.remainingGpuH, gpus: job.maxGpus });
+    const minimumWorkMs = time.millisecondsForHours({ durationHours: minimumWorkHours });
+    const timeLeftMs = time.elapsedMilliseconds({ start: ready, end: deadline });
     if (![ready, energyKWh, jobChargeUsd, carbonKg ?? 0, electricityUsd ?? 0].every(Number.isFinite) ||
-        ready >= deadline || job.remainingGpuH / job.maxGpus * hour > deadline - ready)
+        ready >= deadline || minimumWorkMs > timeLeftMs)
         return reject("Transfer and remaining work cannot finish before the deadline.");
     const readyAt = new Date(ready).toISOString();
     const candidates = destination.ledger.slots(destination.locationId, { startAt: readyAt, endAt: job.window.endAt });
@@ -26,12 +37,14 @@ export function prepareTransfer(job: Job, destination: ExecutionSite, startsAt: 
     for (const snapshot of candidates) {
         const slot = snapshot.slot, interval = bounds(slot?.window), observed = Date.parse(snapshot.observedAt ?? "");
         if (!slot || !interval || snapshot.status !== "current" || !snapshot.version || !snapshot.source ||
-            !Number.isFinite(observed) || observed > start || (start - observed) / 60_000 > maximumAgeMinutes) continue;
-        const activeHours = Math.max(0, Math.min(deadline, interval[1]) - Math.max(ready, interval[0])) / hour;
-        const powerGpus = slot.availablePowerKW / destination.kWhPerGpuHour;
-        const integralPowerGpus = Math.floor(near(powerGpus, Math.round(powerGpus)) ? Math.round(powerGpus) : powerGpus);
-        const gpus = Math.min(job.maxGpus, slot.capGpus - slot.usedGpus, integralPowerGpus);
-        availableWork += Math.min(gpus * activeHours, slot.availableEnergyKWh / destination.kWhPerGpuHour);
+            !Number.isFinite(observed) || observed > start || time.ageMinutes({ at: start, observedAt: observed }) > maximumAgeMinutes) continue;
+        const activeHours = transfer.activeHours({ deadline, slotEnd: interval[1], readyAt: ready, slotStart: interval[0] });
+        const powerGpus = transfer.powerSupportedGpus({ availablePowerKW: slot.availablePowerKW, kWhPerGpuHour: destination.kWhPerGpuHour });
+        const gpus = transfer.destinationGpus({ maxGpus: job.maxGpus,
+            unreservedGpus: work.unreservedGpus({ capacity: slot.capGpus, used: slot.usedGpus }),
+            powerGpus: transfer.wholePowerGpus({ powerGpus }) });
+        const slotGpuH = transfer.slotWork({ gpus, activeHours, availableEnergyKWh: slot.availableEnergyKWh, kWhPerGpuHour: destination.kWhPerGpuHour });
+        availableWork = transfer.accumulatedWork({ previousGpuH: availableWork, slotGpuH });
     }
     if (availableWork < job.remainingGpuH && !near(availableWork, job.remainingGpuH))
         return reject("Known destination capacity cannot support the remaining work; future capacity is not reserved.");

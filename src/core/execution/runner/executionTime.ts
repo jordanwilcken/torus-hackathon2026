@@ -1,6 +1,6 @@
 import type { TimeWindow } from "../../TimeWindow.type.js";
 
-export const hour = 3_600_000;
+import { withinRoundoff } from "./math/time.generated.js";
 export function bounds(window: TimeWindow | undefined): readonly [number, number] | undefined {
     if (!window) return undefined;
     const start = Date.parse(window.startAt), end = Date.parse(window.endAt);
@@ -14,5 +14,5 @@ export function sameWindow(a: TimeWindow | undefined, b: TimeWindow): boolean {
     return Boolean(left && right && left[0] === right[0] && left[1] === right[1]);
 }
 export function near(a: number, b: number): boolean {
-    return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= 8 * Number.EPSILON * Math.max(1, Math.abs(a), Math.abs(b));
+    return Number.isFinite(a) && Number.isFinite(b) && withinRoundoff({ left: a, right: b }) === 1;
 }

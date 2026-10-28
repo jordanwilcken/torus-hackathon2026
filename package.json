@@ -11,17 +11,19 @@
     "data:eia930": "node scripts/fetch-eia930-snapshot.ts",
     "dev": "vite",
     "preview": "vite preview",
-    "prebuild": "npm run generate:scheduling-math",
+    "prebuild": "npm run generate:scheduling-math && npm run generate:execution-math",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "generate:math": "npm --prefix examples/math-formula-proof run generate && npm run generate:scheduling-math",
+    "generate:math": "npm --prefix examples/math-formula-proof run generate && npm run generate:scheduling-math && npm run generate:execution-math",
     "generate:scheduling-math": "node examples/math-formula-proof/generate.mjs src/core/scheduling/math/chooseExecutionSlot.math.md && node examples/math-formula-proof/generate.mjs src/core/scheduling/math/postSitePrice.math.md",
-    "test:math": "npm --prefix examples/math-formula-proof test",
+    "test:math": "npm --prefix examples/math-formula-proof test && npm run check:execution-math",
     "test": "vitest run",
     "test:userflows": "playwright test",
     "test:score": "node scripts/score.mjs",
     "score:report": "node scripts/score.mjs --report-only",
-    "test:tooling": "node --test test/tooling/score.test.ts test/tooling/ci-summary.test.ts test/tooling/scorecard-links.test.ts"
+    "test:tooling": "node --test test/tooling/score.test.ts test/tooling/ci-summary.test.ts test/tooling/scorecard-links.test.ts",
+    "generate:execution-math": "node src/core/execution/runner/math/generate.mjs",
+    "check:execution-math": "node src/core/execution/runner/math/generate.mjs --check"
   },
   "dependencies": {
     "@cortex-js/compute-engine": "0.171.0",
