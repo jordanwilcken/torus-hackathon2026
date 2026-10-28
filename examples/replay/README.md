@@ -1,5 +1,17 @@
 # Captured paired replay
 
+For the interactive demo, start the app with `npm run dev` and open `/?scenario=paired-replay`, or click **Stream jobs on the map** in the main navigation. This uses `job-stream.json` and steps the actual paired simulator; the animations do not play a precomputed result.
+
+1. Open the monkey icon in the map corner and click **Step**. Job 01 arrives and waits for the cheaper solar hour.
+2. Step again. Job 01 runs at A, and job 02 arrives and waits because the current capacity is taken.
+3. Step again. Job 02 runs at A and job 03 arrives and runs at its home site B. Click any job to inspect its decisions, retained map offers and work receipts.
+4. Step the final hour to include idle demand and ending storage, then download the paired evidence JSON. **Play**, **Pause**, speed and **Reset** control this same engine.
+5. Reset, settle the first hour, then apply **Solar drop at Site A** before continuing. The event changes realized supply in both runs, leaves the forecast intact and is retained in the export.
+
+This proves admission, home-site time selection, capacity competition, modeled execution and fleet accounting. It does not prove automatic cross-site migration. A/B capacity, energy and job demand are declared synthetic inputs; their city coordinates are display references. The separate **Public inputs and real CPU execution** mode demonstrates the actual bounded CPU worker. Public cluster traces can later supply historical job arrivals, but they do not provide live machines or measured energy for these modeled sites.
+
+Both UI and CLI exports contain the full scenario and raw results. To replay a UI download with the CLI, save its `scenario` object as a scenario JSON file and pass that file to the command below. The CLI additionally records the input-byte hash and local Git provenance.
+
 From the repository root, with the locked dependencies installed and Node 24.19 or newer in the supported Node 24 line:
 
 ```sh
@@ -31,10 +43,11 @@ Both arms start and finish at 0 kWh, charge 1 kWh and discharge 1 kWh under the 
 
 The export retains the scenario, policies, raw tick meters, decisions, work, inventories and comparison. `provenance.scenarioSha256` hashes the exact input bytes, including whitespace. `provenance.engine` records the Git revision and whether the worktree was dirty. No current wall-clock timestamp or local file path is added, so unchanged input and engine state produce identical JSON. A dirty revision requires preserving those local code changes to reproduce it.
 
-These are modeled energy and compute results from declared synthetic inputs. This command does not perform real CPU/GPU work, migrate a running job, connect the map/application, fetch live data or measure real energy savings. It uses the exported replay boundary that a later application integration can call.
+These are modeled energy and compute results from declared synthetic inputs. The command and interactive replay share the same engine. Neither performs real CPU/GPU work, migrates a running job, fetches live data or measures real energy savings.
 
 Run the scoped CLI checks with:
 
 ```sh
 node --test test/tooling/replay-cli.test.mjs
+node node_modules/@playwright/test/cli.js test --config test/userflows/replay/playwright.config.ts
 ```

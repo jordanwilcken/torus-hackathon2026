@@ -1,6 +1,6 @@
 import type { Job } from "../../jobs/Job.type.js";
 import type { SiteEnergyConfiguration, SiteEnergyInput } from "../../energy/site/SiteEnergy.types.js";
-import type { SimulationLogEntry } from "../simulation/clock.js";
+import type { SimulationLogEntry, InputEvent } from "../simulation/clock.js";
 import type { ExecutionRun } from "../../reporting/ExecutionEvidence.type.js";
 import type { ImpactObservation } from "../../reporting/ImpactObservation.interface.js";
 import type { JobReport } from "../../reporting/JobReport.type.js";
@@ -30,6 +30,7 @@ export type ReplayScenario = {
     carbonPriceUsdPerTonne: number;
     maximumAgeMinutes: number;
     storageToleranceKWh: number;
+    events?: InputEvent[];
 };
 
 export type ReplayArm = {

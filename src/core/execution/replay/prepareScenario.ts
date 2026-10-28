@@ -1,5 +1,6 @@
 import { assertHourAligned, hourStart } from "../simulation/workload.js";
 import type { ReplayScenario } from "./Replay.types.js";
+import { validateReplayEvent } from "./replayEvents.js";
 
 /** Capture the input once before either arm starts. Component constructors validate their own inputs. */
 export function prepareScenario(supplied: ReplayScenario): ReplayScenario {
@@ -56,5 +57,6 @@ export function prepareScenario(supplied: ReplayScenario): ReplayScenario {
             fail("This replay supports hour-aligned admission: readyAt and job window start must be UTC hour boundaries.");
         }
     }
+    for (const event of scenario.events ?? []) validateReplayEvent(scenario, event);
     return scenario;
 }

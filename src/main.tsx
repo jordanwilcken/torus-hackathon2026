@@ -14,11 +14,13 @@ import { summarizeExecution } from './core/reporting/impact/summarizeExecution';
 import { LiveGridInputs } from './ui/energy/LiveGridInputs';
 import { createPublicGridClient } from './data/createPublicGridClient';
 import { LocalExecution } from './ui/jobs/LocalExecution';
+import { ReplayDemo } from './ui/replay/ReplayDemo';
 import './style.css';
 
 const publicGrid = createPublicGridClient();
 const stream = new JobStream(routeFakeJob);
 const scenario = new URLSearchParams(location.search).get('scenario');
+const pairedReplay = scenario === 'paired-replay';
 const recorded = scenario === 'recorded-comparison';
 const preview = (scenario === 'stale-site' ? staleInputs.job : recorded ? recordedInputs.job : getFakeJob()) as Job;
 const staleMap = createFakeEnergyMap(staleInputs as Parameters<typeof createFakeEnergyMap>[0], {});
@@ -47,11 +49,23 @@ createRoot(root).render(
     <main>
       <h1>Sunchaser</h1>
       <p>Compute coordinated with Torus energy.</p>
+      <nav aria-label="Demo modes" style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+        <a href="?scenario=paired-replay">Stream jobs on the map</a>
+        <a href="/">Public inputs and real CPU execution</a>
+      </nav>
+      {pairedReplay ? <>
+        <ReplayDemo />
+        <details><summary>Public inputs and real CPU execution</summary>
+          <LiveGridInputs feeds={publicGrid} />
+          <LocalExecution />
+        </details>
+      </> : <>
       <LiveGridInputs feeds={publicGrid} />
       <LocalExecution />
       <StarterFlow stream={stream} jobSource={jobSource} queryEnergy={queryEnergy}
         previewLabel={recorded ? 'Supplied simulation records — this application has not executed the work.' : undefined}
         reportSource={{ fake: true, label: recorded ? recordedInputs.label : 'Observed Fake job flow — no work has executed.' }} />
+      </>}
     </main>
   </StrictMode>,
 );

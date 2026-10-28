@@ -11,9 +11,12 @@ import { createExecutor } from "../runner/createExecutor.js";
 import { createSimulation, type PhaseContext } from "../simulation/clock.js";
 import { hourStart } from "../simulation/workload.js";
 import type { ReplayArm, ReplayScenario } from "./Replay.types.js";
+import { getEnergyMap } from "../../energy/getEnergyMap.js";
+import { applyReplayEvents } from "./replayEvents.js";
+import type { InputEvent } from "../simulation/clock.js";
 
 /** Each invocation owns all mutable state. Inputs have been captured and checked by prepareScenario. */
-export async function runReplayArm(scenario: ReplayScenario, arm: "baseline" | "selected"): Promise<ReplayArm> {
+export function createReplayArmSession(scenario: ReplayScenario, arm: "baseline" | "selected") {
     const horizon = { startAt: scenario.startAt, endAt: hourStart(scenario.startAt, scenario.hours) };
     const sites = scenario.sites.map(site => {
         const configuration = site.configuration;
@@ -49,16 +52,21 @@ export async function runReplayArm(scenario: ReplayScenario, arm: "baseline" | "
     };
     const ticks: Array<ExecutionRun["ticks"][number]> = [];
     const decisions: ReplayArm["decisions"] = [];
+    const projection = (asOf: string) => getEnergyMap({ window: horizon, asOf }, energy, scenario.maximumAgeMinutes);
+    let publication = projection(scenario.startAt);
+    let onRouted: (() => void | Promise<void>) | undefined;
     const simulation = createSimulation({
         seed: scenario.seed, snapshotId: scenario.inputRevision, startAt: scenario.startAt, hours: scenario.hours,
-        syntheticForecast: true, workload: { kind: "fixture", jobs: scenario.jobs },
+        syntheticForecast: true, workload: { kind: "fixture", jobs: scenario.jobs }, events: scenario.events,
     }, { energy, createPhases: () => ({
         observe(context) {
             scenario.sites.forEach((site, index) => {
-                const observed = site.observations[context.hour];
+                const observed = applyReplayEvents(site.observations[context.hour], site.configuration.locationId, context.events);
                 if (Date.parse(observed.evidence.observedAt) <= Date.parse(context.asOf))
                     sites[index].ledger.update(observed);
             });
+            // Retain the offers that informed this tick; dispatch removes settled slots.
+            publication = projection(context.asOf);
         },
         async shop(context) {
             // The executor owns remaining work and location. The clock owns admission/deadline visibility.
@@ -80,6 +88,7 @@ export async function runReplayArm(scenario: ReplayScenario, arm: "baseline" | "
                 }
                 decisions.push({ hour: context.hour, results });
             }
+            await onRouted?.();
         },
         execute(context) {
             const observation = executor.tick(context.tick);
@@ -87,17 +96,31 @@ export async function runReplayArm(scenario: ReplayScenario, arm: "baseline" | "
             return observation;
         },
     }) });
-    while (simulation.hour < scenario.hours) {
-        await simulation.step();
-        // Keep partial observations. Continuing after a stopped ledger would manufacture coverage.
-        if (ticks.at(-1)?.feasible === false) break;
-    }
-    run.ticks = ticks;
-    return {
+    const done = () => simulation.hour >= scenario.hours || ticks.at(-1)?.feasible === false;
+    const read = (): ReplayArm => structuredClone({
         policy: arm === "baseline" ? "home-fifo-immediate-v1" : "home-edf-priced-wait-v1",
-        run, impact: summarizeExecution(run), decisions, log: simulation.log(),
+        run: { ...run, ticks }, impact: summarizeExecution({ ...run, ticks }), decisions, log: simulation.log(),
         finalJobs: scenario.jobs.map(job => executor.job(job.id)!),
+    });
+    return {
+        get hour() { return simulation.hour; },
+        get done() { return done(); },
+        read,
+        publication: () => structuredClone(publication),
+        schedule: (event: InputEvent) => simulation.schedule(event),
+        async step(routed?: () => void | Promise<void>) {
+            if (done()) return;
+            onRouted = routed;
+            try { await simulation.step(); }
+            finally { onRouted = undefined; }
+        },
     };
+}
+
+export async function runReplayArm(scenario: ReplayScenario, arm: "baseline" | "selected"): Promise<ReplayArm> {
+    const session = createReplayArmSession(scenario, arm);
+    while (!session.done) await session.step();
+    return session.read();
 }
 
 function policyView(context: PhaseContext, arm: "baseline" | "selected"): EnergyMap {
