@@ -14,7 +14,7 @@
       "fake-utah-solar"
     ],
     "homeLocation": "fake-utah-grid",
-    "currentLocation": "fake-utah-solar",
+    "currentLocation": "fake-utah-grid",
     "readyAt": "2026-10-27T18:00:00Z",
     "workGpuH": 1,
     "remainingGpuH": 1,

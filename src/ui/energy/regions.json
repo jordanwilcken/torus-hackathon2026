@@ -1,0 +1,7 @@
+[
+  { "id": "BPAT", "city": "The Dalles, OR", "latitude": 45.5946, "longitude": -121.1787 },
+  { "id": "CISO", "city": "San Jose, CA", "latitude": 37.3387, "longitude": -121.8853 },
+  { "id": "SWPP", "city": "Pryor, OK", "latitude": 36.3084, "longitude": -95.3169 },
+  { "id": "ERCO", "city": "Dallas, TX", "latitude": 32.7767, "longitude": -96.7970 },
+  { "id": "PJM", "city": "Ashburn, VA", "latitude": 39.0438, "longitude": -77.4874 }
+]
