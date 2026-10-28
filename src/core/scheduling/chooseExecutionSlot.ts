@@ -5,7 +5,7 @@ import type { SlotReference } from "../energy/SlotReference.type.js";
 import type { JobOutcome } from "./JobOutcome.type.js";
 import {
     minimumRunHours, powerLimitedGpus, energyLimitedGpus, slotUsage, priceWithTransfer, exceeds,
-} from "./chooseExecutionSlot.generated.js";
+} from "./math/chooseExecutionSlot.generated.js";
 
 type SlotRoutingOptions = {
     asOf: string;

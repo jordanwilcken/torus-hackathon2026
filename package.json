@@ -14,7 +14,7 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "generate:math": "npm --prefix examples/math-formula-proof run generate && npm run generate:scheduling-math",
-    "generate:scheduling-math": "node examples/math-formula-proof/generate.mjs src/core/scheduling/chooseExecutionSlot.math.md && node examples/math-formula-proof/generate.mjs src/core/scheduling/math/postSitePrice.math.md",
+    "generate:scheduling-math": "node examples/math-formula-proof/generate.mjs src/core/scheduling/math/chooseExecutionSlot.math.md && node examples/math-formula-proof/generate.mjs src/core/scheduling/math/postSitePrice.math.md",
     "test:math": "npm --prefix examples/math-formula-proof test",
     "test": "vitest run",
     "test:userflows": "playwright test",
