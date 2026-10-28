@@ -1,11 +1,11 @@
-import { createSimulation } from '../../../src/core/execution/simulation/clock';
+import { createSimulation, type InputEvent } from '../../../src/core/execution/simulation/clock';
 import { chooseExecutionSlot } from '../../../src/core/scheduling/chooseExecutionSlot';
 import { reportableJob, withReporting } from '../../../src/core/reporting/impact/reportableJob';
 import type { Job } from '../../../src/core/jobs/Job.type';
 import type { JobOutcome } from '../../../src/core/scheduling/JobOutcome.type';
 import type { JobObservations } from '../../../src/core/reporting/JobObservations.type';
-import type { PlaybackState } from '../../../src/ui/core/controls/PlaybackControls.types';
-import { energy, jobs, routingOptions, startAt, timestamp, totalHours } from './streamScenario';
+import type { PlaybackState, ScenarioMenu } from '../../../src/ui/core/controls/PlaybackControls.types';
+import { createStreamScenario, scenarioEvents, jobs, routingOptions, startAt, timestamp, totalHours } from './streamScenario';
 
 type Attempt = { asOf: string; outcome: JobOutcome };
 export type PlaybackJob = {
@@ -15,14 +15,19 @@ export type PlaybackJob = {
 type Snapshot = {
   playback: PlaybackState; jobs: PlaybackJob[]; activeId: string;
   viewAt: string; routeAttempt: number;
+  scenario: ScenarioMenu;
+  events: { input: InputEvent; label: string; state: 'scheduled' | 'applied'; message: string }[];
 };
 
 /** Demo composition only: real arrival clock and routing, supplied prices, no executor. */
 export function createRoutingPlayback() {
+  const supplied = createStreamScenario();
   const listeners = new Set<() => void>();
   let disposed = false;
   let playing = false;
   let failed = false;
+  let ticking = false;
+  let appliedThisTick: string[] = [];
   let nextHour: ReturnType<typeof setTimeout> | undefined;
   let dwell: { timer: ReturnType<typeof setTimeout>; finish: () => void } | undefined;
   let snapshot: Snapshot = initial();
@@ -31,10 +36,11 @@ export function createRoutingPlayback() {
   function initial(speed = 1): Snapshot {
     return {
       playback: { hour: 0, totalHours, currentTime: startAt, mode: 'paused', speed,
-        speedOptions: [1, 2, 4], busy: false,
+        speedOptions: [1, 2, 4], busy: false, allowEventSchedulingWhileBusy: true,
         condition: { kind: 'healthy', message: 'Real clock and chooser; sample hourly prices.' } },
       jobs: jobs.map(job => ({ job, phase: 'upcoming', attempts: [], observations: { jobId: job.id } })),
       activeId: jobs[0].id, viewAt: startAt, routeAttempt: 0,
+      scenario: { events: scenarioEvents(0), selectedEventId: 'site-outage' }, events: [],
     };
   }
   function publish(patch: Partial<Snapshot>) {
@@ -58,7 +64,19 @@ export function createRoutingPlayback() {
   const simulation = createSimulation({
     seed: 3, snapshotId: 'job-stream-example', startAt, hours: totalHours,
     syntheticForecast: true, workload: { kind: 'fixture', jobs },
-  }, { energy, createPhases: () => ({
+  }, { energy: supplied.energy, createPhases: () => ({
+    observe(context) {
+      for (const input of context.events) {
+        const message = supplied.apply(input);
+        appliedThisTick.push(message);
+        const index = snapshot.events.findIndex(event => event.state === 'scheduled' &&
+          event.input.atHour === input.atHour && event.input.kind === input.kind);
+        publish({ events: snapshot.events.map((event, i) => i === index ? { ...event, state: 'applied', message } : event) });
+      }
+      if (appliedThisTick.length) playback({ condition: {
+        kind: 'degraded', message: 'Sample scenario changed. The chooser is using the revised supplied inputs.',
+      } });
+    },
     async shop(context) {
       for (const job of context.jobs) {
         if (disposed) return;
@@ -90,6 +108,11 @@ export function createRoutingPlayback() {
     if (nextHour !== undefined) clearTimeout(nextHour);
     nextHour = undefined;
   }
+  function refreshEventHour() {
+    const hour = simulation.hour + (ticking ? 1 : 0);
+    publish({ scenario: { ...snapshot.scenario, events: scenarioEvents(Math.min(hour, totalHours - 1)) } });
+    playback({ allowEventSchedulingWhileBusy: hour < totalHours });
+  }
   function showFailure(error: unknown) {
     playing = false;
     failed = true;
@@ -100,6 +123,9 @@ export function createRoutingPlayback() {
   async function advance() {
     if (disposed || snapshot.playback.busy || simulation.hour >= totalHours) return;
     if (failed) throw new Error('Reset before retrying the failed simulation.');
+    ticking = true;
+    appliedThisTick = [];
+    refreshEventHour();
     playback({ busy: true, response: undefined });
     try {
       await simulation.step();
@@ -108,12 +134,15 @@ export function createRoutingPlayback() {
       if (complete) playing = false;
       playback({ hour: simulation.hour, currentTime: timestamp(simulation.hour),
         mode: complete ? 'complete' : playing ? 'playing' : 'paused',
-        response: { kind: 'info', message: complete ? 'All sample arrivals reviewed. Inspect any job or Reset to replay.'
+        response: { kind: 'info', message: complete ? 'Run complete. Inspect any job or Reset to try another event.'
+          : appliedThisTick.length ? 'Applied: ' + appliedThisTick.join(' ')
           : 'Hour reviewed. Waiting jobs will be reconsidered on the next tick.' } });
     } catch (error) {
       showFailure(error);
       throw error;
     } finally {
+      ticking = false;
+      refreshEventHour();
       playback({ busy: false });
     }
     if (playing && !disposed) nextHour = setTimeout(() => {
@@ -123,6 +152,7 @@ export function createRoutingPlayback() {
   }
 
   return {
+    energy: supplied.energy,
     getSnapshot: () => snapshot,
     subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     play() {
@@ -144,9 +174,26 @@ export function createRoutingPlayback() {
       playing = false;
       failed = false;
       stopTimer();
+      supplied.reset();
       simulation.reset();
       observers = new Map(jobs.map(job => [job.id, reportableJob(job.id)]));
       publish(initial(snapshot.playback.speed));
+    },
+    selectEvent(id: string) {
+      if (!snapshot.scenario.events.some(event => event.id === id)) throw new Error('Unknown scenario event.');
+      publish({ scenario: { ...snapshot.scenario, selectedEventId: id } });
+    },
+    applyEvent(input: InputEvent) {
+      if (failed) throw new Error('Reset before scheduling another event.');
+      const atHour = simulation.hour + (ticking ? 1 : 0);
+      if (atHour >= totalHours) throw new Error('This run has no hours remaining. Reset to try another event.');
+      const option = scenarioEvents(atHour).find(event => event.input.kind === input.kind);
+      if (!option) throw new Error('Unknown scenario event.');
+      const scheduled = { ...structuredClone(input), atHour };
+      simulation.schedule(scheduled);
+      const message = 'Scheduled for ' + timestamp(atHour).slice(11, 16) + ' UTC. Apply it with Step or let Play reach that hour.';
+      publish({ events: [...snapshot.events, { input: scheduled, label: option.label, state: 'scheduled', message }] });
+      playback({ response: { kind: 'success', message: option.label + ': ' + message } });
     },
     setSpeed(speed: number) { playback({ speed }); },
     inspect(id: string) {

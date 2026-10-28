@@ -5,7 +5,7 @@ import { getEnergyMap } from '../../../src/core/energy/getEnergyMap';
 import { createJobReport } from '../../../src/core/reporting/getJobReport';
 import type { SlotReference } from '../../../src/core/energy/SlotReference.type';
 import { createRoutingPlayback, type PlaybackJob } from './routingPlayback';
-import { energy, timestamp } from './streamScenario';
+import { timestamp } from './streamScenario';
 import './JobPlayback.css';
 
 const time = (value: string) => value.slice(11, 16) + ' UTC';
@@ -26,13 +26,12 @@ export function JobPlayback() {
   useEffect(() => () => session.dispose(), [session]);
   const active = state.jobs.find(entry => entry.job.id === state.activeId)!;
   const map = getEnergyMap({ window: { startAt: state.viewAt, endAt: new Date(Date.parse(state.viewAt) + 3_600_000).toISOString() },
-    asOf: state.viewAt, locations: active.job.allowedLocations, computeProfile: active.job.computeProfile }, energy);
+    asOf: state.viewAt, locations: active.job.allowedLocations, computeProfile: active.job.computeProfile }, session.energy);
   const priceMap = getEnergyMap({ window: { startAt: timestamp(0), endAt: timestamp(5) },
-    asOf: state.viewAt, locations: active.job.allowedLocations, computeProfile: active.job.computeProfile }, energy);
+    asOf: state.viewAt, locations: active.job.allowedLocations, computeProfile: active.job.computeProfile }, session.energy);
   const report = createJobReport(active.observations, { fake: false, label: 'Real chooser · sample slot evidence' });
   const focus = useMemo(() => ({ locationId: active.job.currentLocation, slotId: active.job.currentLocation + '-18' }),
     [active.job.id, active.job.currentLocation]);
-  const actions = { ...session, selectEvent() {}, applyEvent() { throw new Error('No event handler is connected to this routing preview.'); } };
 
   return <main className="job-playback" style={{ '--job-route-duration': `${700 / state.playback.speed}ms` } as CSSProperties}>
     <header className="job-playback-heading"><div>
@@ -53,9 +52,15 @@ export function JobPlayback() {
       <strong>{active.job.id}</strong><span>{decision(active)}</span>
       <span>Map evidence: {time(state.viewAt)}</span>
     </div>
+    {state.events.length > 0 && <section className="job-playback-events" aria-label="Scenario events">
+      <h2>Scenario events</h2><ol>{state.events.map((event, index) => <li key={index}>
+        <strong>{event.label}</strong><span>{event.state === 'applied' ? 'Applied at ' : 'Scheduled for '}{time(timestamp(event.input.atHour))}</span>
+        <p>{event.message}</p>
+      </li>)}</ol>
+    </section>}
     <EnergyMapView map={map} jobFlow={{ job: active.job, report, routeAttempt: state.routeAttempt }}
       inspection={{ inspectedSlot, focusSlot: focus, onInspect: setInspectedSlot }}
-      controls={<ChaosMonkeyControls state={state.playback} actions={actions} scenario={{ events: [], selectedEventId: '' }} />} />
+      controls={<ChaosMonkeyControls state={state.playback} actions={session} scenario={state.scenario} />} />
     <p className="job-playback-limit">Selections only: capacity is not reserved and work has not executed.</p>
     <section className="job-playback-history" aria-label="Decision history">
       <h2>{active.job.id} · decision history</h2>

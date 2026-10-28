@@ -87,3 +87,61 @@ test('a routing failure stops playback and shows the failed decision with Reset 
   await dialog.getByRole('button', { name: 'Reset', exact: true }).click();
   await expect(page.getByLabel('job-01 decision', { exact: true })).toHaveText('Upcoming');
 });
+
+test('a solar outage changes the first placement and Reset restores the original scenario', async ({ page }) => {
+  const dialog = await openPlayback(page);
+  await expect(dialog.getByRole('combobox', { name: 'Scenario event', exact: true })).toBeEnabled();
+  await dialog.getByRole('combobox', { name: 'Scenario event', exact: true }).selectOption('site-outage');
+  await dialog.getByRole('button', { name: 'Apply event', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Scenario events', exact: true })).toContainText('Scheduled for 18:00 UTC');
+  await advanceHour(page, 1);
+  await expect(page.getByLabel('job-01 decision', { exact: true })).toHaveText('Selected utah-grid at 18:00 UTC');
+  await expect(page.getByRole('region', { name: 'Scenario events', exact: true })).toContainText('Applied at 18:00 UTC');
+  await dialog.getByRole('button', { name: 'Reset', exact: true }).click();
+  await advanceHour(page, 1);
+  await expect(page.getByLabel('job-01 decision', { exact: true })).toHaveText('Selected utah-solar at 18:00 UTC');
+});
+
+test('a forecast error changes the waiting decision without changing an earlier placement', async ({ page }) => {
+  const dialog = await openPlayback(page);
+  await advanceHour(page, 1);
+  await dialog.getByRole('combobox', { name: 'Scenario event', exact: true }).selectOption('forecast-error');
+  await dialog.getByRole('button', { name: 'Apply event', exact: true }).click();
+  await advanceHour(page, 2);
+  await expect(page.getByLabel('job-02 decision', { exact: true })).toHaveText('Selected utah-solar at 19:00 UTC');
+  await page.getByRole('button', { name: 'Inspect job-01', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Decision history' })).toContainText('0.1 USD/GPU-hour');
+});
+
+test('a utility limit removes the grid option for the third job', async ({ page }) => {
+  const dialog = await openPlayback(page);
+  await dialog.getByRole('combobox', { name: 'Scenario event', exact: true }).selectOption('utility-import-limit');
+  await dialog.getByRole('button', { name: 'Apply event', exact: true }).click();
+  await advanceHour(page, 1);
+  await advanceHour(page, 2);
+  await advanceHour(page, 3);
+  await expect(page.getByLabel('job-03 decision', { exact: true })).toHaveText('Selected utah-solar at 20:00 UTC');
+});
+
+test('a supplied protected-reserve scenario removes discretionary solar capacity', async ({ page }) => {
+  const dialog = await openPlayback(page);
+  await dialog.getByRole('combobox', { name: 'Scenario event', exact: true }).selectOption('reserve-change');
+  await dialog.getByRole('button', { name: 'Apply event', exact: true }).click();
+  await advanceHour(page, 1);
+  await expect(page.getByLabel('job-01 decision', { exact: true })).toHaveText('Selected utah-grid at 18:00 UTC');
+  await expect(page.getByRole('region', { name: 'Scenario events', exact: true })).toContainText('Applied at 18:00 UTC');
+});
+
+test('an event can be queued during playback and takes effect on the next hour', async ({ page }) => {
+  await page.clock.install();
+  const dialog = await openPlayback(page);
+  await dialog.getByRole('button', { name: 'Play', exact: true }).click();
+  await expect(dialog.getByRole('combobox', { name: 'Scenario event', exact: true })).toBeEnabled();
+  await dialog.getByRole('combobox', { name: 'Scenario event', exact: true }).selectOption('forecast-error');
+  await dialog.getByRole('button', { name: 'Apply event', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Scenario events', exact: true })).toContainText('Scheduled for 19:00 UTC');
+  await page.clock.runFor(6000);
+  await expect(page.getByLabel('job-01 decision', { exact: true })).toHaveText('Selected utah-solar at 18:00 UTC');
+  await expect(page.getByLabel('job-02 decision', { exact: true })).toHaveText('Selected utah-solar at 19:00 UTC');
+  await expect(page.getByRole('region', { name: 'Scenario events', exact: true })).toContainText('Applied at 19:00 UTC');
+});

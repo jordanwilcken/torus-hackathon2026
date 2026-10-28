@@ -83,6 +83,7 @@
 .chaos-monkey-panel .playback-controls button,
 .chaos-monkey-panel .playback-controls select { min-height: 36px; padding: 6px 10px; }
 .chaos-monkey-panel .playback-controls label { font-size: 11px; }
+.chaos-monkey-panel .playback-controls .playback-speed { width: auto; margin-left: 0; gap: 5px; font-size: 10px; }
 .chaos-monkey-panel .playback-scenario { margin-top: 12px; padding-top: 10px; }
 .chaos-monkey-panel .playback-scenario h3 { font-size: 13px; }
 .chaos-monkey-panel .playback-event-actions { margin-top: 7px; flex-direction: row; align-items: end; }

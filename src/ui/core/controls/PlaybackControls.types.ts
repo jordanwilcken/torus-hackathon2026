@@ -19,6 +19,8 @@ export type PlaybackState = {
     speed: number;
     speedOptions: ReadonlyArray<number>;
     busy: boolean;
+    /** The caller can safely queue future events while another command/tick is in progress. Defaults to false. */
+    allowEventSchedulingWhileBusy?: boolean;
     condition?: PlaybackCondition;
     response?: ControlsResponse;
 };
