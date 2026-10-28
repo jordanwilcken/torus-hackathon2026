@@ -11,6 +11,9 @@ type SlotRoutingOptions = {
     asOf: string;
     maximumAgeMinutes: number;
     kWhPerGpuHour: number;
+    /** Opt in to explicit positive-duration transfer plans; default behavior is unchanged. */
+    planTransfers?: boolean;
+    /** Rounded execution-ready duration and complete modeled transfer cost; never an implicit free rate. */
     transferTo: (locationId: string) => { hours: number; costUsd: number } | undefined;
 };
 
@@ -26,6 +29,7 @@ type SlotChoice = {
     requiredPowerKW: number;
     estimatedKWh: number;
     priceWithTransfer: number;
+    transfer: Transfer;
 };
 
 type SlotCapacity = Parameters<typeof powerLimitedGpus>[0] & { availableEnergyKWh: number };
@@ -120,10 +124,23 @@ export async function chooseExecutionSlot(
         choices.push({
             reference, slot, version: source.version, canExecuteNow,
             start, end, allocatedGpus, workGpuH, requiredPowerKW, estimatedKWh,
-            priceWithTransfer: effectivePrice,
+            priceWithTransfer: effectivePrice, transfer,
         });
     }
 
+    if (options.planTransfers) {
+        const remote = cheaperTransfer(job, choices, now);
+        if (remote) return {
+            selected: false,
+            transfer: {
+                destination: remote.reference.locationId, startsAt: options.asOf,
+                readyAt: new Date(now + remote.transfer.hours * hour).toISOString(),
+                estimatedCostUsd: remote.transfer.costUsd,
+            },
+            explanation: "Transfer planned to " + remote.reference.locationId +
+                " using declared transfer cost and arrival. No destination capacity is reserved.",
+        };
+    }
     const current = choices.filter(choice => choice.canExecuteNow)
         .sort((a, b) => a.priceWithTransfer - b.priceWithTransfer ||
             a.reference.locationId.localeCompare(b.reference.locationId) ||
@@ -135,7 +152,8 @@ export async function chooseExecutionSlot(
     const hoursNeeded = Math.ceil(minimumHours);
     const slackHours = (deadline - now) / hour - hoursNeeded;
     if (slackHours > 1) {
-        const futureSite = cheaperFutureSite(job, choices, current.priceWithTransfer, now, hoursNeeded + 1);
+        const futureSite = cheaperFutureSite(job, options.planTransfers
+            ? choices.filter(choice => choice.reference.locationId === job.currentLocation) : choices, current.priceWithTransfer, now, hoursNeeded + 1);
         if (futureSite) return {
             selected: false,
             explanation: "Waiting: supplied cheaper future slots at " + futureSite +
@@ -208,4 +226,19 @@ function cheaperFutureSite(
         if (knownWork >= job.remainingGpuH && cheaperHours.size >= bufferedHours) return locationId;
     }
     return undefined;
+}
+
+/** Conservative fleet policy: move only on arrival-ready supply cheaper than any usable stay-site offer.
+ * Transfer cost is amortized over authoritative remaining work by the same candidate calculation.
+ * Equal prices favor staying; later cheaper remote slots cannot trigger an early speculative move.
+ */
+function cheaperTransfer(job: Job, choices: SlotChoice[], now: number): SlotChoice | undefined {
+    const stay = choices.filter(choice => choice.reference.locationId === job.currentLocation);
+    const bestStayPrice = Math.min(...stay.map(choice => choice.priceWithTransfer));
+    return choices.filter(choice => choice.reference.locationId !== job.currentLocation &&
+        choice.transfer.hours > 0 && choice.transfer.costUsd > 0 &&
+        choice.start === now + choice.transfer.hours * hour && choice.priceWithTransfer < bestStayPrice)
+        .sort((a, b) => a.priceWithTransfer - b.priceWithTransfer || a.start - b.start ||
+            a.reference.locationId.localeCompare(b.reference.locationId) ||
+            a.reference.slotId.localeCompare(b.reference.slotId))[0];
 }

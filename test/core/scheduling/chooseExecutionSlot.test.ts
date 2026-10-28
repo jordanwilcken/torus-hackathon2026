@@ -376,3 +376,34 @@ test("the simulation shop hook can call the chooser through the versioned energy
     expect(simulation.jobs()[0]).toMatchObject({ state: "queued", remainingGpuH: 1 });
     expect(readings.map(reading => reading.slot!.usedGpus)).toEqual([0, 0]);
 });
+
+
+test("explicit transfer planning returns a destination and arrival instead of a premature allocation", async () => {
+    const readings = map([slot("A", 0.09), futureSlot("B", 13, 0.02)]);
+    const transferTo = () => ({ hours: 1, costUsd: 0.01 });
+    const original = await chooseExecutionSlot(job(), readings, options({ transferTo }));
+    expect(original).toMatchObject({ selected: true, allocation: { slot: { locationId: "A" } } });
+    const plan = await chooseExecutionSlot(job(), readings, options({ planTransfers: true, transferTo }));
+    expect(plan).toMatchObject({ selected: false, transfer: {
+        destination: "B", startsAt: now, readyAt: "2026-10-27T13:00:00.000Z", estimatedCostUsd: 0.01,
+    } });
+    expect(plan.explanation).toContain("No destination capacity is reserved");
+});
+
+test("transfer planning stays when transfer cost erases the price advantage or cheaper local supply is known", async () => {
+    const readings = [slot("A", 0.09), futureSlot("B", 13, 0.02)];
+    const costly = await chooseExecutionSlot(job(), map(readings), options({ planTransfers: true,
+        transferTo: () => ({ hours: 1, costUsd: 0.08 }) }));
+    expect(costly).toMatchObject({ selected: true, allocation: { slot: { locationId: "A" } } });
+    const localSolar = await chooseExecutionSlot(job(), map([...readings, futureSlot("A", 13, 0.01), futureSlot("A", 14, 0.01)]),
+        options({ planTransfers: true, transferTo: () => ({ hours: 1, costUsd: 0.01 }) }));
+    expect(localSolar).toMatchObject({ selected: false });
+    expect(localSolar).not.toHaveProperty("transfer");
+    expect(localSolar.explanation).toContain("Waiting");
+});
+
+test("a cheaper remote interval after arrival cannot alone trigger a speculative early transfer", async () => {
+    const plan = await chooseExecutionSlot(job(), map([slot("A", 0.09), futureSlot("B", 14, 0)]),
+        options({ planTransfers: true, transferTo: () => ({ hours: 1, costUsd: 0.01 }) }));
+    expect(plan).toMatchObject({ selected: true, allocation: { slot: { locationId: "A" } } });
+});

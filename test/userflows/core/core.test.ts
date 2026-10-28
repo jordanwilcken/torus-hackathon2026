@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import snapshots from '../../../src/core/energy/fakes/snapshots.json' with { type: 'json' };
+import snapshots from '../../fixtures/legacy/energy/snapshots.json' with { type: 'json' };
 import type { JobOutcome } from '../../../src/core/scheduling/JobOutcome.type';
 
 const tileRequests = /^https:\/\/(?:[a-z]\.)?tile\.openstreetmap\.org\//;
@@ -20,7 +20,7 @@ async function openReportDetails(page: Page) {
 }
 
 async function holdRoutingResponses(page: Page) {
-  await page.route('**/src/core/scheduling/fakes/fakeRouter.ts*', route => route.fulfill({
+  await page.route('**/test/fixtures/legacy/scheduling/fakeRouter.ts*', route => route.fulfill({
     contentType: 'text/javascript',
     body: `
       const pending = new Map();
@@ -72,7 +72,7 @@ test('retains independent routed jobs and reports with reduced motion and a paus
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.clock.install({ time: new Date('2026-10-27T17:59:00Z') });
   await page.clock.pauseAt(new Date('2026-10-27T18:00:00Z'));
-  await page.goto('/?scenario=fake-preview');
+  await page.goto('/test/userflows/legacy/index.html?scenario=fake-preview');
   await expect(page.getByText('Fake preview — fixed data; no work is executed.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Job', exact: true })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Energy sites' })).toBeVisible();
@@ -170,7 +170,7 @@ test('retains independent routed jobs and reports with reduced motion and a paus
 
 test('keeps each job report and map attached when routing responses arrive out of order', async ({ page }) => {
   const finishRouting = await holdRoutingResponses(page);
-  await page.goto('/?scenario=fake-preview');
+  await page.goto('/test/userflows/legacy/index.html?scenario=fake-preview');
   await page.getByRole('button', { name: 'Route Fake job', exact: true }).click();
   const stream = page.getByRole('region', { name: 'Job stream', exact: true });
   const firstJob = stream.getByRole('button', { name: 'Inspect job fake-job', exact: true });

@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { getEnergyMap } from '../../../src/core/energy/getEnergyMap';
-import { fakeEnergyMap } from '../../../src/core/energy/fakes/fakeEnergyMap';
+import { fakeEnergyMap } from '../../fixtures/legacy/energy/fakeEnergyMap';
 import type { EnergyMap } from '../../../src/core/energy/EnergyMap.interface';
 
 const window = { startAt: '2026-10-27T18:00:00Z', endAt: '2026-10-27T19:00:00Z' };

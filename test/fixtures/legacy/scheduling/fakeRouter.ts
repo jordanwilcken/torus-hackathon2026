@@ -1,8 +1,8 @@
-import type { Job } from "../../jobs/Job.type.js";
-import type { JobOutcome } from "../JobOutcome.type.js";
-import type { Router } from "../Router.interface.js";
-import { route } from "../route.js";
-import { fakeEnergyMap } from "../../energy/fakes/fakeEnergyMap.js";
+import type { Job } from "../../../../src/core/jobs/Job.type.js";
+import type { JobOutcome } from "../../../../src/core/scheduling/JobOutcome.type.js";
+import type { Router } from "../../../../src/core/scheduling/Router.interface.js";
+import { route } from "../../../../src/core/scheduling/route.js";
+import { fakeEnergyMap } from "../energy/fakeEnergyMap.js";
 
 /** Fixed Fake selection; reads sample energy but does not reserve or execute. */
 export const fakeRouter = {

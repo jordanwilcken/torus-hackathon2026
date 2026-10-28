@@ -190,3 +190,22 @@ test("an empty queue performs no routing or acceptance", async () => {
         route: () => { throw new Error("There are no jobs to route."); },
     }, { accept: () => { throw new Error("There are no allocations to accept."); } })).toEqual([]);
 });
+
+
+test("a transfer plan preserves the executor's rejection instead of accepting compute or inventing a receipt", async () => {
+    const submitted = job("moving");
+    const selection = { selected: false as const, explanation: "Proposed transfer", transfer: {
+        destination: "elsewhere", startsAt: now, readyAt: "2026-10-27T13:00:00Z", estimatedCostUsd: 0.02,
+    } };
+    const rejection = { started: false as const, explanation: "Destination capacity changed." };
+    const results = await routeAndAcceptJobs([submitted], { route: async () => selection }, {
+        accept: () => { throw new Error("Transfer plans are not compute allocations."); },
+        move(current, destination, startsAt) {
+            expect(current).toEqual(submitted);
+            expect(destination).toBe("elsewhere");
+            expect(startsAt).toBe(now);
+            return rejection;
+        },
+    });
+    expect(results).toEqual([{ jobId: "moving", selection, accepted: false, transfer: rejection }]);
+});

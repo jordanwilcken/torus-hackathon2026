@@ -1,6 +1,6 @@
 import { expect, test, vi } from "vitest";
-import { getFakeJob } from "../../../../src/core/jobs/fakes/getFakeJob.js";
-import { routeFakeJob } from "../../../../src/core/scheduling/fakes/fakeRouter.js";
+import { getFakeJob } from "../../../fixtures/legacy/jobs/getFakeJob.js";
+import { routeFakeJob } from "../../../fixtures/legacy/scheduling/fakeRouter.js";
 import { reportableJob, withReporting } from "../../../../src/core/reporting/impact/reportableJob.js";
 import { createJobReport } from "../../../../src/core/reporting/getJobReport.js";
 import type { ImpactObservation } from "../../../../src/core/reporting/ImpactObservation.interface.js";

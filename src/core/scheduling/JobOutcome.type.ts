@@ -5,8 +5,17 @@ export type SelectedJobOutcome = {
     explanation: string;
 };
 
+/** A proposed move, not an allocation or receipt. The executor must validate and start it. */
+export type TransferPlan = {
+    destination: string;
+    startsAt: string;
+    readyAt: string;
+    estimatedCostUsd: number;
+};
+
 export type UnselectedJobOutcome = {
     selected: false;
+    transfer?: TransferPlan;
     explanation: string;
 };
 

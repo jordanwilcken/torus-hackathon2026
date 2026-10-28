@@ -1,6 +1,6 @@
-import { getJobReport } from "../getJobReport.js";
+import { getJobReport } from "../../../../src/core/reporting/getJobReport.js";
 import artifact from "./reports.json";
-import type { JobReport } from "../JobReport.type.js";
+import type { JobReport } from "../../../../src/core/reporting/JobReport.type.js";
 
 /** Fake read of a saved report, not fabricated execution evidence for an arbitrary job. */
 export async function readFakeJobReport(jobId: string): Promise<JobReport> {

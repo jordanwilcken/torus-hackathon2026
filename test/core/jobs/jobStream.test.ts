@@ -1,6 +1,6 @@
 import { expect, test, vi } from 'vitest';
 import { JobStream } from '../../../src/core/jobs/jobStream.js';
-import { getFakeJob } from '../../../src/core/jobs/fakes/getFakeJob.js';
+import { getFakeJob } from '../../fixtures/legacy/jobs/getFakeJob.js';
 import type { Job } from '../../../src/core/jobs/Job.type.js';
 import type { JobOutcome } from '../../../src/core/scheduling/JobOutcome.type.js';
 import type { JobObservations } from '../../../src/core/reporting/JobObservations.type.js';

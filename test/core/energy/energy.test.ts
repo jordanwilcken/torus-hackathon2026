@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
-import { createFakeEnergyMap } from '../../../src/core/energy/fakes/fakeEnergyMap.js';
+import { createFakeEnergyMap } from '../../fixtures/legacy/energy/fakeEnergyMap.js';
 import { getEnergyMap } from '../../../src/core/energy/getEnergyMap.js';
-import supplied from '../../../src/core/energy/fakes/stale-sites.json';
+import supplied from '../../fixtures/legacy/energy/stale-sites.json';
 
 test('the live map does not recommend a location from stale evidence', () => {
   const readings = structuredClone(supplied);

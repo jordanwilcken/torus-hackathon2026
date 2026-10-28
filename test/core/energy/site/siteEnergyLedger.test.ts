@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import * as physics from "../../../../src/core/energy/site/siteEnergyPhysics.js";
 import { createSiteEnergyLedger } from "../../../../src/core/energy/site/createSiteEnergyLedger.js";
 import { createEnergyMap } from "../../../../src/core/energy/maps/createEnergyMap.js";
 import type { SiteEnergyConfiguration, SiteEnergyInput, SiteEnergyLoad, SiteEnergyQuoteProvider } from "../../../../src/core/energy/site/SiteEnergy.types.js";
@@ -424,4 +425,68 @@ describe("ledger failure and accounting boundaries", () => {
         expect(slot.status).toBe("current");
         expect(slot.slot).toMatchObject({ availablePowerKW: 2, availableEnergyKWh: 2, postedUsdPerGpuHour: .1, priceBasis: "Supplied posted quote" });
     });
+});
+
+
+it("reuses unchanged publications without re-running physics and isolates returned snapshots", () => {
+    const reading = input();
+    reading.supply!.solarKW = 5;
+    const ledger = createSiteEnergyLedger(configuration(), [reading], quote);
+    const simulation = vi.spyOn(physics, "simulateSiteInterval");
+    try {
+        const initial = ledger.slots("site-A", firstHour);
+        expect(initial[0].slot!.availableEnergyKWh).toBe(5);
+        const evaluated = simulation.mock.calls.length;
+        expect(evaluated).toBeGreaterThan(0);
+        initial[0].slot!.availableEnergyKWh = -999;
+        expect(ledger.slots("site-A", firstHour)[0].slot!.availableEnergyKWh).toBe(5);
+        expect(simulation.mock.calls).toHaveLength(evaluated);
+    } finally { simulation.mockRestore(); }
+});
+
+it("reservations, release, new readings, price refresh and settlement each invalidate publication caches", () => {
+    const reading = input();
+    reading.supply!.solarKW = 5;
+    let price = .1;
+    const ledger = createSiteEnergyLedger(configuration(), [reading], offer => ({ version: offer.version, usdPerGpuHour: price, basis: "Declared quote" }));
+    const available = () => ledger.slots("site-A", firstHour)[0].slot!.availableEnergyKWh;
+    expect(available()).toBe(5);
+    expect(ledger.reserve({ version: ledger.state().version, load: load("reserved", 2) }).accepted).toBe(true);
+    expect(available()).toBe(3);
+    expect(ledger.release("reserved")).toBe(true);
+    expect(available()).toBe(5);
+    const changed = structuredClone(reading);
+    changed.supply!.solarKW = 3;
+    changed.evidence.version = "solar-change";
+    ledger.update(changed);
+    expect(available()).toBe(3);
+    price = .2;
+    ledger.refreshPublication();
+    expect(ledger.slots("site-A", firstHour)[0].slot!.postedUsdPerGpuHour).toBe(.2);
+    expect(ledger.dispatch({ window: firstHour, loads: [] }).feasible).toBe(true);
+    expect(ledger.slots("site-A", firstHour)).toEqual([]);
+});
+
+
+it("publishes a full day without repeatedly simulating the earlier hours", () => {
+    const start = Date.parse(firstHour.startAt);
+    const readings = Array.from({ length: 24 }, (_, hour) => {
+        const reading = input({ startAt: new Date(start + hour * 3_600_000).toISOString(),
+            endAt: new Date(start + (hour + 1) * 3_600_000).toISOString() });
+        reading.supply!.solarKW = 5;
+        return reading;
+    });
+    const ledger = createSiteEnergyLedger(configuration(), readings, quote);
+    const simulation = vi.spyOn(physics, "simulateSiteInterval");
+    try {
+        const slots = ledger.slots("site-A", { startAt: readings[0].window.startAt, endAt: readings[23].window.endAt });
+        expect(slots.map(snapshot => snapshot.slot!.availableEnergyKWh)).toEqual(Array(24).fill(5));
+        // The declared binary search permits at most 54 probes plus baseline/final evaluation per hour.
+        // Re-evaluating preceding hours would multiply this bound by the remaining horizon.
+        for (const reading of readings) {
+            const evaluations = simulation.mock.calls.filter(([, calculation]) => calculation.input.window.startAt === reading.window.startAt);
+            expect(evaluations.length).toBeLessThanOrEqual(56);
+        }
+        expect(ledger.state().inventory.storedKWh).toBe(0);
+    } finally { simulation.mockRestore(); }
 });

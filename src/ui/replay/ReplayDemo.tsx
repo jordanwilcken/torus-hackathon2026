@@ -125,7 +125,7 @@ export function ReplayDemo({ scenario = captured as ReplayScenario }: { scenario
             {' '}Decision offers published at {decisionMap.asOf}; these precede reservation and dispatch.
             {inspectedDecisionHour !== undefined && ` Inspecting retained hour ${inspectedDecisionHour} for ${activeJob.id}.`}</p>
         <EnergyMapView appearance="compact" map={displayMap} jobFlow={{ job: activeJob, report, routeAttempt: history.length }}
-            inspection={{ inspectedSlot, focusSlot: latest?.selection.selected ? latest.selection.allocation.slot : undefined,
+            inspection={{ inspectedSlot, focusSlot: inspectedSlot,
                 onInspect: setInspectedSlot }} activity={mapActivity} controls={controls} />
         <ReplayPrices map={displayMap} jobName={activeJob.id} outcome={latest?.selection}
             execution={activeJob.state === 'done' ? 'modeled-complete' : activeJob.state === 'running' ? 'modeled-running' : undefined}

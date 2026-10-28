@@ -42,6 +42,10 @@ export function createSiteEnergyProjection(config: SiteEnergyConfiguration, quot
             const [from, to] = windowBounds(request.window);
             if (request.locationId !== config.locationId) return [];
             const hypothetical = [...context.reservations];
+            // Each earlier conservative offer has already been evaluated. Reuse its exact ending
+            // inventory while searching only this interval; never re-evaluate the same prefix.
+            let projectedInventory = structuredClone(context.inventory);
+            let prefixFeasible = true;
             return context.readings.slice(context.cursor).flatMap((input, offset) => {
                 const [start, end] = windowBounds(input.window);
                 const base: SlotSnapshot = {
@@ -49,11 +53,16 @@ export function createSiteEnergyProjection(config: SiteEnergyConfiguration, quot
                     version: context.version, projected: offset > 0 || input.evidence.projected, simulated: true,
                 };
                 if (start >= to) return [];
+                if (!prefixFeasible) return end > from ? [base] : [];
                 const until = context.cursor + offset + 1;
-                const baseline = evaluate(context, hypothetical, until);
-                if (!baseline.feasible || !input.supply || input.evidence.status !== "current") return end > from ? [base] : [];
-                const priorStored = offset === 0 ? context.inventory.storedKWh : baseline.meters[offset - 1].endingStoredKWh;
+                const intervalContext = { ...context, cursor: until - 1, inventory: projectedInventory };
                 const committed = hypothetical.filter(load => containsWindow(input.window, load.window));
+                const baseline = evaluate(intervalContext, committed, until);
+                if (!baseline.feasible || !input.supply || input.evidence.status !== "current") {
+                    prefixFeasible = false;
+                    return end > from ? [base] : [];
+                }
+                const priorStored = projectedInventory.storedKWh;
                 const usedGpus = peakGpus(committed);
                 const batteryKW = priorStored > input.supply.protectedKWh ? config.storage.limits.dischargeKW : 0;
                 const headroom = Math.max(0, input.supply.solarKW + input.supply.gridImportLimitKW + batteryKW - input.supply.fixedLoadKW - usedGpus * config.compute.kWPerGpu);
@@ -65,11 +74,12 @@ export function createSiteEnergyProjection(config: SiteEnergyConfiguration, quot
                 if (gpus > 0) for (let iteration = 0; iteration < 54; iteration++) {
                     const middle = Math.floor((duration + upper + 1) / 2);
                     if (middle <= duration) break;
-                    if (evaluate(context, [...hypothetical, candidate(middle)], until).feasible) duration = middle;
+                    if (evaluate(intervalContext, [...committed, candidate(middle)], until).feasible) duration = middle;
                     else upper = middle - 1;
                 }
                 const proposed = duration > 0 && gpus > 0 ? candidate(duration) : undefined;
-                const assessed = proposed ? evaluate(context, [...hypothetical, proposed], until) : baseline;
+                const assessed = proposed ? evaluate(intervalContext, [...committed, proposed], until) : baseline;
+                projectedInventory = assessed.inventory;
                 const offer: SiteEnergyOffer = {
                     version: context.version, window: { ...input.window }, capGpus: gpus + usedGpus, usedGpus,
                     availablePowerKW: duration > 0 ? gpus * config.compute.kWPerGpu : 0,
