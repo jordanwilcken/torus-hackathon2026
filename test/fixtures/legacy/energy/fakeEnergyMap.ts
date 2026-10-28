@@ -1,11 +1,11 @@
-import { getEnergyMap } from "../getEnergyMap.js";
-import type { SlotQuery } from "../SlotQuery.interface.js";
+import { getEnergyMap } from "../../../../src/core/energy/getEnergyMap.js";
+import type { SlotQuery } from "../../../../src/core/energy/SlotQuery.interface.js";
 import snapshots from "./snapshots.json";
 import forecastArtifact from "./forecasts.json";
-import type { EnergyMap } from "../EnergyMap.interface.js";
-import type { SlotSnapshot } from "../SlotSnapshot.type.js";
-import type { SlotForecast } from "../SlotForecast.type.js";
-import type { SlotReference } from "../SlotReference.type.js";
+import type { EnergyMap } from "../../../../src/core/energy/EnergyMap.interface.js";
+import type { SlotSnapshot } from "../../../../src/core/energy/SlotSnapshot.type.js";
+import type { SlotForecast } from "../../../../src/core/energy/SlotForecast.type.js";
+import type { SlotReference } from "../../../../src/core/energy/SlotReference.type.js";
 
 type FakeMapData = {
     sites: {

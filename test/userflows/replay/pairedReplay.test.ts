@@ -106,7 +106,7 @@ test('successive jobs arrive, wait, execute and remain inspectable on the produc
     await expect(replay(page).getByRole('region', { name: 'Job details', exact: true })).toHaveAttribute('data-active-job-id', 'job-03');
     await expect(replay(page).getByLabel('Replay hour', { exact: true })).toHaveText('3 / 4');
     await expect(replay(page).getByRole('region', { name: 'Energy timeline', exact: true })).toContainText('Site B');
-    await expect(replay(page).getByRole('region', { name: 'Actual usage evidence', exact: true })).toContainText('job-03');
+    await expect(replay(page).getByRole('region', { name: 'Modeled usage evidence', exact: true })).toContainText('job-03');
     await settleNextHour(page, 4);
     await expect(replay(page).locator('[data-job-state="Done"]')).toHaveCount(3);
     await expect(replay(page).getByRole('table', { name: 'Modeled fleet totals', exact: true })).toHaveCount(1);

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import recordedExecution from '../../../src/core/reporting/fakes/execution.json' with { type: 'json' };
+import recordedExecution from '../../fixtures/legacy/reporting/execution.json' with { type: 'json' };
 import type { Job } from '../../../src/core/jobs/Job.type';
 import type { ExecutionRun } from '../../../src/core/reporting/ExecutionEvidence.type';
 import { ComputeFlow } from '../compute-flow';
@@ -9,7 +9,7 @@ type RecordedInput = { job: Job; baseline: ExecutionRun; selected: ExecutionRun 
 async function suppliedExecution(page: Page, change?: (input: RecordedInput) => void) {
   const input = structuredClone(recordedExecution) as RecordedInput;
   change?.(input);
-  await page.route('**/src/core/reporting/fakes/execution.json*', route => route.fulfill({
+  await page.route('**/test/fixtures/legacy/reporting/execution.json*', route => route.fulfill({
     contentType: 'text/javascript',
     body: 'export default ' + JSON.stringify(input) + ';',
   }));

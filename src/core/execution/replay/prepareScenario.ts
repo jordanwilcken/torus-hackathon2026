@@ -18,7 +18,26 @@ export function prepareScenario(supplied: ReplayScenario): ReplayScenario {
     const start = Date.parse(scenario.startAt);
     const end = Date.parse(hourStart(scenario.startAt, scenario.hours));
     const basis = scenario.sites[0].configuration.accountingBasis;
+    if (scenario.routing) {
+        const terms = scenario.routing.transfer;
+        if (scenario.routing.policy !== "fleet" || !terms || terms.accountingBasis !== basis ||
+            [terms.bandwidthGBPerHour, terms.kWhPerGB, terms.jobChargeUsdPerGB].some(value => !Number.isFinite(value) || value <= 0) ||
+            [terms.carbonGPerKWh, terms.electricityUsdPerMWh].some(value => value !== undefined && (!Number.isFinite(value) || value < 0)))
+            fail("Fleet transfer requires compatible, explicit positive bandwidth, energy and job-charge rates; optional accounting rates must be nonnegative.");
+        const profiles = new Map<string, number>();
+        for (const site of scenario.sites) {
+            const prior = profiles.get(site.computeProfile);
+            if (prior !== undefined && prior !== site.configuration.compute.kWPerGpu)
+                fail("Fleet sites with the same compute profile require the same declared kWh per GPU-hour.");
+            profiles.set(site.computeProfile, site.configuration.compute.kWPerGpu);
+        }
+    }
     for (const site of scenario.sites) {
+        if (site.regionId !== undefined && !site.regionId.trim()) fail("Declared site regions must be nonempty.");
+        if ([site.name, site.lat, site.lng].some(value => value !== undefined) &&
+            (!site.name?.trim() || !Number.isFinite(site.lat) || !Number.isFinite(site.lng) ||
+                Math.abs(site.lat!) > 90 || Math.abs(site.lng!) > 180))
+            fail("Declared site geography requires a name and valid latitude/longitude pair.");
         if (!site.computeProfile?.trim() || !basis?.trim() || site.configuration.accountingBasis !== basis)
             fail("Every replay site needs a compute profile and the same declared accounting basis.");
         if (site.forecast.length !== scenario.hours || site.observations.length !== scenario.hours)
@@ -45,7 +64,9 @@ export function prepareScenario(supplied: ReplayScenario): ReplayScenario {
         if (!home || home.computeProfile !== job.computeProfile || !job.allowedLocations.includes(job.homeLocation) ||
             job.currentLocation !== job.homeLocation || job.transferToLocation !== undefined ||
             job.state !== "queued" || job.remainingGpuH !== job.workGpuH || job.workGpuH <= 0)
-            fail("This replay supports fresh queued jobs at an allowed home site with a matching compute profile; migration is unsupported.");
+            fail("This replay supports fresh queued jobs at an allowed home site with a matching compute profile; initial migration is unsupported.");
+        if (scenario.routing && (!Number.isFinite(job.dataGB) || job.dataGB <= 0))
+            fail("Fleet transfer requires a positive declared job data size.");
         if (!Number.isFinite(Date.parse(job.readyAt)) || Date.parse(job.readyAt) < start || Date.parse(job.readyAt) >= end ||
             !Number.isFinite(Date.parse(job.window.startAt)) || Date.parse(job.window.startAt) < start ||
             !Number.isFinite(Date.parse(job.window.endAt)) || Date.parse(job.window.endAt) > end)

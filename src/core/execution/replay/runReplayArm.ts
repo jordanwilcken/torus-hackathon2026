@@ -4,7 +4,7 @@ import { createSiteEnergyLedger } from "../../energy/site/createSiteEnergyLedger
 import type { Job } from "../../jobs/Job.type.js";
 import { summarizeExecution } from "../../reporting/impact/summarizeExecution.js";
 import type { ExecutionRun } from "../../reporting/ExecutionEvidence.type.js";
-import { chooseExecutionSlot } from "../../scheduling/chooseExecutionSlot.js";
+import { routeReplayJob } from "./routeReplayJob.js";
 import { quoteSiteEnergy } from "../../scheduling/quoteSiteEnergy.js";
 import { routeAndAcceptJobs } from "../../scheduling/routeAndAcceptJobs.js";
 import { createExecutor } from "../runner/createExecutor.js";
@@ -17,6 +17,7 @@ import type { InputEvent } from "../simulation/clock.js";
 
 /** Each invocation owns all mutable state. Inputs have been captured and checked by prepareScenario. */
 export function createReplayArmSession(scenario: ReplayScenario, arm: "baseline" | "selected") {
+    const fleet = arm === "selected" && scenario.routing?.policy === "fleet";
     const horizon = { startAt: scenario.startAt, endAt: hourStart(scenario.startAt, scenario.hours) };
     const sites = scenario.sites.map(site => {
         const configuration = site.configuration;
@@ -32,14 +33,23 @@ export function createReplayArmSession(scenario: ReplayScenario, arm: "baseline"
     });
     const energy = createEnergyMap({
         window: horizon,
-        sites: sites.map(site => ({ locationId: site.locationId, computeProfile: site.computeProfile, regionId: "declared-scenario" })),
+        sites: sites.map((site, index) => ({ locationId: site.locationId, computeProfile: site.computeProfile,
+            regionId: scenario.sites[index].regionId ?? "declared-scenario" })),
     }, {
-        siteEnergy: { slots: (location, window) => sites.find(site => site.locationId === location)?.ledger.slots(location, window) ?? [] },
+        siteEnergy: { slots: (location, window) => {
+            const declared = scenario.sites.find(site => site.configuration.locationId === location);
+            const metadata = declared?.name === undefined ? undefined : {
+                name: declared.name, latitude: declared.lat!, longitude: declared.lng!,
+                regionId: declared.regionId ?? "declared-scenario",
+            };
+            return (sites.find(site => site.locationId === location)?.ledger.slots(location, window) ?? [])
+                .map(snapshot => metadata ? { ...snapshot, location: metadata } : snapshot);
+        } },
         // Local forecast supply is explicitly in the scenario. No regional forecast is invented.
         regionalGrid: { read: () => ({ observations: [], forecast: {} }) },
     });
     const executor = createExecutor({ jobs: scenario.jobs, sites, maximumAgeMinutes: scenario.maximumAgeMinutes,
-        transferTerms: () => undefined });
+        transferTerms: () => fleet ? scenario.routing?.transfer : undefined });
     const run: ExecutionRun = {
         comparisonId: scenario.id, inputRevision: scenario.inputRevision, arm, jobId: scenario.jobs[0].id,
         horizon, accountingBasis: sites[0].accountingBasis, source: scenario.label, simulated: true,
@@ -48,9 +58,14 @@ export function createReplayArmSession(scenario: ReplayScenario, arm: "baseline"
             locationId: site.configuration.locationId, initialStoredKWh: site.configuration.storage.initial.storedKWh,
         })),
         ticks: [], transfers: [],
-        costPolicy: { basis: "Modeled electricity plus carbon; no transfers", carbonPriceUsdPerTonne: scenario.carbonPriceUsdPerTonne },
+        costPolicy: {
+            basis: scenario.routing ? "Modeled electricity plus carbon and declared transfer charges"
+                : "Modeled electricity plus carbon; no transfers",
+            carbonPriceUsdPerTonne: scenario.carbonPriceUsdPerTonne,
+        },
     };
     const ticks: Array<ExecutionRun["ticks"][number]> = [];
+    const transfers: Array<ExecutionRun["transfers"][number]> = [];
     const decisions: ReplayArm["decisions"] = [];
     const projection = (asOf: string) => getEnergyMap({ window: horizon, asOf }, energy, scenario.maximumAgeMinutes);
     let publication = projection(scenario.startAt);
@@ -72,12 +87,8 @@ export function createReplayArmSession(scenario: ReplayScenario, arm: "baseline"
             // The executor owns remaining work and location. The clock owns admission/deadline visibility.
             const jobs = context.jobs.map(job => executor.job(job.id)!)
                 .filter(job => job.state === "queued" || job.state === "running");
-            const route = async (job: Job) => chooseExecutionSlot(
-                { ...job, allowedLocations: [job.homeLocation] }, policyView(context, arm), {
-                    asOf: context.asOf, maximumAgeMinutes: scenario.maximumAgeMinutes,
-                    kWhPerGpuHour: sites.find(site => site.locationId === job.homeLocation)!.kWhPerGpuHour,
-                    transferTo: () => undefined,
-                });
+            const route = (job: Job) => routeReplayJob(job, policyView(context, arm),
+                scenario, sites, context.asOf, fleet);
             if (arm === "selected") {
                 decisions.push({ hour: context.hour, results: await routeAndAcceptJobs(jobs, { route }, executor) });
             } else {
@@ -87,6 +98,11 @@ export function createReplayArmSession(scenario: ReplayScenario, arm: "baseline"
                     results.push({ jobId: job.id, selection, accepted: selection.selected ? executor.accept(selection) : false });
                 }
                 decisions.push({ hour: context.hour, results });
+            }
+            for (const result of decisions.at(-1)!.results) {
+                const transfer = result.transfer;
+                if (transfer?.started && !transfers.some(receipt => receipt.id === transfer.evidence.id))
+                    transfers.push(transfer.evidence);
             }
             await onRouted?.();
         },
@@ -98,8 +114,8 @@ export function createReplayArmSession(scenario: ReplayScenario, arm: "baseline"
     }) });
     const done = () => simulation.hour >= scenario.hours || ticks.at(-1)?.feasible === false;
     const read = (): ReplayArm => structuredClone({
-        policy: arm === "baseline" ? "home-fifo-immediate-v1" : "home-edf-priced-wait-v1",
-        run: { ...run, ticks }, impact: summarizeExecution({ ...run, ticks }), decisions, log: simulation.log(),
+        policy: arm === "baseline" ? "home-fifo-immediate-v1" : fleet ? "fleet-edf-priced-transfer-v1" : "home-edf-priced-wait-v1",
+        run: { ...run, ticks, transfers }, impact: summarizeExecution({ ...run, ticks, transfers }), decisions, log: simulation.log(),
         finalJobs: scenario.jobs.map(job => executor.job(job.id)!),
     });
     return {

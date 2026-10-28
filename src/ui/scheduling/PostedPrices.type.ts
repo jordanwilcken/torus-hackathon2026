@@ -29,6 +29,8 @@ export type ForecastStripProps = Pick<PriceStripProps, 'siteName' | 'hours' | 'o
 export type JobPriceChoiceProps = {
   jobName: string;
   outcome?: JobOutcome;
+  /** Supply only when an executor has observed this state; a selection alone is not execution. */
+  execution?: 'modeled-running' | 'modeled-complete';
   siteNames: Readonly<Record<string, string>>;
   history?: readonly { at: string; reason: string }[];
 };

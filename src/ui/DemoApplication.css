@@ -1,0 +1,33 @@
+.demo-heading { display: flex; justify-content: space-between; gap: 24px; align-items: end; margin-bottom: 20px; }
+.demo-heading p { color: #63746d; font-size: 14px; margin: 8px 0 0; }
+.demo-heading .demo-scope { max-width: 390px; font-size: 12px; }
+.demo-navigation { position: sticky; top: 0; z-index: 900; display: flex; gap: 8px; padding: 10px 0; margin-bottom: 20px; background: #f2f5f2f5; backdrop-filter: blur(8px); }
+.demo-navigation a { flex: 1; padding: 12px 16px; background: #fff; border: 1px solid #d4dfd6; border-radius: 8px; color: #28533e; text-decoration: none; font-size: 13px; font-weight: 650; }
+.demo-navigation a:hover { background: #e6efe7; }
+.demo-navigation span { margin-right: 8px; font-size: 11px; color: #758c7b; }
+.demo-section { scroll-margin-top: 90px; margin-bottom: 32px; }
+.demo-section-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; margin-bottom: 16px; }
+.demo-section-heading p { max-width: 700px; color: #63746d; font-size: 13px; }
+.demo-scenario { display: flex; align-items: center; gap: 24px; margin-bottom: 16px; padding: 16px 20px; background: #e8eee6; border-radius: 10px; }
+.demo-scenario label { display: grid; gap: 6px; font-size: 12px; font-weight: 600; min-width: 180px; }
+.demo-scenario select { font: inherit; border: 1px solid #becdbf; border-radius: 6px; padding: 8px; background: #fff; color: #28533e; }
+.demo-scenario p { margin: 0 0 4px; font-size: 13px; }
+.demo-scenario small { color: #64776c; font-size: 11px; }
+.replay-demo .replay-prices { padding: 20px 24px; }
+.replay-prices > header p { font-size: 12px; color: #607869; margin: 6px 0; }
+.replay-price-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(230px, 1fr); gap: 24px; margin-top: 18px; }
+.replay-price-strips { display: grid; gap: 18px; min-width: 0; }
+.replay-prices > .price-details { margin-top: 16px; border-top: 1px solid #e2e9e1; padding-top: 16px; }
+.replay-fairness { display: flex; gap: 24px; flex-wrap: wrap; }
+.replay-fairness div { display: grid; gap: 4px; }
+.replay-fairness dt { color: #64776c; font-size: 11px; }
+.replay-fairness dd { margin: 0; font-size: 14px; font-weight: 650; }
+@media (max-width: 700px) {
+  .demo-heading, .demo-section-heading, .demo-scenario { align-items: start; flex-direction: column; gap: 10px; }
+  .demo-navigation { gap: 5px; }
+  .demo-navigation a { padding: 10px 8px; font-size: 11px; }
+  .demo-navigation span { display: none; }
+  .demo-scenario label { width: 100%; }
+  .replay-price-layout { grid-template-columns: minmax(0, 1fr); }
+  .replay-demo .replay-prices { padding: 16px; }
+}

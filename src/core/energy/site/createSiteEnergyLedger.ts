@@ -23,7 +23,9 @@ export function createSiteEnergyLedger(configuration: SiteEnergyConfiguration, i
     const reservations = createSiteEnergyReservations();
     const publication = createSiteEnergyProjection(config, quote);
     const settled = new Map<string, { signature: string; result: SiteEnergyAssessment }>();
-    const advanceRevision = (): void => { revision++; publication.invalidateQuotes(); };
+    // One revision captures readings, reservations, inventory and quotes. Keep only bounded request views.
+    const published = new Map<string, SlotSnapshot[]>();
+    const advanceRevision = (): void => { revision++; publication.invalidateQuotes(); published.clear(); };
     const version = (): string => `${config.locationId}:${revision}`;
     const state = (): SiteEnergyState => structuredClone({ version: version(), nextWindow: readings[cursor]?.window, inventory });
     const context = (): SiteEnergyProjectionContext => ({ readings, cursor, inventory, version: version(), reservations: reservations.loads() });
@@ -95,6 +97,14 @@ export function createSiteEnergyLedger(configuration: SiteEnergyConfiguration, i
             readings[index] = captured; advanceRevision();
         },
         refreshPublication: advanceRevision,
-        slots: (locationId: string, window: TimeWindow): SlotSnapshot[] => publication.slots(context(), { locationId, window }),
+        slots(locationId: string, window: TimeWindow): SlotSnapshot[] {
+            const key = JSON.stringify([locationId, windowKey(window)]);
+            if (!published.has(key)) {
+                const snapshots = publication.slots(context(), { locationId, window });
+                if (published.size >= 32) published.delete(published.keys().next().value!);
+                published.set(key, snapshots);
+            }
+            return structuredClone(published.get(key)!);
+        },
     };
 }

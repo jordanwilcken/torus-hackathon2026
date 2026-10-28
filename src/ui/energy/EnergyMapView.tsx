@@ -20,6 +20,8 @@ const direction = (reduction: number | undefined) => reduction === undefined ? '
   : reduction > 0 ? 'lower' : reduction < 0 ? 'higher' : 'same';
 
 type EnergyActivity = {
+  /** True for simulator receipts; retain that provenance in local evidence labels. */
+  simulated?: boolean;
   meters: SiteMeter[];
   executions: JobExecution[];
   transfers: TransferObservation[];
@@ -204,11 +206,11 @@ export function EnergyMapView({ map, jobFlow, inspection, activity, controls, ap
             Issued: {forecast.issuedAt ?? 'Unavailable'} · Retrieved: {forecast.retrievedAt}</p>)}
         </details>}
       </section>
-      <section className="energy-evidence" aria-label="Actual usage evidence">
-        <h4>Actual usage</h4>
+      <section className="energy-evidence" aria-label={activity?.simulated ? 'Modeled usage evidence' : 'Actual usage evidence'}>
+        <h4>{activity?.simulated ? 'Modeled usage' : 'Actual usage'}</h4>
         {meters.length === 0 && executions.length === 0 ? <p className="muted">Execution observations unavailable.</p> : <>
           {meters.map(meter => <div className="energy-evidence-row" key={meter.locationId + meter.window.startAt}>
-            <p>Metered energy <small>{meter.accountingBasis}</small></p>
+            <p>{activity?.simulated ? 'Modeled energy' : 'Metered energy'} <small>{meter.accountingBasis}</small></p>
             <div className="energy-evidence-track"><div className="energy-evidence-segment actual-segment" style={segment(meter.window)} data-start-at={meter.window.startAt}>
               <span>{time(meter.window.startAt)}–{time(meter.window.endAt)}</span>
               <strong>{amount(meter.computeKWh, ' kWh compute')} · {amount(meter.gridImportKWh, ' kWh grid')}</strong>
@@ -221,7 +223,7 @@ export function EnergyMapView({ map, jobFlow, inspection, activity, controls, ap
               <strong>{amount(execution.completedGpuH, ' GPU-hour completed')} · {amount(execution.remainingGpuH, ' remaining')}</strong>
             </div></div>
           </div>)}
-          <details className="source-details"><summary>Meter details</summary><div className="table-scroll"><table aria-label="Actual site meters">
+          <details className="source-details"><summary>{activity?.simulated ? 'Model details' : 'Meter details'}</summary><div className="table-scroll"><table aria-label={activity?.simulated ? 'Modeled site totals' : 'Actual site meters'}>
             <thead><tr><th>Interval</th><th>Solar kWh</th><th>Charge kWh</th><th>Discharge kWh</th><th>Curtailed kWh</th><th>Ending storage kWh</th></tr></thead>
             <tbody>{meters.map(meter => <tr key={meter.window.startAt}><td>{time(meter.window.startAt)}–{time(meter.window.endAt)}</td>
               <td>{amount(meter.solarKWh, '')}</td><td>{amount(meter.batteryChargeKWh, '')}</td><td>{amount(meter.batteryDischargeKWh, '')}</td>

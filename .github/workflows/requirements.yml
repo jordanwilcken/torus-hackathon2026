@@ -42,6 +42,13 @@ jobs:
         if: steps.dependencies.outcome == 'success'
         continue-on-error: true
         run: npx --no-install playwright install --with-deps chromium
+      # This delivered path is mandatory even while unrelated rubric stubs remain advisory.
+      - name: Verify the working demo flow
+        if: steps.build.outcome == 'success' && steps.browser.outcome == 'success'
+        run: |
+          npx --no-install vitest run test/core/execution/replay test/core/data/captureLiveFleet.test.ts test/core/data/dataCenters.test.ts test/core/energy/data/siteWeather.test.ts test/core/energy/data/siteWeatherApi.test.ts test/core/data/fleetCaptureApi.test.ts
+          node --test test/tooling/replay-cli.test.mjs
+          npx --no-install playwright test test/userflows/demo test/userflows/replay test/userflows/fleet --workers=1
       - name: Run requirements and browser flows; calculate score
         id: requirements
         if: always()

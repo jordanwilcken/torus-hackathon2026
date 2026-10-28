@@ -12,11 +12,16 @@ import { parseEiaApiResponse, type EiaApiSnapshot } from '../core/energy/data/ei
 import { parseCaisoCsv, type CaisoSnapshot } from './caiso.ts';
 import type { StoredSnapshot } from './SnapshotStore.type.ts';
 import { snapshotRevision } from './snapshotRevision.ts';
+import type { SiteWeatherSnapshot } from '../data/SiteWeather.type.ts';
+import { createSiteWeatherFeed, parseSiteWeatherResponse } from './siteWeather.ts';
+import { createSiteWeatherApi } from './siteWeatherApi.ts';
+import { createFleetCaptureApi } from './fleetCaptureApi.ts';
+import type { FrozenFleetSnapshot } from '../data/FrozenFleet.type.ts';
 
 type RecordedInputs = { asOf: string; eia: StoredSnapshot<EiaApiSnapshot>; caiso: StoredSnapshot<CaisoSnapshot> };
 export function createApplicationPlugin(options: {
   apiKey: string; archiveDirectory: string; runDirectory: string; offline?: boolean;
-  recorded?: RecordedInputs;
+  recorded?: RecordedInputs; recordedWeather?: StoredSnapshot<SiteWeatherSnapshot>;
 }): Plugin {
   async function install(server: ViteDevServer | PreviewServer) {
     await mkdir(resolve(options.runDirectory), { recursive: true });
@@ -36,10 +41,22 @@ export function createApplicationPlugin(options: {
     }
     const feeds = options.recorded ? createRecordedGridFeeds(stores)
       : createGridFeeds(options.apiKey, stores, { offline: options.offline });
+    const weatherStore = createSnapshotArchive<SiteWeatherSnapshot>(options.archiveDirectory, 'open-meteo');
+    if (options.recordedWeather) {
+      const supplied = options.recordedWeather.evidence.body as { response: unknown; retrievedAt: string };
+      const weather = parseSiteWeatherResponse(supplied.response, supplied.retrievedAt);
+      if (snapshotRevision(weather) !== options.recordedWeather.revision) throw new Error('Captured weather evidence does not reproduce its revision');
+      await weatherStore.save(weather, options.recordedWeather.evidence);
+    }
+    const weather = createSiteWeatherFeed(weatherStore, {
+      offline: options.offline || Boolean(options.recorded), recorded: Boolean(options.recordedWeather),
+    });
     const runStore = createSqliteJobRunStore<LocalRun>(join(options.runDirectory, 'runs.sqlite'));
     const jobs = createLocalRuns({ store: runStore, snapshots: stores, feeds, recordedAsOf: options.recorded?.asOf });
     server.middlewares.use(createGridApi(options.apiKey, stores, { feeds, offline: options.offline && !options.recorded }));
     server.middlewares.use(createJobsApi(jobs));
+    server.middlewares.use(createSiteWeatherApi(weather));
+    server.middlewares.use(createFleetCaptureApi(createSnapshotArchive<FrozenFleetSnapshot>(options.archiveDirectory, 'fleet-captures')));
     server.httpServer?.once('close', () => { void jobs.close().finally(() => runStore.close()); });
   }
   return { name: 'public-grid-and-local-execution', configureServer: install, configurePreviewServer: install };

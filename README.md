@@ -44,7 +44,7 @@ It keeps runner errors, unimplemented drivers, skipped and missing cases distinc
 - Keep application logic in ordinary TypeScript components and preserve their
   public contracts.
 
-With the dev server running, `/?scenario=stale-site` exercises current/stale map readings. `/?scenario=recorded-comparison` feeds labeled raw simulation records through the real aggregator, observers and UI. It does not execute jobs.
+With the dev server running, `/test/userflows/legacy/index.html?scenario=stale-site` exercises current/stale map readings. `/test/userflows/legacy/index.html?scenario=recorded-comparison` feeds labeled raw simulation records through the real aggregator, observers and UI. It does not execute jobs.
 
 `npm test` runs Vitest. `npm run test:userflows` runs Playwright, including the launch
 smoke test. `npm run test:tooling` checks the score reporter.
@@ -172,7 +172,7 @@ const recordedGrid = new ApiRegionalGrid(snapshot);
 
 The same endpoint is available for `/api/grid/caiso`. Replay never calls an upstream service or substitutes the latest data. It returns 404 for an absent revision, 400 for an invalid or repeated revision parameter, and 503 for unreadable or corrupt evidence. Responses contain normalized snapshots, not the server's source archive. `GRID_FEEDS_OFFLINE=1` disables both upstream collection and archive access for the owned CI server.
 
-There is no automatic archive pruning yet. Keep the archive directory on the same persistent volume across restarts and retain revisions referenced by recorded decisions. The local CPU run receipt now retains those exact revisions. Wiring them through the illustrative map and GPU scheduler remains a separate integration task.
+There is no automatic archive pruning yet. Keep the archive directory on the same persistent volume across restarts and retain revisions referenced by recorded decisions. The local CPU run receipt now retains those exact revisions. The visual fleet below captures its own weather and market source revisions for modeled scheduling; regional demand remains separately labeled context.
 
 ### Replace the storage backend
 
@@ -212,3 +212,15 @@ The storage comparison is a hypothetical energy-cycle estimate: both cases deliv
 The LIVE-01 browser flow proves captured source values/revisions → public-input policy → actual process → downloaded output/hash → saved receipt. Separate cases prove threshold refusal, actual numeric-overflow failure, reload without a new POST, and analysis of 72 captured demand observations. A real two-process server test stops Vite, opens the same database in a fresh Vite process, and verifies the original receipt/output plus duplicate-request idempotency. Captures are under `test/fixtures/public-grid`; source values and timestamps are preserved and replay is labeled.
 
 The repository workflow does not reference `EIA_API_KEY`. Keep personal keys in ignored server environment files. Teammates can register their own keys. A future credentialed live CI check should use an explicitly approved secret on trusted code; a normal GitHub variable is not secret storage. The ordinary suite needs no personal key.
+
+### Visual live-input fleet
+
+The normal entry now starts a 24-hour, six-city fleet model from current Open-Meteo radiation forecasts and a captured CAISO PACE wholesale reference price. Salt Lake City and Cedar City have separate coordinate-based forecasts and share PACE context. EIA demand remains regional context; it is never treated as spare site capacity. Network retrieval runs behind cached server APIs; missing, stale, incomplete or unsupported inputs leave the model unavailable instead of selecting a fake provider.
+
+`GET /api/weather/sites` publishes a `FeedState<SiteWeatherSnapshot>` with a durable revision. Open-Meteo radiation is the average over the preceding UTC hour. The model explicitly derives solar from a declared 8 kW array and 0.8 performance ratio. GPU capacity, storage, grid import limits, fixed load, carbon factors, transfer terms and generated jobs are assumptions displayed in the UI. The CAISO value is held as a common reference throughout the run, not presented as each city's local tariff. Execution and energy are modeled; the separate CPU panel still runs an actual local process.
+
+The existing chooser/executor now supports explicit fleet transfers with latency, energy and price assumptions. Every displayed transfer comes from its recorded move outcome; arrival requires a fresh allocation. A single model clock drives the map, job progress and inspection. Camera zoom does not restart the run. Blue data-center markers are publicly documented locations at coarse city references; their job submissions are simulated and do not imply operator access. The monkey changes explicit model inputs and preserves original source forecasts and prior receipts.
+
+Pause settles any already-started canonical step and saves an immutable frozen moment. `POST /api/fleet/captures` stores the original source bundle, separately labeled latest context, scenario/events and detached progress; `GET /api/fleet/captures?revision=<sha256>` retrieves exactly that record. The `SnapshotStore<FrozenFleetSnapshot>` binding uses the same replaceable archive contract. Open `?capture=<sha256>` to retrieve it, reconstruct its runtime from captured inputs and verify every saved decision/receipt before resuming. New live feeds never replace saved evidence. Reset of a loaded moment returns to that moment, discarding subsequent stress injections. Starting with newer inputs is an explicit new run. In-place replanning from later wall-clock forecasts remains outside this accelerated replay contract.
+
+The mandatory CI flow uses unchanged real provider captures, actual model calculations and real local CPU execution. It covers location/transfer inspection, US/Utah continuity, solar disruption, missing data, public data-center origins, and freeze → retrieve → stress → restore → reload with current feeds unavailable. Personal EIA credentials are unnecessary in CI.

@@ -11,7 +11,7 @@ describe('committed real EIA-930 snapshot', () => {
     const snapshot = parseEia930Snapshot(JSON.parse(readFileSync(path, 'utf8')));
     const actual = snapshotGrid().read('PACE', snapshot.coverage).observations;
     const intensity = actual.filter(o => o.metric === 'consumption-carbon-intensity');
-    const fake = JSON.parse(readFileSync('src/core/energy/fakes/forecasts.json', 'utf8')) as { forecasts: { PACE: { carbon: { basis: string } } } };
+    const fake = JSON.parse(readFileSync('test/fixtures/legacy/energy/forecasts.json', 'utf8')) as { forecasts: { PACE: { carbon: { basis: string } } } };
     expect(actual).toHaveLength(672);
     expect(intensity).toHaveLength(168);
     for (const metric of Object.keys(expectedBasis) as (keyof typeof expectedBasis)[]) {

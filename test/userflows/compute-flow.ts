@@ -31,7 +31,7 @@ export class ComputeFlow {
   async useScenario(name: 'curtailed-solar' | 'stale-site' | 'recorded-comparison'): Promise<void> {
     if (name === 'curtailed-solar') this.unimplemented(`configure the real ${name} scenario`);
     await this.mockMapTiles();
-    await this.page.goto('/?scenario=' + encodeURIComponent(name));
+    await this.page.goto('/test/userflows/legacy/index.html?scenario=' + encodeURIComponent(name));
   }
 
   async submitJob(job: JobInput): Promise<void> {
