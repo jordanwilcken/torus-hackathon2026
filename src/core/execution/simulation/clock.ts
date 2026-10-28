@@ -57,24 +57,36 @@ function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
 function assertPlainData(value: unknown, path: string): void {
     if (value === null || typeof value === "string" || typeof value === "boolean") return;
     if (typeof value === "number" && Number.isFinite(value)) return;
-    if (Array.isArray(value)) return value.forEach((item, index) => assertPlainData(item, `${path}[${index}]`));
-    if (typeof value === "object" && [Object.prototype, null].includes(Object.getPrototypeOf(value))) {
+    // Object.entries also covers non-index properties that structuredClone keeps on arrays.
+    if (Array.isArray(value) || (typeof value === "object" && [Object.prototype, null].includes(Object.getPrototypeOf(value)))) {
         for (const [key, child] of Object.entries(value)) assertPlainData(child, `${path}.${key}`);
         return;
     }
     throw new RangeError(`Event ${path} must be plain JSON-like data.`);
 }
 
-function validateEvent(event: InputEvent, earliest: number, hours: number): void {
+/** Copy the caller's event exactly once, so getters or later mutation cannot make two arms disagree. */
+function prepareEvent(event: InputEvent): InputEvent {
+    let copy: InputEvent;
+    try {
+        copy = structuredClone(event);
+    } catch {
+        throw new RangeError("Event must be plain JSON-like data.");
+    }
+    if (copy.payload !== undefined) assertPlainData(copy.payload, "payload");
+    return copy;
+}
+
+function validateEventHour(event: InputEvent, earliest: number, hours: number): void {
     if (!Number.isInteger(event.atHour) || event.atHour < earliest || event.atHour >= hours)
         throw new RangeError(`Event hour must be an integer in [${earliest}, ${hours}): ${event.atHour}`);
-    if (event.payload !== undefined) assertPlainData(event.payload, "payload");
 }
 
 function prepareInputs(config: SimulationConfig): SimulationInputs {
     assertHourAligned(config.startAt, config.hours);
-    for (const event of config.events ?? []) validateEvent(event, 0, config.hours);
-    const { seed, snapshotId, startAt, hours, syntheticForecast, workload, events = [] } = structuredClone(config);
+    const events = (config.events ?? []).map(prepareEvent);
+    for (const event of events) validateEventHour(event, 0, config.hours);
+    const { seed, snapshotId, startAt, hours, syntheticForecast, workload } = structuredClone({ ...config, events: undefined });
     const jobs = workload.kind === "fixture" ? workload.jobs : generateWorkload(seed, startAt, hours, workload.settings);
     const ids = new Set<string>();
     for (const job of jobs) {
@@ -90,9 +102,10 @@ function prepareInputs(config: SimulationConfig): SimulationInputs {
 const terminal = (job: Job): boolean => job.state === "done" || job.state === "missed";
 const compareIds = (a: Job, b: Job): number => a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 
-type PreparedSimulation = Simulation & { checkSchedule(event: InputEvent): void };
+type ArmHandle = { simulation: Simulation; check(event: InputEvent): void; append(event: InputEvent): void };
 
-function createPreparedSimulation(initial: SimulationInputs, { energy, createPhases }: SimulationComponents): PreparedSimulation {
+function createPreparedSimulation(initial: SimulationInputs, { energy, createPhases }: SimulationComponents,
+    pairSchedule?: (event: InputEvent) => void): ArmHandle {
     let hour = 0;
     let running = false;
     let broken = false;
@@ -102,8 +115,10 @@ function createPreparedSimulation(initial: SimulationInputs, { energy, createPha
     const arrived = new Set<string>();
     const log: Array<SimulationLogEntry> = [];
     let phases = createPhases(inputs);
+    const check = (event: InputEvent) => validateEventHour(event, hour + (running ? 1 : 0), initial.hours);
+    const append = (event: InputEvent) => { inputs = deepFreeze({ ...inputs, events: [...inputs.events, event] }); };
 
-    return {
+    const simulation: Simulation = {
         get hour() { return hour; },
         async step() {
             if (running) throw new Error("Simulation step is already running.");
@@ -183,37 +198,35 @@ function createPreparedSimulation(initial: SimulationInputs, { energy, createPha
             phases = createPhases(inputs);
             broken = false;
         },
-        checkSchedule(event) {
-            validateEvent(event, hour + (running ? 1 : 0), initial.hours);
-        },
         schedule(event) {
-            validateEvent(event, hour + (running ? 1 : 0), initial.hours);
-            inputs = deepFreeze({ ...inputs, events: [...inputs.events, structuredClone(event)] });
+            if (pairSchedule) return pairSchedule(event);
+            const prepared = prepareEvent(event);
+            check(prepared);
+            append(prepared);
         },
         jobs: () => structuredClone(jobs),
         inputs: () => inputs,
         log: () => structuredClone(log),
     };
+    return { simulation, check, append };
 }
 
 export function createSimulation(config: SimulationConfig, components: SimulationComponents): Simulation {
-    return createPreparedSimulation(prepareInputs(config), components);
+    return createPreparedSimulation(prepareInputs(config), components).simulation;
 }
 
 export function createPolicyArms(config: SimulationConfig, energy: EnergyMap,
     factories: { baseline: SimulationComponents["createPhases"]; selected: SimulationComponents["createPhases"] }) {
     const inputs = prepareInputs(config);
-    const baseline = createPreparedSimulation(inputs, { energy, createPhases: factories.baseline });
-    const selected = createPreparedSimulation(inputs, { energy, createPhases: factories.selected });
-    return {
-        baseline: baseline as Simulation,
-        selected: selected as Simulation,
-        /** Chaos input for both arms: checked against both first, so it lands in both or neither. */
-        schedule(event: InputEvent) {
-            baseline.checkSchedule(event);
-            selected.checkSchedule(event);
-            baseline.schedule(event);
-            selected.schedule(event);
-        },
+    /** Chaos input for both arms, from either arm or the pair: checked against both first, so it lands in both or neither. */
+    const schedule = (event: InputEvent) => {
+        const prepared = prepareEvent(event);
+        baseline.check(prepared);
+        selected.check(prepared);
+        baseline.append(prepared);
+        selected.append(prepared);
     };
+    const baseline = createPreparedSimulation(inputs, { energy, createPhases: factories.baseline }, schedule);
+    const selected = createPreparedSimulation(inputs, { energy, createPhases: factories.selected }, schedule);
+    return { baseline: baseline.simulation, selected: selected.simulation, schedule };
 }

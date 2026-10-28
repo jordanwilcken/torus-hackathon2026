@@ -95,11 +95,25 @@ test('a planning read that asks about a later instant is clamped to tick start',
   expect(asked.every(call => call.endsWith(tickStart) || call.endsWith('17:30:00Z'))).toBe(true);
 });
 
-test('slot discovery drops slots whose evidence was observed after tick start', () => {
+test('slot discovery keeps only slots with evidence observed by tick start, as copies', () => {
   const { map } = recordedMap();
+  const shared = ref('at-tick-start');
+  const sharing: EnergyMap = { ...map, findSlots: () => [shared] };
 
   expect(fenceEnergyMap(map, tickStart).findSlots({ window: { startAt: tickStart, endAt: nextHour }, asOf: tickStart }))
-    .toEqual([ref('at-tick-start'), ref('no-observation-time')]);
+    .toEqual([ref('at-tick-start')]);
+  fenceEnergyMap(sharing, tickStart).findSlots({ window: { startAt: tickStart, endAt: nextHour }, asOf: tickStart })[0].slotId = 'mutated';
+  expect(shared.slotId).toBe('at-tick-start');
+});
+
+test('discovery fails closed when the wrapped map hides a later slot as undated and unavailable', () => {
+  const hidden: EnergyMap = {
+    findSlots: () => [ref('later')],
+    readSlot: () => ({ status: 'unavailable', source: 'fake-local-energy', projected: false, simulated: true }),
+    readForecast: () => ({}),
+  };
+
+  expect(fenceEnergyMap(hidden, tickStart).findSlots({ window: { startAt: tickStart, endAt: nextHour }, asOf: tickStart })).toEqual([]);
 });
 
 test('an unavailable snapshot from after tick start carries none of its later fields', () => {

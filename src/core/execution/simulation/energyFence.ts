@@ -22,11 +22,11 @@ export function fenceEnergyMap(map: EnergyMap, fence: string): EnergyMap {
     return {
         findSlots(query) {
             const asOf = clamp(query.asOf);
-            // Discovery may include undated slots (readSlot withholds them), but never one observed later.
-            return map.findSlots({ ...query, asOf }).filter(reference => {
-                const { observedAt } = map.readSlot(reference, asOf, Number.MAX_SAFE_INTEGER);
-                return observedAt === undefined || observedBy(observedAt, asOf);
-            });
+            // Fail closed: keep a slot only if its own evidence proves it was observed by asOf. Age is
+            // irrelevant to that check, so the freshness limit is lifted for this probe read.
+            return map.findSlots({ ...query, asOf })
+                .filter(reference => observedBy(map.readSlot(reference, asOf, Number.MAX_SAFE_INTEGER).observedAt, asOf))
+                .map(reference => structuredClone(reference));
         },
         readSlot(reference, asOf, maximumAgeMinutes) {
             const at = clamp(asOf);

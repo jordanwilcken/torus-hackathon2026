@@ -451,7 +451,7 @@ test('policy arms share frozen generated inputs and replay retains generated job
   expect(arms.baseline.inputs().events).toBe(arms.selected.inputs().events);
   expect(arms.baseline.inputs().jobs).toHaveLength(4);
   arms.selected.schedule({ atHour: 1, kind: 'runtime' });
-  expect(arms.baseline.inputs().events).toEqual([{ atHour: 0, kind: 'configured' }]);
+  expect(arms.baseline.inputs().events).toEqual([{ atHour: 0, kind: 'configured' }, { atHour: 1, kind: 'runtime' }]);
   const replay = createSimulation({ ...config, events: arms.selected.inputs().events }, {
     energy: recordedEnergy, createPhases: () => ({}),
   });
@@ -543,4 +543,36 @@ test('generated jobs arrive in the log at the hour their readyAt names', async (
   const logged = sim.log().filter(entry => entry.type === 'arrival').map(entry => ({ hour: entry.hour, jobId: entry.jobId }));
   expect(expected.every(arrival => Number.isInteger(arrival.hour) && arrival.hour > 0)).toBe(true);
   expect(logged).toEqual(expected);
+});
+
+test('scheduling on either arm of a pair reaches both, and internal checks are not exposed', () => {
+  const arms = createPolicyArms(fixtureConfig([], 3), recordedEnergy, { baseline: () => ({}), selected: () => ({}) });
+
+  arms.baseline.schedule({ atHour: 2, kind: 'heat-wave' });
+
+  expect(arms.selected.inputs().events).toEqual([{ atHour: 2, kind: 'heat-wave' }]);
+  expect(arms.baseline.inputs().events).toEqual([{ atHour: 2, kind: 'heat-wave' }]);
+  expect('checkSchedule' in arms.baseline).toBe(false);
+  expect('checkSchedule' in createSimulation(fixtureConfig([]), { energy: recordedEnergy, createPhases: () => ({}) })).toBe(false);
+});
+
+test('an event is read once, so getters cannot give the two arms different events', () => {
+  const arms = createPolicyArms(fixtureConfig([], 3), recordedEnergy, { baseline: () => ({}), selected: () => ({}) });
+  let reads = 0;
+  const event = { atHour: 1, get kind() { reads += 1; return `heat-wave-${reads}`; }, payload: { factor: 1 } };
+
+  arms.schedule(event);
+
+  expect(arms.baseline.inputs().events).toEqual([{ atHour: 1, kind: 'heat-wave-1', payload: { factor: 1 } }]);
+  expect(arms.selected.inputs().events).toEqual(arms.baseline.inputs().events);
+});
+
+test('array payloads with extra non-index properties are validated too', () => {
+  const payload = Object.assign([1, 2], { metadata: new Map([['factor', 1]]) });
+
+  expect(() => createSimulation(fixtureConfig([], 2, { events: [{ atHour: 0, kind: 'bad', payload }] }), {
+    energy: recordedEnergy, createPhases: () => ({}),
+  })).toThrow(RangeError);
+  const sim = createSimulation(fixtureConfig([], 2), { energy: recordedEnergy, createPhases: () => ({}) });
+  expect(() => sim.schedule({ atHour: 1, kind: 'bad', payload })).toThrow(RangeError);
 });
