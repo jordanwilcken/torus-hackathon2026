@@ -1,5 +1,6 @@
 import type { Job } from '../../jobs/Job.type.js';
 import type { DeadlineCoverage, PlannedCapacitySlot, PlanningReadiness } from './CapacityPlan.types.js';
+import { powerLimitedGpus, energyLimitedGpus } from '../../scheduling/math/chooseExecutionSlot.generated.js';
 
 const hour = 3_600_000;
 const tolerance = 1e-9;
@@ -11,6 +12,7 @@ const tolerance = 1e-9;
 export function deadlineCoverage(jobs: readonly Job[], slots: readonly PlannedCapacitySlot[],
   capacities: readonly number[], readiness: readonly PlanningReadiness[], asOf: string, carbonBlind: boolean) {
   const available = [...capacities];
+  const availableEnergy = slots.map(slot => slot.availableEnergyKWh ?? 0);
   const at = Date.parse(asOf);
   const candidates = (job: Job) => [...new Set(slots.filter(slot =>
     slot.computeProfile === job.computeProfile && job.allowedLocations.includes(slot.locationId) &&
@@ -37,9 +39,13 @@ export function deadlineCoverage(jobs: readonly Job[], slots: readonly PlannedCa
       const allocations: Array<{ index: number; slotId: string; gpus: number; workGpuH: number }> = [];
       for (const { slot, index, hours } of eligible) {
         if (remaining <= tolerance) break;
-        // The chooser takes its available peak GPU quota before shortening a partial run.
-        // Reserve that same peak even when carbon ordering leaves only partial work here.
-        const gpus = Math.min(job.maxGpus, available[index]);
+        // Use the chooser's same peak-power and partial-work energy rules, then reserve
+        // both scarce quantities across jobs. No intra-hour GPU sharing is invented.
+        const capacity = { maxGpus: job.maxGpus, capGpus: available[index], usedGpus: 0,
+          availablePowerKW: available[index] * slot.kWhPerGpuHour,
+          availableEnergyKWh: availableEnergy[index], kWhPerGpuHour: slot.kWhPerGpuHour,
+          remainingGpuH: remaining, durationHours: hours };
+        const gpus = energyLimitedGpus({ ...capacity, initialGpus: powerLimitedGpus(capacity) });
         if (gpus <= 0) continue;
         const workGpuH = Math.min(remaining, gpus * hours);
         allocations.push({ index, slotId: slot.slotId, gpus, workGpuH });
@@ -57,6 +63,8 @@ export function deadlineCoverage(jobs: readonly Job[], slots: readonly PlannedCa
     const remaining = chosen?.remaining ?? job.remainingGpuH;
     for (const allocation of chosen?.allocations ?? []) {
       available[allocation.index] -= allocation.gpus;
+      availableEnergy[allocation.index] = Math.max(0, availableEnergy[allocation.index] -
+        allocation.workGpuH * slots[allocation.index].kWhPerGpuHour);
       opened[allocation.index] += allocation.gpus;
     }
     deadlines.push({

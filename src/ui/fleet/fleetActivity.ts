@@ -71,7 +71,7 @@ export function createFleetActivity(view: L.Map) {
     const title = document.createElement('strong'); title.textContent = event.jobId;
     const route = document.createElement('span'); route.textContent = `From ${event.from.name} → ${event.to.name}`;
     const kind = document.createElement('small');
-    kind.textContent = event.kind === 'submission' ? 'New job · Simulated submission' : 'Site move · Modeled transfer';
+    kind.textContent = event.kind === 'submission' ? 'New job · Simulated submission to home queue' : 'Site move · Modeled transfer';
     content.append(title, route, kind);
     const tooltip = L.tooltip({
       permanent: true, interactive: false, opacity: 1, direction: 'top',

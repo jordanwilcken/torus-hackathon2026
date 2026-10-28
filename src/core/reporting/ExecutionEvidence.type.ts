@@ -13,6 +13,8 @@ export type ExecutionRun = Pick<ImpactObservation,
     sites: readonly {
         locationId: string;
         initialStoredKWh: number;
+        initialStoredCarbonKg?: number | undefined;
+        initialStoredElectricityUsd?: number | undefined;
         gridImportLimitKW?: number;
     }[];
     ticks: readonly TickObservation[];

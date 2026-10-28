@@ -9,6 +9,18 @@ function comparableJson(value: unknown): string {
         ? Object.fromEntries(Object.keys(item).sort().map(key => [key, item[key]])) : item);
 }
 
+/** Legacy receipts omitted these derived inventory facts. Supplied facts must still match. */
+function matchLegacyInventoryShape(actual: unknown, expected: unknown, path: string[] = []): unknown {
+    if (Array.isArray(actual)) return actual.map((item, index) => matchLegacyInventoryShape(item, Array.isArray(expected) ? expected[index] : undefined, [...path, String(index)]));
+    if (!actual || typeof actual !== 'object') return actual;
+    const original = expected && typeof expected === 'object' ? expected as Record<string, unknown> : {};
+    const additions = ['initialStoredCarbonKg', 'endingStoredCarbonKg', 'initialStoredElectricityUsd', 'endingStoredElectricityUsd'];
+    if (path.length === 2 && ['baseline', 'selected'].includes(path[0]) && path[1] === 'impact')
+        additions.push('carbonPriceUsdPerTonne');
+    return Object.fromEntries(Object.entries(actual).filter(([key]) => !additions.includes(key) || Object.hasOwn(original, key))
+        .map(([key, value]) => [key, matchLegacyInventoryShape(value, original[key], [...path, key])]));
+}
+
 /** Rebuild mutable runtime state from its original inputs, then verify every retained fact. */
 export async function restoreReplayProgress(saved: Omit<ReplayProgress, 'map'>, signal?: AbortSignal): Promise<ReplaySession> {
     signal?.throwIfAborted();
@@ -26,7 +38,7 @@ export async function restoreReplayProgress(saved: Omit<ReplayProgress, 'map'>, 
         signal?.throwIfAborted();
     }
     const { map: _, ...actual } = rebuilt;
-    if (comparableJson(actual) !== comparableJson(expected))
+    if (comparableJson(matchLegacyInventoryShape(actual, expected)) !== comparableJson(expected))
         throw new RangeError('Saved replay evidence does not match reconstruction from its captured inputs.');
     return session;
 }

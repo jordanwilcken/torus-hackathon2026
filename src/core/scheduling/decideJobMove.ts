@@ -28,9 +28,10 @@ export type JobMoveOptions = {
     };
 };
 
-/** Moving requires two feasible whole-job paths and a strict modeled carbon improvement.
- * Missing evidence is a stay, not a zero burden. Public offers remain projections, never reservations.
- * When transfer cost is supplied, destination posted job charges plus that cost must also improve.
+/** Rescue work when only the destination can finish; never claim comparative savings for that move.
+ * Otherwise require two feasible whole-job paths and a strict modeled carbon improvement.
+ * Public offers remain projections, never reservations. When transfer cost is supplied,
+ * destination posted job charges plus that cost must also improve a feasible stay path.
  */
 export function decideJobMove(job: Job, energyMap: EnergyMap, options: JobMoveOptions): MoveDecision {
     const { current, destination, transfer } = options;
@@ -49,22 +50,29 @@ export function decideJobMove(job: Job, energyMap: EnergyMap, options: JobMoveOp
     const now = Date.parse(options.asOf), arrival = Date.parse(transfer.readyAt);
     if (!Number.isFinite(now) || !Number.isFinite(arrival) || arrival < now || arrival >= Date.parse(job.window.endAt))
         return stay("Transfer arrival is invalid or leaves no execution time before the deadline.");
-    if (decision.transferCarbonKg === null)
-        return stay("Transfer carbon is unknown; no carbon reduction can be established.");
+    if (transfer.carbonKg !== null && (!Number.isFinite(transfer.carbonKg) || transfer.carbonKg < 0))
+        return stay("The supplied transfer carbon burden is invalid.");
     if (transfer.costUsd !== undefined && (transfer.costUsd === null || !Number.isFinite(transfer.costUsd) || transfer.costUsd < 0))
         return stay("The supplied transfer monetary burden is unknown or invalid.");
 
     decision.stay = assessJobPath(job, energyMap, current, options);
-    if (!decision.stay.feasible) return stay("Stay-path evidence is insufficient: " + decision.stay.reason);
     decision.destination = assessJobPath(job, energyMap, destination, { ...options, readyAt: transfer.readyAt });
     if (!decision.destination.feasible) return stay("Destination path is infeasible: " + decision.destination.reason);
+    if (transfer.costUsd !== undefined) {
+        decision.moveCostUsd = decision.destination.postedChargeUsd + transfer.costUsd!;
+        if (!Number.isFinite(decision.moveCostUsd)) return stay("The complete destination cost exceeds finite numeric limits.");
+    }
+    if (!decision.stay.feasible) return { ...decision, move: true,
+        reason: "Move to preserve the deadline: available home evidence cannot cover the remaining work, and the destination can. " +
+            "Comparative carbon savings are unavailable. Destination capacity still requires acceptance." };
+    if (decision.transferCarbonKg === null)
+        return stay("Transfer carbon is unknown; no carbon reduction can be established.");
     if (decision.stay.carbonKg === null || decision.destination.carbonKg === null)
         return stay("Whole-job carbon is unknown on one or both paths; stay rather than infer a benefit.");
     decision.avoidedCarbonKg = decision.stay.carbonKg - decision.destination.carbonKg;
     decision.netCarbonReductionKg = decision.avoidedCarbonKg - decision.transferCarbonKg;
     if (transfer.costUsd !== undefined) {
         decision.stayCostUsd = decision.stay.postedChargeUsd;
-        decision.moveCostUsd = decision.destination.postedChargeUsd + transfer.costUsd!;
     }
     if (decision.netCarbonReductionKg <= 0)
         return stay("Avoided execution carbon does not exceed the modeled transfer carbon.");

@@ -74,6 +74,8 @@ export function createReplayArmSession(scenario: ReplayScenario, arm: "baseline"
         storageToleranceKWh: scenario.storageToleranceKWh, jobs: structuredClone(scenario.jobs),
         sites: scenario.sites.map(site => ({
             locationId: site.configuration.locationId, initialStoredKWh: site.configuration.storage.initial.storedKWh,
+            initialStoredCarbonKg: site.configuration.storage.initial.carbonKg,
+            initialStoredElectricityUsd: site.configuration.storage.initial.electricityUsd,
         })),
         ticks: [], transfers: [],
         costPolicy: {

@@ -72,7 +72,9 @@ export function summarizeExecution(run: ExecutionRun): ImpactObservation {
     const inventory = run.sites.flatMap(site => {
         const last = activity.meters.filter(meter => meter.locationId === site.locationId).at(-1);
         return last && Date.parse(last.window.endAt) === Date.parse(run.horizon.endAt)
-            ? [{ locationId: site.locationId, initialStoredKWh: site.initialStoredKWh, endingStoredKWh: last.endingStoredKWh }]
+            ? [{ locationId: site.locationId, initialStoredKWh: site.initialStoredKWh, endingStoredKWh: last.endingStoredKWh,
+                initialStoredCarbonKg: site.initialStoredCarbonKg, initialStoredElectricityUsd: site.initialStoredElectricityUsd,
+                endingStoredCarbonKg: last.endingStoredCarbonKg, endingStoredElectricityUsd: last.endingStoredElectricityUsd }]
             : [];
     });
     const carbonKg = complete ? knownTotal([...activity.meters, ...activity.transfers].map(item =>
@@ -93,6 +95,7 @@ export function summarizeExecution(run: ExecutionRun): ImpactObservation {
         horizon: { ...run.horizon }, accountingBasis: run.accountingBasis, source: run.source,
         simulated: run.simulated, storageToleranceKWh: run.storageToleranceKWh,
         feasible, carbonKg, electricityUsd, modeledCostUsd,
+        carbonPriceUsdPerTonne: policy?.carbonPriceUsdPerTonne,
         costBasis: policy?.basis.trim()
             ? policy.basis + " (" + policy.carbonPriceUsdPerTonne + " USD/tonne CO2)" : undefined,
         work: jobs.map(job => ({

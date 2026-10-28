@@ -46,6 +46,8 @@ export type PlannedCapacitySlot = {
   window: TimeWindow;
   kWhPerGpuHour: number;
   physicalFreeGpus: number;
+  /** Energy budget is separate from peak GPUs. Optional only for older saved plan evidence. */
+  availableEnergyKWh?: number;
   usedGpus: number;
   /** Total soft cap including commitments; never above the current physical cap. */
   capGpus: number;

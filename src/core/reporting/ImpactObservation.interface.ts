@@ -15,6 +15,7 @@ export interface ImpactObservation {
   electricityUsd?: number | null;
   modeledCostUsd?: number | null;
   costBasis?: string;
+  carbonPriceUsdPerTonne?: number | undefined;
   work: readonly {
     jobId: string;
     requiredGpuH: number;
@@ -24,6 +25,10 @@ export interface ImpactObservation {
     locationId: string;
     initialStoredKWh: number;
     endingStoredKWh: number;
+    initialStoredCarbonKg?: number | undefined;
+    endingStoredCarbonKg?: number | undefined;
+    initialStoredElectricityUsd?: number | undefined;
+    endingStoredElectricityUsd?: number | undefined;
   }[];
   storageToleranceKWh: number;
 }

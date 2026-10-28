@@ -11,7 +11,7 @@ export function planHourlyCapacity(input: CapacityPlanInput): HourlyCapacityPlan
   const readyWork = input.jobs.filter(job => !['done', 'missed'].includes(job.state) &&
     Date.parse(job.readyAt) <= at).reduce((sum, job) => sum + job.remainingGpuH, 0);
   const currentFree = slots.filter(slot => Date.parse(slot.window.startAt) === at)
-    .reduce((sum, slot) => sum + slot.physicalFreeGpus, 0);
+    .reduce((sum, slot) => sum + usableGpuHours(slot, slot.physicalFreeGpus), 0);
   const backlogHours = currentFree > 0 ? readyWork / currentFree : readyWork > 0 ? null : 0;
   const overloaded = backlogHours === null || backlogHours > input.policy.backlogHoursThreshold;
   const missingPreference = slots.some(slot => slot.physicalFreeGpus > 0 && slot.carbonGPerKWh === null);
@@ -100,7 +100,8 @@ export function planHourlyCapacity(input: CapacityPlanInput): HourlyCapacityPlan
         : 'Deadline-first carbon preference with safety margin; future capacity remains conditional.';
   }
   const safetyMarginRequestedGpuH = witness.deadlines.reduce((sum, job) => sum + job.plannedGpuH, 0) * safetyMargin;
-  const safetyMarginOpenedGpuH = protectedCaps.reduce((sum, cap, index) => sum + Math.max(0, cap - finalWitness.opened[index]), 0);
+  const safetyMarginOpenedGpuH = protectedCaps.reduce((sum, cap, index) => sum + Math.max(0,
+    usableGpuHours(slots[index], cap) - usableGpuHours(slots[index], finalWitness.opened[index])), 0);
   if (safetyMarginOpenedGpuH + 1e-9 < safetyMarginRequestedGpuH)
     reasons.push("The requested safety margin could not be fully opened within eligible physical capacity and deliberate current-hour deferrals; see target and opened GPU-hours.");
   return {
@@ -126,9 +127,11 @@ function addMargin(caps: number[], physical: number[], slots: PlannedCapacitySlo
       Date.parse(left.slot.window.startAt) - Date.parse(right.slot.window.startAt));
   for (const { index } of ordered) {
     if (extra <= 1e-9) break;
+    const previous = usableGpuHours(slots[index], caps[index]);
+    if (usableGpuHours(slots[index], physical[index]) <= previous) continue;
     const added = Math.min(physical[index] - caps[index], Math.ceil(extra));
     caps[index] += added;
-    extra -= added;
+    extra -= usableGpuHours(slots[index], caps[index]) - previous;
   }
 }
 
@@ -148,8 +151,9 @@ function physicalSlots(input: CapacityPlanInput): PlannedCapacitySlot[] {
         [slot.capGpus, slot.usedGpus].every(Number.isInteger) && slot.usedGpus >= 0 && slot.capGpus >= slot.usedGpus &&
         [slot.availablePowerKW, slot.availableEnergyKWh].every(value => Number.isFinite(value) && value >= 0) &&
         (start > at || !snapshot.projected);
-      const physicalFreeGpus = valid ? Math.max(0, Math.floor(Math.min(slot!.capGpus - slot!.usedGpus,
-        slot!.availablePowerKW / site.kWhPerGpuHour, slot!.availableEnergyKWh / site.kWhPerGpuHour) + 1e-9)) : 0;
+      // A GPU needs full active power but can finish a short job using a fraction of an hour's energy.
+      const physicalFreeGpus = valid && slot!.availableEnergyKWh > 0 ? Math.max(0, Math.floor(Math.min(
+        slot!.capGpus - slot!.usedGpus, slot!.availablePowerKW / site.kWhPerGpuHour) + 1e-9)) : 0;
       const preference = site.preferences.find(value => value.version === snapshot?.version &&
         Date.parse(value.window.startAt) === start && Date.parse(value.window.endAt) === end);
       const status = valid ? 'current' as const : snapshot?.status === 'stale' ||
@@ -158,6 +162,7 @@ function physicalSlots(input: CapacityPlanInput): PlannedCapacitySlot[] {
         locationId: site.locationId, slotId: slot?.id ?? site.locationId + '@' + new Date(start).toISOString(),
         computeProfile: site.computeProfile, window: { startAt: new Date(start).toISOString(), endAt: new Date(end).toISOString() },
         kWhPerGpuHour: site.kWhPerGpuHour, physicalFreeGpus, usedGpus: valid ? slot!.usedGpus : 0,
+        availableEnergyKWh: valid ? slot!.availableEnergyKWh : 0,
         capGpus: valid ? slot!.usedGpus : 0, conditional: start > at || Boolean(snapshot?.projected),
         status, source: snapshot?.source ?? 'No matching ledger publication', version: snapshot?.version,
         observedAt: snapshot?.observedAt,
@@ -198,4 +203,8 @@ function validate(input: CapacityPlanInput): void {
 
 function key(slot: Pick<PlannedCapacitySlot, 'locationId' | 'window'>): string {
   return slot.locationId + '/' + Date.parse(slot.window.startAt);
+}
+
+function usableGpuHours(slot: PlannedCapacitySlot, gpus: number): number {
+  return Math.min(gpus, (slot.availableEnergyKWh ?? 0) / slot.kWhPerGpuHour);
 }

@@ -24,7 +24,8 @@ function meter(locationId: string, window: SiteMeter["window"], changes: Partial
     return {
         locationId, window, solarKWh: 0, gridImportKWh: 1, batteryChargeKWh: 0,
         batteryDischargeKWh: 0, curtailedKWh: 0, fixedLoadKWh: 1, computeKWh: 0,
-        endingStoredKWh: 1, accountingBasis, carbonKg: 0.4, electricityUsd: 0.05,
+        endingStoredKWh: 1, endingStoredCarbonKg: 0.4, endingStoredElectricityUsd: 0.05,
+        accountingBasis, carbonKg: 0.4, electricityUsd: 0.05,
         ...changes,
     };
 }
@@ -36,8 +37,8 @@ function recordedRun(): ExecutionRun {
         simulated: true, storageToleranceKWh: 0.01,
         jobs: [job("training"), job("embeddings")],
         sites: [
-            { locationId: "A", initialStoredKWh: 1, gridImportLimitKW: 3 },
-            { locationId: "B", initialStoredKWh: 1, gridImportLimitKW: 1 },
+            { locationId: "A", initialStoredKWh: 1, initialStoredCarbonKg: 0.4, initialStoredElectricityUsd: 0.05, gridImportLimitKW: 3 },
+            { locationId: "B", initialStoredKWh: 1, initialStoredCarbonKg: 0.4, initialStoredElectricityUsd: 0.05, gridImportLimitKW: 1 },
         ],
         ticks: [
             {
@@ -84,8 +85,12 @@ test("summarizes recorded fleet meters once including idle sites and transfer ef
         { jobId: "embeddings", requiredGpuH: 1, completedGpuH: 1 },
     ]);
     expect(report.inventory).toEqual([
-        { locationId: "A", initialStoredKWh: 1, endingStoredKWh: 1 },
-        { locationId: "B", initialStoredKWh: 1, endingStoredKWh: 1 },
+        { locationId: "A", initialStoredKWh: 1, endingStoredKWh: 1,
+          initialStoredCarbonKg: 0.4, endingStoredCarbonKg: 0.4,
+          initialStoredElectricityUsd: 0.05, endingStoredElectricityUsd: 0.05 },
+        { locationId: "B", initialStoredKWh: 1, endingStoredKWh: 1,
+          initialStoredCarbonKg: 0.4, endingStoredCarbonKg: 0.4,
+          initialStoredElectricityUsd: 0.05, endingStoredElectricityUsd: 0.05 },
     ]);
     expect(report.feasible).toBe(true);
 });

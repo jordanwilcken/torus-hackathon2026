@@ -37,6 +37,12 @@ export function LiveFleet({ grid }: { grid: PublicGridClient }) {
   const candidate = useMemo(() => captureLiveFleet(weather, market, now), [weather, market, now]);
   useEffect(() => { if (!capture && !requestedCapture && candidate.available) setCapture(candidate.capture); }, [capture, candidate, requestedCapture]);
   const changed = capture && candidate.available && candidate.capture.scenario.inputRevision !== capture.scenario.inputRevision;
+  function startLatest() {
+    if (!candidate.available) return;
+    setCapture(candidate.capture); setRestored(undefined); setFreezeAnchor(undefined); setMomentId(''); setLoadError('');
+    setGeneration(value => value + 1);
+    const url = new URL(location.href); url.searchParams.delete('capture'); history.replaceState(null, '', url);
+  }
   async function restoreSaved(saved: SavedFleetMoment) {
     const session = await restoreFrozenFleet(saved.capture);
     const sources = saved.capture.runInputs;
@@ -75,8 +81,13 @@ export function LiveFleet({ grid }: { grid: PublicGridClient }) {
     {capture ? <FleetSession key={generation} capture={capture} restored={restored} freezeAnchor={freezeAnchor} latestSources={latestSources} onRestore={restoreSaved} /> : <>
       <FleetMap sites={unconnected} transfers={[]} playing={false} onInspect={() => {}} onJob={() => {}} />
       <p className="fleet-empty" role="status">{loadingMoment ? 'Retrieving the frozen moment…' : loadError || (candidate.available ? 'Preparing the fleet…' : candidate.reason)}</p>
+      {loadError && !loadingMoment && <div className="fleet-new-input">
+        <span>The saved moment was not restored. Its archived record is unchanged.</span>
+        <button disabled={!candidate.available} onClick={startLatest}>Start a new run with latest inputs</button>
+        {!candidate.available && <small>{candidate.reason}</small>}
+      </div>}
     </>}
-    {changed && <div className="fleet-new-input"><span>New public inputs available</span><button onClick={() => { if (candidate.available) { setCapture(candidate.capture); setRestored(undefined); setFreezeAnchor(undefined); setMomentId(''); setGeneration(value => value + 1); const url = new URL(location.href); url.searchParams.delete('capture'); history.replaceState(null, '', url); } }}>Start with latest inputs</button></div>}
+    {changed && <div className="fleet-new-input"><span>New public inputs available</span><button onClick={startLatest}>Start with latest inputs</button></div>}
     <details className="fleet-provenance"><summary>Retrieve a frozen moment</summary>
       <label>Capture ID <input aria-label="Frozen capture ID" value={momentId} onChange={event => setMomentId(event.target.value)} /></label>
       <button disabled={loadingMoment} onClick={async () => { setLoadingMoment(true); try { await restoreSaved(await loadFleetMoment(momentId)); }
@@ -145,8 +156,9 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
     const allocated = allocations.reduce((total, result) => total + (result.selection.selected ? result.selection.allocation.allocatedGpus : 0), 0);
     const meter = currentTick?.meters.find(meter => meter.locationId === reference.id);
     const priorMeter = progress.selected.run.ticks.flatMap(tick => tick.meters).findLast(meter => meter.locationId === reference.id);
-    const supported = reading ? Math.min(reading.capGpus, Math.floor(reading.availablePowerKW / compute.kWPerGpu), Math.floor(reading.availableEnergyKWh / compute.kWPerGpu)) : 0;
-    return { ...reference, capacity: compute.capGpus, storageCapacityKWh: definition.configuration.storage.limits.capacityKWh, availableGpus: Math.max(0, supported - (progress.phase === 'routed' ? allocated : 0)),
+    const supported = reading && reading.availableEnergyKWh > 0
+      ? Math.min(reading.capGpus, Math.floor(reading.availablePowerKW / compute.kWPerGpu)) : 0;
+    return { ...reference, capacity: compute.capGpus, storageCapacityKWh: definition.configuration.storage.limits.capacityKWh, availableGpus: Math.max(0, supported - allocated),
       solarKW: meter?.solarKWh ?? (dropped ? 0 : input.supply?.solarKW ?? 0),
       storedKWh: priorMeter?.endingStoredKWh ?? definition.configuration.storage.initial.storedKWh,
       activeJobs: progress.phase === 'routed' ? allocations.length : 0, queuedJobs: progress.selected.finalJobs.filter(job => job.currentLocation === reference.id && job.state === 'queued' && job.readyAt <= currentAt).length,
@@ -157,7 +169,9 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
   const active = sites.find(site => site.id === selected);
   const activeMeter = currentTick?.meters.find(meter => meter.locationId === selected);
   const job = progress.selected.finalJobs.find(job => job.id === jobId);
-  const movement = progress.selected.decisions.findLast(decision => decision.results.some(result => result.jobId === jobId))?.results.find(result => result.jobId === jobId)?.selection.movement;
+  const jobDecision = progress.selected.decisions.findLast(decision => decision.results.some(result => result.jobId === jobId));
+  const jobChoice = jobDecision?.results.find(result => result.jobId === jobId);
+  const movement = jobChoice?.selection.movement;
   const jobReceipts = progress.selected.run.ticks.flatMap(tick => tick.executions).filter(receipt => receipt.jobId === jobId);
   const arrived = progress.selected.finalJobs.filter(job => admissions.some(admission => admission.jobId === job.id));
   const disruptionOptions = progress.scenario.sites.map(site => ({
@@ -219,16 +233,16 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
         <button className="fleet-close" aria-label="Close activity" onClick={() => { setSelected(undefined); setJobId(undefined); setOriginId(undefined); }}>×</button>
         {origin && <section aria-label="Data center activity" data-origin-id={origin.id}><p className="eyebrow">SIMULATED JOB ORIGIN</p><h3>{origin.name}</h3>
           <p>{admissions.filter(job => originForJob(job.jobId).id === origin.id).length} generated {admissions.filter(job => originForJob(job.jobId).id === origin.id).length === 1 ? 'job' : 'jobs'}</p>
-          <p className="fleet-origin-note">Synthetic GPU batches start here, then run at a modeled compute site.</p>
+          <p className="fleet-origin-note">Blue routes submit synthetic jobs to their assigned home queues. The scheduler then chooses when to run or transfer them.</p>
           <a href={origin.sourceUrl} target="_blank" rel="noreferrer">Public location reference</a>
           <div className="fleet-site-jobs">{arrived.filter(job => originForJob(job.id).id === origin.id).slice(-6).map(job => <button key={job.id} onClick={() => { setJobId(job.id); setOriginId(undefined); }}>{job.id}<span>{job.state}</span></button>)}</div>
           <small>Location is public. Jobs are simulated. No connection to this operator.</small>
         </section>}
         {active && <section aria-label="Location activity" data-location-id={active.id} data-hour={progress.hour}>
           <p className="eyebrow">COMPUTE SITE · MODELED</p><h3>{active.name}</h3><p className="fleet-inspect-time">{time(currentAt)} · Grid region {progress.scenario.sites.find(site => site.configuration.locationId === active.id)?.regionId}</p>
-          <p className="fleet-section-label">Available compute</p><div className="fleet-capacity"><strong>{active.availableGpus}<small> / {active.capacity}</small></strong><span>GPUs open<br />for this hour</span></div>
+          <p className="fleet-section-label">Remaining compute capacity · up to</p><div className="fleet-capacity"><strong>{active.availableGpus}<small> / {active.capacity}</small></strong><span>GPUs open<br />for this hour</span></div>
           <div className="fleet-capacity-bar">{Array.from({ length: active.capacity }, (_, index) => <i key={index} data-free={index < active.availableGpus} />)}</div>
-          <p className="fleet-capacity-note">Energy budget + scheduler plan</p><p className="fleet-active-count">{active.activeJobs} jobs working · {active.queuedJobs} waiting here</p>
+          <p className="fleet-capacity-note">Runtime depends on the remaining energy budget. Red means no additional GPU capacity; accepted jobs can still run.</p><p className="fleet-active-count">{active.activeJobs} jobs working · {active.queuedJobs} waiting here</p>
           <div className="fleet-power-heading"><span>Powering this compute site</span><small>This model hour</small></div>
           <dl className="fleet-metrics"><div><dt><i className="energy-key solar" />Solar power</dt><dd><span data-testid="location-solar-kw" data-value={active.solarKW}>{number(active.solarKW)}</span> kW</dd></div>
             <div><dt><i className="energy-key compute" />Work energy used</dt><dd><span data-testid="location-compute-kwh" data-value={activeMeter?.computeKWh ?? 0}>{activeMeter ? number(activeMeter.computeKWh) : 'Pending'}</span>{activeMeter && ' kWh'}</dd></div>
@@ -242,13 +256,16 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
             <button key={job.id} onClick={() => { setJobId(job.id); setSelected(undefined); setOriginId(undefined); }}>{job.id}<span>{job.state}</span></button>)}</div>
         </section>}
         {job && <section aria-label="Job activity" data-job-id={job.id}><p className="eyebrow">GPU BATCH · SYNTHETIC WORKLOAD</p><h3>{job.id}<span className="fleet-job-status">{job.state}</span></h3>
-          <div className="fleet-job-route"><span><small>SIMULATED JOB ORIGIN</small>{originForJob(job.id).name}</span><i aria-hidden="true">↓</i><span><small>RUNS AT · MODELED COMPUTE SITE</small>{place(job.currentLocation)}{job.transferToLocation && ' → ' + place(job.transferToLocation)}</span></div>
+          <div className="fleet-job-route"><span><small>SIMULATED JOB ORIGIN</small>{originForJob(job.id).name}</span><i aria-hidden="true">↓</i><span><small>ASSIGNED HOME QUEUE</small>{place(job.homeLocation)}</span><span><small>CURRENT MODELED SITE</small>{place(job.currentLocation)}{job.transferToLocation && ' → ' + place(job.transferToLocation)}</span></div>
           <div className="fleet-job-progress-label"><strong>{Math.round((1 - job.remainingGpuH / job.workGpuH) * 100)}%</strong><span>{number(job.workGpuH - job.remainingGpuH)} / {job.workGpuH} GPU·h</span></div>
           <div className="fleet-work-progress"><i style={{ width: (1 - job.remainingGpuH / job.workGpuH) * 100 + '%' }} /></div>
           <div className="fleet-job-timing"><span><small>READY</small>{time(job.readyAt)}</span><span><small>DEADLINE</small>{time(job.window.endAt)}</span></div>
           <div className="fleet-carbon-readout"><span>GPU energy used</span><strong>{number(jobReceipts.reduce((sum, receipt) => sum + receipt.computeKWh, 0))} kWh</strong></div>
-          <MoveSignal decision={movement} destinationName={movement && place(movement.destinationLocationId)} />
-          <details className="fleet-job-why"><summary>Why this schedule?</summary><p>{progress.selected.decisions.findLast(decision => decision.results.some(result => result.jobId === job.id))?.results.find(result => result.jobId === job.id)?.selection.explanation}</p><small>{jobReceipts.length} executor receipts · carbon counted in site totals</small></details>
+          {jobChoice && <div className="fleet-job-why"><strong>Last choice · model hour {jobDecision!.hour}</strong>
+            {jobChoice.selection.selected && <p>{jobChoice.accepted ? 'Allocation accepted at ' : 'Allocation not accepted at '}{place(jobChoice.selection.allocation.slot.locationId)}.</p>}
+            {!jobChoice.selection.selected && !jobChoice.selection.transfer && <p>{jobChoice.selection.explanation}</p>}</div>}
+          <MoveSignal decision={movement} destinationName={movement && place(movement.destinationLocationId)} transfer={jobChoice?.transfer} />
+          <details className="fleet-job-why"><summary>Why this schedule?</summary><p>{jobChoice?.selection.explanation}</p><small>{jobReceipts.length} executor receipts · carbon counted in site totals</small></details>
         </section>}
       </aside>}
       {monkey && <section className="fleet-chaos" aria-label="Fleet simulation controls"><div><h3>Crash the party</h3><button aria-label="Close controls" onClick={() => setMonkey(false)}>×</button></div>

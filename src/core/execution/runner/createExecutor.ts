@@ -95,6 +95,7 @@ export function createExecutor(inputs: ExecutorInputs): ExecutionRunner {
             for (const job of jobs.values()) {
                 if (!arrived.has(job.id)) continue;
                 arrive(job, end);
+                if (job.state === "running" && !progress.has(job.id)) job.state = "queued";
                 if (job.state !== "done" && job.remainingGpuH > 0 && Date.parse(job.window.endAt) <= end) job.state = "missed";
                 observation.executions.push({ jobId: job.id, locationId: job.currentLocation, window: { ...window },
                     completedGpuH: 0, computeKWh: 0, postedChargeUsd: 0, ...progress.get(job.id),

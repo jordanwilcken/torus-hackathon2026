@@ -21,7 +21,9 @@ function observation(arm: ImpactObservation["arm"], changes: Partial<ImpactObser
     modeledCostUsd: arm === "baseline" ? 0.09 : 0,
     costBasis: "electricity plus CO2 at USD 100 per tonne",
     work: [{ jobId: "training", requiredGpuH: 1, completedGpuH: 1 }],
-    inventory: [{ locationId: "A", initialStoredKWh: 1, endingStoredKWh: 1 }],
+    inventory: [{ locationId: "A", initialStoredKWh: 1, endingStoredKWh: 1,
+      initialStoredCarbonKg: 0.4, endingStoredCarbonKg: 0.4,
+      initialStoredElectricityUsd: 0.05, endingStoredElectricityUsd: 0.05 }],
     storageToleranceKWh: 0.01,
     ...changes,
   };

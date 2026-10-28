@@ -20,12 +20,12 @@
 | Fleet model | Calculates GPU scheduling, hourly caps, transfers, solar conversion, storage and energy from declared assumptions. The six-city locations do not imply access to physical compute sites. |
 | Comparison lab | Executes two policies against declared synthetic inputs. Savings are modeled differences, not measured marginal emissions or utility-bill savings. EIA supplies no carbon series to this live path; carbon factors are displayed assumptions. |
 
-The captured CAISO value is a shared wholesale reference, not a local tariff for every city. Actual CPU energy and carbon measurements are unavailable. A savings claim requires the same completed work, horizon and per-site ending storage, including idle sites and transfer overhead.
+The captured CAISO value is a shared wholesale reference, not a local tariff for every city. Actual CPU energy and carbon measurements are unavailable. A savings claim requires the same completed work, horizon and per-site storage, including matching retained carbon/cost burdens, idle sites and transfer overhead. Unknown or unmatched stored burdens withhold the corresponding reduction.
 
 ## Implemented engine
 
 - **Hourly capacity planning:** shared deadline-aware quotas, conditional future capacity, adaptive safety margin, soft damping and a visible degraded fallback. Hard energy and utility limits remain authoritative. Future coverage is a conservative scheduling estimate, not a reservation or completion guarantee.
-- **Move or stay:** assess the whole remaining job, require known net modeled carbon benefit and lower total posted cost including transfer, then request an explicit move. Arrival still requires a fresh destination allocation.
+- **Move or stay:** compare feasible complete-job paths, including cheaper future home hours and transfer overhead. A beneficial move requires lower total posted cost and known net modeled carbon benefit. If home cannot finish but a remote route can, deadline rescue is allowed without claiming comparative savings. Arrival still requires a fresh destination allocation.
 - **Execution and evidence:** actual model ticks produce the displayed work, energy and transfer receipts. Frozen moments retain original inputs and can be retrieved and reconstructed exactly. The separate CPU path records real process execution.
 
 ## Build and verification

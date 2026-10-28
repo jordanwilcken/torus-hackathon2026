@@ -74,6 +74,27 @@ test('tampered execution receipts are rejected rather than accepted as a restora
     await expect(restoreReplayProgress(saved)).rejects.toThrow('does not match');
 });
 
+test('legacy captures without stored burdens restore and gain reconstructed inventory evidence', async () => {
+    const saved = savedProgress(await pausedStream());
+    const additions = ['initialStoredCarbonKg', 'endingStoredCarbonKg', 'initialStoredElectricityUsd', 'endingStoredElectricityUsd'];
+    const legacy = JSON.parse(JSON.stringify(saved, (key, value) => additions.includes(key) ? undefined : value));
+    delete legacy.baseline.impact.carbonPriceUsdPerTonne;
+    delete legacy.selected.impact.carbonPriceUsdPerTonne;
+    expect(savedProgress(await restoreReplayProgress(legacy))).toEqual(saved);
+});
+
+test('a supplied stored carbon receipt must match reconstruction', async () => {
+    const saved = savedProgress(await pausedStream());
+    saved.selected.run.ticks[0].meters[0].endingStoredCarbonKg = 99;
+    await expect(restoreReplayProgress(saved)).rejects.toThrow('does not match');
+});
+
+test('legacy burden compatibility does not allow omitting the existing cost policy', async () => {
+    const saved = savedProgress(await pausedStream());
+    delete (saved.selected.run.costPolicy as Partial<NonNullable<typeof saved.selected.run.costPolicy>>).carbonPriceUsdPerTonne;
+    await expect(restoreReplayProgress(saved)).rejects.toThrow('does not match');
+});
+
 test('an in-flight routed capture cannot be restored as if its dispatch had settled', async () => {
     const session = createPairedReplaySession(structuredClone(streamInputs) as ReplayScenario);
     let routed!: Omit<ReplayProgress, 'map'>;

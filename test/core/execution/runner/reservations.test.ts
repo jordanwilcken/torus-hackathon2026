@@ -2,6 +2,18 @@ import { describe, expect, it } from "vitest";
 import { at, executor, hour, job, selection, site } from "./fixture.js";
 
 describe("executor reservation lifecycle", () => {
+    it("returns unfinished work to the queue when the next hour has no allocation, then resumes once", () => {
+        const submitted = job(), home = site("A"), runner = executor([submitted], [home]);
+        expect(runner.accept(selection(submitted, home))).toBe(true);
+        expect(runner.tick(hour(0)).executions[0]).toMatchObject({ completedGpuH: 1, remainingGpuH: 1, state: "running" });
+
+        expect(runner.tick(hour(1)).executions[0]).toMatchObject({ completedGpuH: 0, remainingGpuH: 1, state: "queued" });
+        expect(runner.job("batch")).toMatchObject({ currentLocation: "A", remainingGpuH: 1, state: "queued" });
+
+        expect(runner.accept(selection(runner.job("batch")!, home, 2))).toBe(true);
+        expect(runner.tick(hour(2)).executions[0]).toMatchObject({ completedGpuH: 1, remainingGpuH: 0, state: "done" });
+    });
+
     it("cannot spend the same current GPU and stored energy twice", () => {
         const first = job({ id: "first", workGpuH: 1, remainingGpuH: 1 });
         const second = job({ id: "second", workGpuH: 1, remainingGpuH: 1 });

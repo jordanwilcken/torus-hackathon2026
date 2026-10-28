@@ -27,8 +27,8 @@ const known = (value: number | undefined): value is number =>
     value !== undefined && Number.isFinite(value) && value >= 0;
 
 /** Conservative single-site heuristic, not an optimal schedule or a reservation.
- * Consume fresh offers in chronological order (posted price breaks equal-time ties),
- * never overlap their windows, and assess the entire remaining job with the physical ledger.
+ * Choose the cheapest fresh nonoverlapping offers that cover the remaining job, then
+ * assess that complete chronological load plan with the physical ledger.
  * The final load rounds up to a millisecond so an estimate never omits remaining work.
  */
 export function assessJobPath(job: Job, energyMap: EnergyMap, site: ExecutionSite, options: PathOptions): JobPathAssessment {
@@ -64,14 +64,15 @@ export function assessJobPath(job: Job, energyMap: EnergyMap, site: ExecutionSit
         const end = Math.min(deadline, Date.parse(slot.window.endAt));
         if (Number.isFinite(start) && Number.isFinite(end) && end > start) candidates.push({ slot, start, end });
     }
-    candidates.sort((a, b) => a.start - b.start || a.slot.postedUsdPerGpuHour - b.slot.postedUsdPerGpuHour
+    candidates.sort((a, b) => a.slot.postedUsdPerGpuHour - b.slot.postedUsdPerGpuHour || a.start - b.start
         || a.end - b.end || a.slot.id.localeCompare(b.slot.id));
 
     const loads: SiteEnergyLoad[] = [];
-    let remaining = job.remainingGpuH, through = ready, postedChargeUsd = 0, expectedKWh = 0;
+    const occupied: Array<{ start: number; end: number }> = [];
+    let remaining = job.remainingGpuH, postedChargeUsd = 0, expectedKWh = 0;
     for (const { slot, start, end } of candidates) {
         if (remaining <= 0) break;
-        if (start < through) continue;
+        if (occupied.some(window => start < window.end && end > window.start)) continue;
         const gpus = Math.min(job.maxGpus, slot.capGpus - slot.usedGpus,
             Math.floor(slot.availablePowerKW / site.kWhPerGpuHour));
         if (gpus <= 0) continue;
@@ -89,13 +90,14 @@ export function assessJobPath(job: Job, energyMap: EnergyMap, site: ExecutionSit
         postedChargeUsd += workGpuH * slot.postedUsdPerGpuHour;
         expectedKWh += workGpuH * site.kWhPerGpuHour;
         // Do not spend another overlapping offer's copy of the same energy budget.
-        through = end;
+        occupied.push({ start, end });
     }
     if (remaining > 0 || loads.length === 0)
         return reject("Fresh nonoverlapping site offers cannot cover the whole remaining job before its deadline.");
     if (!known(postedChargeUsd) || !known(expectedKWh))
         return reject("The whole-job estimate exceeds finite numeric limits.");
 
+    loads.sort((a, b) => Date.parse(a.window.startAt) - Date.parse(b.window.startAt));
     const assessment = site.ledger.assess(loads);
     if (!assessment.feasible) return reject(assessment.reason ?? "The physical ledger rejected the whole-job path.");
     if (assessment.version !== ledgerVersion || site.ledger.state().version !== ledgerVersion)

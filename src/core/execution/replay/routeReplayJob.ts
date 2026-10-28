@@ -14,18 +14,23 @@ export function replayTransferDecision(job: Job, energy: EnergyMap, scenario: Re
     const terms = scenario.routing?.transfer;
     if (!current || !destination || !terms || !job.allowedLocations.includes(destinationId) ||
         destination.computeProfile !== job.computeProfile || terms.accountingBasis !== current.accountingBasis ||
-        terms.carbonGPerKWh === undefined || terms.electricityUsdPerMWh === undefined) return undefined;
+        terms.electricityUsdPerMWh === undefined) return undefined;
     const plan = prepareTransfer(job, destination, asOf, terms,
         { origin: Date.parse(scenario.startAt), duration: 3_600_000 }, scenario.maximumAgeMinutes);
     if (!plan.started) return undefined;
     const evidence = plan.evidence;
-    const costUsd = evidence.jobChargeUsd + evidence.electricityUsd! +
-        evidence.carbonKg! * scenario.carbonPriceUsdPerTonne / 1000;
+    // A zero carbon price has a known zero monetary charge even when transfer emissions are unknown.
+    // Positive carbon pricing still needs the missing burden before a complete price can be quoted.
+    const carbonChargeUsd = scenario.carbonPriceUsdPerTonne === 0 ? 0 : evidence.carbonKg === undefined
+        ? undefined : evidence.carbonKg * scenario.carbonPriceUsdPerTonne / 1000;
+    if (carbonChargeUsd === undefined) return undefined;
+    const costUsd = evidence.jobChargeUsd + evidence.electricityUsd! + carbonChargeUsd;
     const decision = scenario.routing?.movePolicy === "carbon-benefit" ? decideJobMove(job, energy, {
         current, destination, asOf, maximumAgeMinutes: scenario.maximumAgeMinutes,
         transfer: { readyAt: plan.readyAt, carbonKg: evidence.carbonKg ?? null, costUsd },
     }) : undefined;
-    return { hours: (Date.parse(plan.readyAt) - Date.parse(asOf)) / 3_600_000, costUsd, decision };
+    return { hours: (Date.parse(plan.readyAt) - Date.parse(asOf)) / 3_600_000, costUsd, decision,
+        ...(decision?.move && decision.moveCostUsd !== undefined ? { approvedJobCostUsd: decision.moveCostUsd } : {}) };
 }
 
 /** Plan over current ledger publications; the executor independently validates every command. */
@@ -41,12 +46,10 @@ export async function routeReplayJob(job: Job, energy: EnergyMap, scenario: Repl
             if (!transfers.has(locationId)) transfers.set(locationId,
                 replayTransferDecision(job, movementEnergy, scenario, sites, asOf, locationId));
             const result = transfers.get(locationId);
-            return result?.decision?.move === false ? undefined : result;
+            return result?.decision?.move === false ? { rejectedBecause: result.decision.reason } : result;
         },
     });
-    const decisions = [...transfers.values()].flatMap(result => result?.decision ? [result.decision] : []);
     const requested = !outcome.selected ? outcome.transfer?.destination : undefined;
-    const movement: MoveDecision | undefined = requested ? transfers.get(requested)?.decision
-        : decisions.find(decision => !decision.move) ?? decisions[0];
+    const movement: MoveDecision | undefined = requested ? transfers.get(requested)?.decision : undefined;
     return movement ? { ...outcome, movement } : outcome;
 }

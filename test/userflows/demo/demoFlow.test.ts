@@ -112,8 +112,10 @@ test('the solar scenario waits one hour and shows savings only after the same mo
   expect(evidence.baseline.impact.modeledCostUsd).toBeCloseTo(0.117, 12);
   expect(evidence.selected.impact.modeledCostUsd).toBeCloseTo(0.027, 12);
   expect(evidence.baseline.impact.inventory).toEqual([
-    { locationId: 'A', initialStoredKWh: 0, endingStoredKWh: 0 },
-    { locationId: 'B', initialStoredKWh: 0, endingStoredKWh: 0 },
+    { locationId: 'A', initialStoredKWh: 0, endingStoredKWh: 0,
+      initialStoredCarbonKg: 0, endingStoredCarbonKg: 0, initialStoredElectricityUsd: 0, endingStoredElectricityUsd: 0 },
+    { locationId: 'B', initialStoredKWh: 0, endingStoredKWh: 0,
+      initialStoredCarbonKg: 0, endingStoredCarbonKg: 0, initialStoredElectricityUsd: 0, endingStoredElectricityUsd: 0 },
   ]);
   expect(evidence.selected.impact.inventory).toEqual(evidence.baseline.impact.inventory);
   expect(await demo.displayedReductions()).toEqual({ carbonKg: 0.4, modeledCostUsd: 0.09 });

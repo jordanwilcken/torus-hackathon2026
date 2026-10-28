@@ -11,6 +11,9 @@ export type SiteMeter = {
     fixedLoadKWh: number;
     computeKWh: number;
     endingStoredKWh: number;
+    /** Acquisition burdens retained in storage, not included in consumed totals. */
+    endingStoredCarbonKg?: number | undefined;
+    endingStoredElectricityUsd?: number | undefined;
     accountingBasis: string;
     carbonKg?: number | undefined;
     electricityUsd?: number | undefined;

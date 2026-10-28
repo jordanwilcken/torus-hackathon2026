@@ -19,7 +19,9 @@ function observation(arm: ImpactObservation["arm"], changes: Partial<ImpactObser
     modeledCostUsd: arm === "baseline" ? 0.09 : 0,
     costBasis: "electricity plus CO2 at USD 100 per tonne",
     work: [{ jobId: "training", requiredGpuH: 1, completedGpuH: 1 }],
-    inventory: [{ locationId: "A", initialStoredKWh: 1, endingStoredKWh: 1 }],
+    inventory: [{ locationId: "A", initialStoredKWh: 1, endingStoredKWh: 1,
+      initialStoredCarbonKg: 0.4, endingStoredCarbonKg: 0.4,
+      initialStoredElectricityUsd: 0.05, endingStoredElectricityUsd: 0.05 }],
     storageToleranceKWh: 0.01,
     ...changes,
   };
@@ -54,6 +56,26 @@ test("higher selected carbon and cost remain negative reductions", () => {
   expect(report.comparison).toBe("comparable");
   expect(carbonReductionKg(report.carbon)).toBeCloseTo(-0.2, 9);
   expect(modeledCostReductionUsd(report.cost)).toBeCloseTo(-0.03, 9);
+});
+
+test('unknown nonempty stored inventory cannot support savings, while empty storage needs no burden estimate', () => {
+  const unknown = compare({ inventory: [{ locationId: 'A', initialStoredKWh: 1, endingStoredKWh: 1 }] });
+  expect(carbonReductionKg(unknown.carbon)).toBeUndefined();
+  expect(modeledCostReductionUsd(unknown.cost)).toBeUndefined();
+  const empty = { inventory: [{ locationId: 'A', initialStoredKWh: 0, endingStoredKWh: 0 }] };
+  expect(carbonReductionKg(compare(empty, empty).carbon)).toBeCloseTo(0.4);
+});
+
+test('stored cost evidence is independent of carbon and carbon-free cost policies need no stored carbon attribution', () => {
+  const inventory = { ...observation('selected').inventory[0], endingStoredElectricityUsd: undefined };
+  const report = compare({ inventory: [inventory] });
+  expect(carbonReductionKg(report.carbon)).toBeCloseTo(0.4);
+  expect(modeledCostReductionUsd(report.cost)).toBeUndefined();
+  const carbonUnknown = { ...observation('selected').inventory[0], endingStoredCarbonKg: undefined };
+  const policy = { carbonPriceUsdPerTonne: 0, costBasis: 'Electricity only' };
+  const electricityOnly = compare({ ...policy, inventory: [carbonUnknown], modeledCostUsd: 0 }, { ...policy, modeledCostUsd: 0.05 });
+  expect(carbonReductionKg(electricityOnly.carbon)).toBeUndefined();
+  expect(modeledCostReductionUsd(electricityOnly.cost)).toBeCloseTo(0.05);
 });
 
 test("missing observations and totals remain unknown independently of the other measure", () => {
@@ -153,7 +175,7 @@ test("site inventories must be nonempty, unique and start with the same energy a
 
 test("ending storage must match within the declared energy tolerance", () => {
   const withinTolerance = compare({
-    inventory: [{ locationId: "A", initialStoredKWh: 1, endingStoredKWh: 0.995 }],
+    inventory: [{ ...observation('selected').inventory[0], endingStoredKWh: 0.995 }],
   });
   expect(withinTolerance.comparison).toBe("comparable");
   expect(carbonReductionKg(withinTolerance.carbon)).toBeCloseTo(0.4, 9);

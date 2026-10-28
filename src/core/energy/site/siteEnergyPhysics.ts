@@ -93,6 +93,8 @@ export function simulateSiteInterval(config: SiteEnergyConfiguration, calculatio
         meter.fixedLoadKWh += balance.fixedLoadKWh;
         meter.computeKWh += balance.computeKWh;
         meter.endingStoredKWh = inventory.storedKWh;
+        meter.endingStoredCarbonKg = inventory.carbonKg;
+        meter.endingStoredElectricityUsd = inventory.electricityUsd;
         meter.carbonKg = addKnown(meter.carbonKg, accounted.consumed.carbonKg);
         meter.electricityUsd = addKnown(meter.electricityUsd, accounted.consumed.electricityUsd);
         const totals = [meter.solarKWh, meter.gridImportKWh, meter.batteryChargeKWh, meter.batteryDischargeKWh,

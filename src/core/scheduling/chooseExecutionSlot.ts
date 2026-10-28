@@ -7,6 +7,13 @@ import {
     minimumRunHours, powerLimitedGpus, energyLimitedGpus, slotUsage, priceWithTransfer, exceeds,
 } from "./math/chooseExecutionSlot.generated.js";
 
+type Transfer = {
+    hours: number; costUsd: number;
+    /** A caller-approved complete job route, including transfer. Replaces isolated-slot price comparison. */
+    approvedJobCostUsd?: number;
+};
+type TransferAssessment = Transfer | { rejectedBecause: string };
+
 type SlotRoutingOptions = {
     asOf: string;
     maximumAgeMinutes: number;
@@ -14,7 +21,7 @@ type SlotRoutingOptions = {
     /** Opt in to explicit transfer plans, including measured zero-duration arrivals; default behavior is unchanged. */
     planTransfers?: boolean;
     /** Rounded execution-ready duration and complete modeled transfer cost; never an implicit free rate. */
-    transferTo: (locationId: string) => { hours: number; costUsd: number } | undefined;
+    transferTo: (locationId: string) => TransferAssessment | undefined;
 };
 
 type SlotChoice = {
@@ -43,8 +50,6 @@ type FreshSlot = {
     start: number;
     end: number;
 };
-
-type Transfer = NonNullable<ReturnType<SlotRoutingOptions["transferTo"]>>;
 
 const hour = 3_600_000;
 
@@ -89,6 +94,11 @@ export async function chooseExecutionSlot(
         const transfer = readTransfer(job.currentLocation, reference.locationId, options);
         if (!transfer) {
             transferReasons.push("Transfer assumptions for " + reference.locationId + " are unavailable.");
+            continue;
+        }
+        if ("rejectedBecause" in transfer) {
+            transferReasons.push("Waiting: no eligible current allocation. Assessed alternative " + reference.locationId +
+                " was not chosen: " + transfer.rejectedBecause);
             continue;
         }
         if (transfer.hours + minimumHours > (deadline - now) / hour) {
@@ -199,10 +209,13 @@ function readFreshSlot(
 
 function readTransfer(
     currentLocation: string, locationId: string, options: SlotRoutingOptions,
-): Transfer | undefined {
+): TransferAssessment | undefined {
     if (currentLocation === locationId) return { hours: 0, costUsd: 0 };
     const transfer = options.transferTo(locationId);
-    return transfer && [transfer.hours, transfer.costUsd].every(value => Number.isFinite(value) && value >= 0)
+    if (transfer && "rejectedBecause" in transfer) return transfer;
+    return transfer && [transfer.hours, transfer.costUsd]
+        .every(value => Number.isFinite(value) && value >= 0) &&
+        (transfer.approvedJobCostUsd === undefined || Number.isFinite(transfer.approvedJobCostUsd) && transfer.approvedJobCostUsd >= 0)
         ? transfer : undefined;
 }
 
@@ -228,17 +241,20 @@ function cheaperFutureSite(
     return undefined;
 }
 
-/** Conservative fleet policy: move only on arrival-ready supply cheaper than any usable stay-site offer.
- * Transfer cost is amortized over authoritative remaining work by the same candidate calculation.
- * Equal prices favor staying; later cheaper remote slots cannot trigger an early speculative move.
+/** Full-job approvals compare complete routes; legacy price-only callers retain the conservative slot rule.
+ * Both paths still require usable capacity at the declared arrival. No future reservation is made.
+ * A single cheap home slot cannot veto a complete-job approval from the caller.
  */
 function cheaperTransfer(job: Job, choices: SlotChoice[], now: number): SlotChoice | undefined {
     const stay = choices.filter(choice => choice.reference.locationId === job.currentLocation);
     const bestStayPrice = Math.min(...stay.map(choice => choice.priceWithTransfer));
     return choices.filter(choice => choice.reference.locationId !== job.currentLocation &&
         choice.transfer.hours >= 0 && choice.transfer.costUsd >= 0 &&
-        choice.start === now + choice.transfer.hours * hour && choice.priceWithTransfer < bestStayPrice)
-        .sort((a, b) => a.priceWithTransfer - b.priceWithTransfer || a.start - b.start ||
+        choice.start === now + choice.transfer.hours * hour &&
+        (choice.transfer.approvedJobCostUsd !== undefined || choice.priceWithTransfer < bestStayPrice))
+        .sort((a, b) =>
+            (a.transfer.approvedJobCostUsd ?? a.priceWithTransfer * job.remainingGpuH) -
+            (b.transfer.approvedJobCostUsd ?? b.priceWithTransfer * job.remainingGpuH) || a.start - b.start ||
             a.reference.locationId.localeCompare(b.reference.locationId) ||
             a.reference.slotId.localeCompare(b.reference.slotId))[0];
 }

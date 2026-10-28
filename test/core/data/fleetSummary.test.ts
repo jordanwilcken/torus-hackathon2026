@@ -34,8 +34,10 @@ function arm(arm: 'baseline' | 'selected'): ReplayArm {
       feasible: true, carbonKg: arm === 'baseline' ? 2 : 3,
       work: [{ jobId: job.id, requiredGpuH: 8, completedGpuH: 8 }],
       inventory: [
-        { locationId: 'A', initialStoredKWh: 1, endingStoredKWh: 1 },
-        { locationId: 'B', initialStoredKWh: 2, endingStoredKWh: 2 },
+        { locationId: 'A', initialStoredKWh: 1, endingStoredKWh: 1,
+          initialStoredCarbonKg: 0.4, endingStoredCarbonKg: 0.4 },
+        { locationId: 'B', initialStoredKWh: 2, endingStoredKWh: 2,
+          initialStoredCarbonKg: 0.8, endingStoredCarbonKg: 0.8 },
       ],
     },
     decisions: [], log: [], finalJobs: [job],

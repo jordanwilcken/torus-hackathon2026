@@ -152,6 +152,22 @@ export class FleetFlow {
     await expect(this.panel.getByRole('region', { name: 'Job activity', exact: true })).toContainText(id);
   }
 
+  async expectCapacityAndSubmissionMeaning(): Promise<void> {
+    await expect(this.panel.getByText('Remaining modeled GPU capacity', { exact: true })).toBeVisible();
+    await expect(this.panel.getByText('No extra capacity', { exact: true })).toBeVisible();
+    await expect(this.panel.getByText('Submission to home queue', { exact: true })).toBeVisible();
+    await expect(this.panel.getByText('Chosen site move', { exact: true })).toBeVisible();
+  }
+
+  async expectJobChoice(id: string, home: string, current: string, acceptedAt: string): Promise<void> {
+    await this.panel.getByRole('button', { name: 'Inspect ' + id, exact: true }).click();
+    const detail = this.panel.getByRole('region', { name: 'Job activity', exact: true });
+    await expect(detail).toContainText('ASSIGNED HOME QUEUE' + home);
+    await expect(detail).toContainText('CURRENT MODELED SITE' + current);
+    await expect(detail).toContainText('Allocation accepted at ' + acceptedAt + '.');
+    await expect(detail).toContainText('Last choice · model hour 0');
+  }
+
   async inspectDataCenter(name: string): Promise<void> {
     await this.panel.getByRole('button', { name: 'Inspect data center ' + name, exact: true }).click();
     await expect(this.panel.getByRole('region', { name: 'Data center activity', exact: true })).toBeVisible();
@@ -198,6 +214,34 @@ export class FleetFlow {
     if (!await input.isVisible()) await this.panel.getByText('Retrieve a frozen moment', { exact: true }).click();
     await input.fill(revision);
     return this.readFrozenMoment(revision, expectedHour, () => this.panel.getByRole('button', { name: 'Retrieve frozen moment', exact: true }).click());
+  }
+
+  async openCaptureWithChangedReceipt(saved: SavedFleetMoment): Promise<void> {
+    const inconsistent = structuredClone(saved);
+    inconsistent.capture.progress.selected.run.ticks[0].executions[0].computeKWh += 1;
+    await this.page.route(url => url.pathname === '/api/fleet/captures' && url.searchParams.get('revision') === saved.revision,
+      route => route.fulfill({ json: inconsistent }));
+    await this.page.goto('/?capture=' + saved.revision);
+    await expect.poll(async () => {
+      await this.page.clock.runFor(250);
+      return this.panel.locator('.fleet-empty').innerText();
+    }).toContain('Saved replay evidence does not match reconstruction');
+    await expect(this.panel.getByLabel('Fleet model hour', { exact: true })).toHaveCount(0);
+    await expect(this.page).toHaveURL(new RegExp('[?&]capture=' + saved.revision + '(?:&|$)'));
+    await expect(this.panel.getByRole('button', { name: 'Start a new run with latest inputs', exact: true })).toBeEnabled();
+  }
+
+  async startFreshRunAfterRejectedCapture(): Promise<void> {
+    await this.panel.getByRole('button', { name: 'Start a new run with latest inputs', exact: true }).click();
+    await expect(this.page).not.toHaveURL(/[?&]capture=/);
+    await expect(this.panel.getByLabel('Fleet model hour', { exact: true })).toHaveAttribute('data-hour', '0');
+    await expect(this.panel.locator('.fleet-empty')).toHaveCount(0);
+  }
+
+  async expectStoredCaptureUnchanged(saved: SavedFleetMoment): Promise<void> {
+    const response = await this.page.request.get('/api/fleet/captures?revision=' + saved.revision);
+    expect(response.status()).toBe(200);
+    expect(await response.json()).toEqual(saved);
   }
 
   async restoreFrozenMoment(revision: string, expectedHour: number): Promise<SavedFleetMoment> {

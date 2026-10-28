@@ -47,8 +47,9 @@ export class Torus {
   async reportingHorizon(startAt: string, endAt: string): Promise<void> {
     return await this.driver.reportingHorizon(startAt, endAt);
   }
-  async reportingInventory(arm: string, site: string, initialStoredKWh: number, finalStoredKWh: number): Promise<void> {
-    return await this.driver.reportingInventory(arm, site, initialStoredKWh, finalStoredKWh);
+  async reportingInventory(arm: string, site: string, initialStoredKWh: number, finalStoredKWh: number,
+    retained?: { carbonKg: number; electricityUsd: number }): Promise<void> {
+    return await this.driver.reportingInventory(arm, site, initialStoredKWh, finalStoredKWh, retained);
   }
   async completedWorkEvidence(arm: string, job: Job, completedGpuHours: number): Promise<void> {
     return await this.driver.completedWorkEvidence(arm, job, completedGpuHours);

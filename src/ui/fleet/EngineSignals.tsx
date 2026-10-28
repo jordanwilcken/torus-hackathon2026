@@ -1,5 +1,6 @@
 import type { HourlyCapacityPlan } from '../../core/energy/planning/CapacityPlan.types';
 import type { MoveDecision } from '../../core/scheduling/decideJobMove';
+import type { TransferOutcome } from '../../core/execution/TransferOutcome.type';
 import './EngineSignals.css';
 
 const number = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -27,12 +28,18 @@ export function CapacityHorizon({ plan, locationId }: { plan?: HourlyCapacityPla
   </section>;
 }
 
-export function MoveSignal({ decision, destinationName }: { decision?: MoveDecision; destinationName?: string }) {
+export function MoveSignal({ decision, destinationName, transfer }: {
+  decision?: MoveDecision; destinationName?: string; transfer?: TransferOutcome;
+}) {
   if (!decision) return null;
   const net = decision.netCarbonReductionKg;
+  const label = !decision.move ? 'Alternative rejected' : transfer?.started ? 'Transfer accepted'
+    : transfer ? 'Transfer not started' : 'Transfer proposed';
   return <section className="fleet-move-signal" aria-label="Carbon-aware move decision" data-move={decision.move}>
-    <div><strong>{decision.move ? '↗ Move worthwhile' : '● Stay'}</strong><span>{destinationName ?? decision.destinationLocationId} · modeled</span></div>
-    {net !== undefined && <p><b>{number(net * 1000)} g</b><span>net carbon benefit</span></p>}
+    <div><strong>{label}</strong><span>{destinationName ?? decision.destinationLocationId} · modeled</span></div>
+    {decision.move && transfer?.started && net !== undefined && Number.isFinite(net) &&
+      <p><b>{number(net * 1000)} g</b><span>estimated net carbon reduction</span></p>}
     <small>{decision.reason}</small>
+    {transfer && !transfer.started && <small>{transfer.explanation}</small>}
   </section>;
 }

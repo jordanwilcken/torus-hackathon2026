@@ -125,7 +125,7 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
       const name = document.createElement('strong'); name.textContent = site.name; tooltip.append(name);
       const purpose = document.createElement('div'); purpose.textContent = 'Modeled compute site · solar, grid and battery'; tooltip.append(purpose);
       const line = document.createElement('div'); line.textContent = completed ? 'Model complete · inspect results' : site.unknown ? 'GPU availability unknown · public inputs unavailable'
-        : `${site.availableGpus} / ${site.capacity} modeled GPUs open this hour · ${site.activeJobs} working`;
+        : `Up to ${site.availableGpus} / ${site.capacity} modeled GPUs still open this hour · ${site.activeJobs} working`;
       tooltip.append(line);
       const power = document.createElement('small'); power.textContent = completed ? 'Final modeled storage: ' + site.storedKWh.toFixed(2) + ' kWh' : site.unknown ? 'Connect public inputs to start'
         : `${site.solarKW.toFixed(2)} kW modeled solar · ${site.storedKWh.toFixed(2)} kWh stored`;
@@ -200,7 +200,7 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
       const line = L.polyline(points, { color: '#2563eb', weight: 1.5, opacity: .3, dashArray: '3 6', className: 'fleet-admission' }).addTo(layer);
       line.getElement()?.setAttribute('data-job-id', admission.jobId);
       line.getElement()?.setAttribute('data-event-id', identity);
-      line.bindTooltip(`${admission.jobId} · New job · simulated submission from ${source.name}`, { className: 'fleet-tooltip', interactive: false });
+      line.bindTooltip(`${admission.jobId} · New job · simulated submission from ${source.name} to assigned home queue ${destination.name}`, { className: 'fleet-tooltip', interactive: false });
       line.on('click', () => callbacks.current.onJob(admission.jobId));
       if (!seen.current.has(identity)) {
         seen.current.add(identity);
@@ -217,12 +217,12 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
   return <div className="fleet-geography compact-energy-map" data-playing={playing}>
     <div className="fleet-canvas" ref={container} role="region" aria-label="Continuous fleet map" />
     <div className="fleet-camera"><button onClick={() => zoom(false)}>Show US</button><button onClick={() => zoom(true)}>Explore Utah</button></div>
-    <div className="fleet-legend"><strong className="fleet-legend-title">Modeled GPU availability</strong>
+    <div className="fleet-legend"><strong className="fleet-legend-title">Remaining modeled GPU capacity</strong>
       {completed ? <span><i style={{ background: '#7c929c' }} />Model complete · inspect results</span> : <>
         <span><i style={{ background: '#53ad83' }} />Open</span><span><i style={{ background: '#d7af5e' }} />Limited</span>
-        <span><i style={{ background: '#d16f63' }} />No slot</span><span><i style={{ background: '#89969a' }} />Unknown</span>
+        <span><i style={{ background: '#d16f63' }} />No extra capacity</span><span><i style={{ background: '#89969a' }} />Unknown</span>
       </>}
-      <small className="fleet-activity-key"><span><i style={{ background: '#2563eb' }} />New job</span><span><i style={{ background: '#0d9488' }} />Site move</span></small>
+      <small className="fleet-activity-key"><span><i style={{ background: '#2563eb' }} />Submission to home queue</span><span><i style={{ background: '#0d9488' }} />Chosen site move</span></small>
     </div>
   </div>;
 }

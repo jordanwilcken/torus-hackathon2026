@@ -86,8 +86,8 @@ test("recorded equal-work observations yield separate carbon and cost difference
   const job = await torus.jobForHours("training", 1, 1, 1, 1);
   await torus.sameAverageOperationalCO2Basis();
   await torus.reportingHorizon("2026-10-27T12:00:00Z", "2026-10-27T13:00:00Z");
-  await torus.reportingInventory("baseline", "A", 1, 1);
-  await torus.reportingInventory("selected", "A", 1, 1);
+  await torus.reportingInventory("baseline", "A", 1, 1, { carbonKg: 0.4, electricityUsd: 0.05 });
+  await torus.reportingInventory("selected", "A", 1, 1, { carbonKg: 0.4, electricityUsd: 0.05 });
   await torus.completedWorkEvidence("baseline", job, 1);
   await torus.completedWorkEvidence("selected", job, 1);
   await torus.carbonEvidence("baseline", job, 0.4);

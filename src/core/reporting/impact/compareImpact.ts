@@ -22,6 +22,9 @@ export function compareImpact(observations: JobObservations): Pick<JobReport, "c
         (carbon.baselineCarbonKg === undefined || carbon.selectedCarbonKg === undefined)) {
         carbon.unavailableReason = "Carbon totals are unavailable for one or both arms.";
     }
+    const storedCarbonReason = baseline && selected && comparisonReason === undefined
+        ? storedBurdenUnavailableReason(baseline, selected, "CarbonKg", "carbon") : undefined;
+    carbon.unavailableReason ??= storedCarbonReason;
 
     const sameCostBasis = hasNonblankText(baseline?.costBasis) && baseline?.costBasis === selected?.costBasis;
     const cost: CostReport = {
@@ -40,6 +43,10 @@ export function compareImpact(observations: JobObservations): Pick<JobReport, "c
         } else if (!Number.isFinite(cost.baselineModeledCostUsd - cost.selectedModeledCostUsd)) {
             cost.unavailableReason = "The modeled cost difference is not finite.";
         }
+    }
+    if (baseline && selected && cost.unavailableReason === undefined) {
+        cost.unavailableReason = storedBurdenUnavailableReason(baseline, selected, "ElectricityUsd", "electricity cost")
+            ?? (baseline.carbonPriceUsdPerTonne === 0 && selected.carbonPriceUsdPerTonne === 0 ? undefined : storedCarbonReason);
     }
 
     return { comparison, carbon, cost };
@@ -175,6 +182,25 @@ function storedEnergyUnavailableReason(baseline: ImpactObservation, selected: Im
 
 function hasNonblankText(value: string | undefined): boolean {
     return typeof value === "string" && value.trim().length > 0;
+}
+
+/** Equal kWh alone can hide consumption burdens postponed beyond the reporting horizon. */
+function storedBurdenUnavailableReason(baseline: ImpactObservation, selected: ImpactObservation,
+    metric: "CarbonKg" | "ElectricityUsd", label: string): string | undefined {
+    for (const before of baseline.inventory) {
+        const after = selected.inventory.find(site => site.locationId === before.locationId)!;
+        for (const boundary of ["initial", "ending"] as const) {
+            const quantity = `${boundary}StoredKWh` as const;
+            const burden = `${boundary}Stored${metric}` as const;
+            const left = before[quantity] === 0 ? 0 : before[burden];
+            const right = after[quantity] === 0 ? 0 : after[burden];
+            if (left === undefined || right === undefined || !isFiniteNonnegative(left) || !isFiniteNonnegative(right))
+                return `Both arms need known ${boundary} stored ${label} at every site.`;
+            if (!equalWithinTolerance(left, right, 1e-9))
+                return `Both arms need matching ${boundary} stored ${label}; retained burdens are not savings.`;
+        }
+    }
+    return undefined;
 }
 
 function hasUniqueNonblankIds(ids: readonly string[]): boolean {

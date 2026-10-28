@@ -40,6 +40,8 @@ test("the same storage charges and discharges in both arms, with equal ending in
         expect(site?.batteryDischargeKWh).toBe(1);
         expect(arm.impact.inventory.find(site => site.locationId === "A")).toEqual({
             locationId: "A", initialStoredKWh: 0, endingStoredKWh: 0,
+            initialStoredCarbonKg: 0, endingStoredCarbonKg: 0,
+            initialStoredElectricityUsd: 0, endingStoredElectricityUsd: 0,
         });
     }
 });

@@ -126,6 +126,8 @@
             "fixedLoadKWh": 0,
             "computeKWh": 0,
             "endingStoredKWh": 1,
+            "endingStoredCarbonKg": 0,
+            "endingStoredElectricityUsd": 0,
             "accountingBasis": "average operational CO2 including all site meters and transfer effects",
             "carbonKg": 0,
             "electricityUsd": 0
@@ -238,6 +240,8 @@
             "fixedLoadKWh": 0,
             "computeKWh": 1,
             "endingStoredKWh": 1,
+            "endingStoredCarbonKg": 0,
+            "endingStoredElectricityUsd": 0,
             "accountingBasis": "average operational CO2 including all site meters and transfer effects",
             "carbonKg": 0,
             "electricityUsd": 0

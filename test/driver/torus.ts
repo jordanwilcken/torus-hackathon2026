@@ -122,9 +122,12 @@ export class TorusDriver {
   async reportingHorizon(startAt: string, endAt: string): Promise<void> {
     this.comparisonHorizon = { startAt, endAt };
   }
-  async reportingInventory(arm: string, site: string, initialStoredKWh: number, finalStoredKWh: number): Promise<void> {
+  async reportingInventory(arm: string, site: string, initialStoredKWh: number, finalStoredKWh: number,
+    retained?: { carbonKg: number; electricityUsd: number }): Promise<void> {
     this.recordedInventory[this.comparisonArm(arm)].set(site, {
       locationId: site, initialStoredKWh: initialStoredKWh, endingStoredKWh: finalStoredKWh,
+      ...(retained ? { initialStoredCarbonKg: retained.carbonKg, endingStoredCarbonKg: retained.carbonKg,
+        initialStoredElectricityUsd: retained.electricityUsd, endingStoredElectricityUsd: retained.electricityUsd } : {}),
     });
   }
   async completedWorkEvidence(arm: string, job: Job, completedGpuHours: number): Promise<void> {
@@ -415,6 +418,8 @@ export class TorusDriver {
       storageToleranceKWh: 1e-9, jobs: [structuredClone(job)],
       sites: [...this.sites].map(([locationId, setup]) => ({
         locationId, initialStoredKWh: setup.storage!.initial.storedKWh, gridImportLimitKW: setup.gridImportLimitKW,
+        initialStoredCarbonKg: setup.storage!.initial.carbonKg,
+        initialStoredElectricityUsd: setup.storage!.initial.electricityUsd,
       })), ticks: [], transfers: [], costPolicy: { basis: "Electricity plus declared modeled carbon price",
         carbonPriceUsdPerTonne: this.carbonPriceUsdPerTonne },
     };
