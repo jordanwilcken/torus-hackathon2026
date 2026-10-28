@@ -189,3 +189,21 @@ test('malformed candidates are dropped one by one while dated current and stale 
 
   expect(fenceEnergyMap(messy, tickStart).findSlots(query)).toEqual([ref('stale-earlier'), ref('at-tick-start')]);
 });
+
+test('timestamps must be strings; numbers and Date objects are not coerced into old dates', () => {
+  const { snapshots } = recordedMap();
+  const numeric = { ...snapshot('numeric', tickStart), observedAt: 0 as unknown as string };
+  const dated = { ...snapshot('dated', tickStart), observedAt: new Date(0) as unknown as string };
+  const readings: Record<string, SlotSnapshot> = { numeric, dated, 'at-tick-start': snapshots['at-tick-start'] };
+  const coercible: EnergyMap = {
+    findSlots: () => [ref('numeric'), ref('dated'), ref('at-tick-start')],
+    readSlot: reference => readings[reference.slotId],
+    readForecast: () => ({ carbon: { ...forecast(undefined, tickStart), issuedAt: 0 as unknown as string } }),
+  };
+  const fenced = fenceEnergyMap(coercible, tickStart);
+
+  expect(fenced.findSlots(query)).toEqual([ref('at-tick-start')]);
+  expect(fenced.readSlot(ref('numeric'), tickStart, 5).status).toBe('unavailable');
+  expect(fenced.readSlot(ref('dated'), tickStart, 5).status).toBe('unavailable');
+  expect(fenced.readForecast(ref('numeric'), tickStart)).toEqual({});
+});

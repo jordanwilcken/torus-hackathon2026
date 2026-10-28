@@ -19,8 +19,9 @@ function instant(value: string): number {
 export function fenceEnergyMap(map: EnergyMap, fence: string): EnergyMap {
     const limit = instant(fence);
     const clamp = (asOf: string) => instant(asOf) > limit ? fence : asOf;
-    const observedBy = (observedAt: string | undefined, asOf: string) =>
-        observedAt !== undefined && instant(observedAt) <= instant(asOf);
+    // Date.parse would coerce a number or Date into some old instant, so only a string timestamp counts.
+    const observedBy = (observedAt: unknown, asOf: string) =>
+        typeof observedAt === "string" && instant(observedAt) <= instant(asOf);
     return {
         findSlots(query) {
             const asOf = clamp(query.asOf);

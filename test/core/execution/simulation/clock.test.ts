@@ -613,3 +613,18 @@ test('a non-string event kind is rejected', () => {
 
   expect(() => sim.schedule({ atHour: 1, kind: 7 } as unknown as InputEventWithExtras)).toThrow(RangeError);
 });
+
+test.each([
+  ['a getter returning a class instance', { atHour: 1, kind: 'bad', get payload() { return new Factor(7); } }],
+  ['a nested getter returning a class instance', { atHour: 1, kind: 'bad', metadata: { get nested() { return new Factor(1); } } }],
+  ['a nested getter returning an Array subclass', { atHour: 1, kind: 'bad', payload: { get hours() { return Hours.from([1, 2]); } } }],
+  ['a symbol-keyed extra field', { atHour: 1, kind: 'bad', [Symbol('extra')]: new Map() }],
+])('values behind getters or symbol keys are validated too: %s', (_label, event) => {
+  const arms = createPolicyArms(fixtureConfig([], 2), recordedEnergy, { baseline: () => ({}), selected: () => ({}) });
+
+  expect(() => createSimulation(fixtureConfig([], 2, { events: [event as InputEventWithExtras] }), {
+    energy: recordedEnergy, createPhases: () => ({}),
+  })).toThrow(RangeError);
+  expect(() => arms.schedule(event as InputEventWithExtras)).toThrow(RangeError);
+  expect(arms.baseline.inputs().events).toEqual([]);
+});

@@ -53,40 +53,28 @@ function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
     return value;
 }
 
-// Inputs are deep-frozen and shared by both arms; Map, Date or class payloads would stay mutable behind the freeze.
-function assertPlainData(value: unknown, path: string): void {
-    if (value === null || typeof value === "string" || typeof value === "boolean") return;
-    if (typeof value === "number" && Number.isFinite(value)) return;
-    // Object.entries also covers non-index properties that structuredClone keeps on arrays.
-    if (Array.isArray(value) || (typeof value === "object" && [Object.prototype, null].includes(Object.getPrototypeOf(value)))) {
-        for (const [key, child] of Object.entries(value)) assertPlainData(child, `${path}.${key}`);
-        return;
-    }
-    throw new RangeError(`Event ${path} must be plain JSON-like data.`);
-}
-
-// structuredClone turns class instances and Array subclasses into plain values, so their prototypes are
-// checked on the caller's object first. Only data descriptors are followed, so no caller getter runs here.
-function assertPlainSource(value: unknown, path: string, seen = new WeakSet<object>()): void {
-    if (value === null || typeof value !== "object" || seen.has(value)) return;
-    seen.add(value);
+// Inputs are deep-frozen and shared by both arms, so events must be plain JSON-like data: a Map, Date or class
+// instance would stay mutable behind the freeze. Each own enumerable value, getters included, is read exactly
+// once into a fresh copy, and its prototype is checked before anything could normalize it away.
+function capturePlain(value: unknown, path: string, ancestors: Set<object>): unknown {
+    if (value === null || typeof value === "string" || typeof value === "boolean") return value;
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    const fail = () => { throw new RangeError(`Event ${path} must be plain JSON-like data.`); };
+    if (typeof value !== "object" || ancestors.has(value)) return fail();
     const prototype = Object.getPrototypeOf(value);
-    if (Array.isArray(value) ? prototype !== Array.prototype : prototype !== Object.prototype && prototype !== null)
-        throw new RangeError(`Event ${path} must be plain JSON-like data.`);
-    for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value)))
-        if ("value" in descriptor) assertPlainSource(descriptor.value, `${path}.${key}`, seen);
+    const isArray = Array.isArray(value);
+    if (isArray ? prototype !== Array.prototype : prototype !== Object.prototype && prototype !== null) return fail();
+    if (Object.getOwnPropertySymbols(value).some(key => Object.prototype.propertyIsEnumerable.call(value, key))) return fail();
+    ancestors.add(value);
+    const copy: Record<string, unknown> = isArray ? [] as unknown as Record<string, unknown> : {};
+    for (const key of Object.keys(value)) copy[key] = capturePlain((value as Record<string, unknown>)[key], `${path}.${key}`, ancestors);
+    ancestors.delete(value);
+    return copy;
 }
 
 /** Copy the caller's event exactly once, so getters or later mutation cannot make two arms disagree. */
 function prepareEvent(event: InputEvent): InputEvent {
-    assertPlainSource(event, "event");
-    let copy: InputEvent;
-    try {
-        copy = structuredClone(event);
-    } catch {
-        throw new RangeError("Event must be plain JSON-like data.");
-    }
-    assertPlainData(copy, "event");
+    const copy = capturePlain(event, "event", new Set()) as InputEvent;
     if (typeof copy.kind !== "string") throw new RangeError("Event kind must be a string.");
     return copy;
 }
