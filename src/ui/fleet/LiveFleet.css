@@ -18,7 +18,10 @@
 .fleet-camera { position:absolute; top:16px; left:16px; z-index:500; padding:4px; display:flex; gap:3px; border-radius:8px; background:#ffffffed; box-shadow:0 3px 14px #30493415; }
 .fleet-camera button { padding:8px 10px; background:transparent; font-size:11px; color:#395e4d; }
 .fleet-camera button:hover { background:#e3eee7; }
-.fleet-marker { background:transparent; border:0; }
+.fleet-geography .leaflet-marker-icon.fleet-marker { background:transparent; border:0; pointer-events:none; }
+.fleet-node { pointer-events:none; }
+.fleet-node-body,.fleet-node-halo,.fleet-node-name,.fleet-datacenter { pointer-events:auto; }
+.fleet-node-orbit { pointer-events:none; }
 .fleet-node { --site-color:#53ad83; position:relative; width:50px; height:50px; padding:0; color:var(--site-color); background:transparent; }
 .fleet-node-body { display:grid; place-items:center; width:25px; height:25px; margin:auto; background:#fffffff2; border:2px solid var(--site-color); border-radius:9px; box-shadow:0 2px 12px #26493725; position:relative; z-index:1; }
 .fleet-node-glyph { font-size:22px; line-height:16px; margin-top:-3px; }
@@ -74,3 +77,10 @@
 .fleet-provenance input { max-width:100%; width:450px; margin:8px; padding:7px; border:1px solid #d7e4d9; border-radius:5px; font-size:10px; }
 .fleet-provenance button { padding:7px 10px; background:#eaf2eb; color:#456b52; font-size:11px; }
 .fleet-saved-moment code { display:block; overflow-wrap:anywhere; font-size:9px; margin:5px 0 10px; color:#6f705b; }
+.fleet-event-tag { pointer-events:none!important; border:1px solid #a9c8b9; border-radius:7px; padding:7px 9px; background:#fffffff5; color:#315c48; box-shadow:0 3px 12px #24473318; white-space:normal; width:max-content; max-width:235px; font-size:10px; line-height:1.35; }
+.fleet-event-tag strong { display:block; font-size:11px; }
+.fleet-event-tag span { display:block; }
+.fleet-event-tag small { display:block; color:#76877e; font-size:8px; margin-top:2px; }
+.fleet-event-pulse { pointer-events:none!important; animation:fleet-event-pulse 1.2s ease-in-out infinite; }
+@keyframes fleet-event-pulse { 50% { stroke-width:8; stroke-opacity:.35; } }
+@media(prefers-reduced-motion:reduce) { .fleet-event-pulse { animation:none!important; } }

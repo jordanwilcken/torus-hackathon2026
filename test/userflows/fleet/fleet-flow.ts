@@ -111,7 +111,7 @@ export class FleetFlow {
 
   async expectUsefulHover(name: string): Promise<void> {
     await this.panel.getByRole('button', { name: 'Inspect ' + name, exact: true }).hover();
-    const tooltip = this.panel.locator('.leaflet-tooltip');
+    const tooltip = this.panel.locator('.fleet-tooltip');
     await expect(tooltip).toContainText(name);
     await expect(tooltip).toContainText(/modeled GPUs/i);
     await expect(tooltip).toContainText(/kW.*solar|solar.*kW/i);
@@ -167,7 +167,7 @@ export class FleetFlow {
   }
 
   async expectAdmissionOnMap(jobId: string): Promise<void> {
-    const route = this.panel.locator('path[data-event-id=' + JSON.stringify('admission:' + jobId) + ']');
+    const route = this.panel.locator('path.fleet-admission[data-event-id=' + JSON.stringify('admission:' + jobId) + ']');
     await expect(route).toBeVisible();
     await expect(route).toHaveAttribute('data-job-id', jobId);
   }

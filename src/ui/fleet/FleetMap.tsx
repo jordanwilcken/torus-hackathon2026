@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { dataCenters, originForJob } from '../../data/dataCenters';
-import { showMapActivity } from '../energy/mapActivity';
+import { createFleetActivity } from './fleetActivity';
 import type { TransferObservation } from '../../core/execution/TransferObservation.type';
 
 export type FleetSiteVisual = {
@@ -23,12 +23,18 @@ export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const seen = useRef(new Set<string>());
+  const activity = useRef<ReturnType<typeof createFleetActivity> | null>(null);
   const callbacks = useRef({ onInspect, onJob, onOrigin });
   callbacks.current = { onInspect, onJob, onOrigin };
-  useEffect(() => { seen.current.clear(); }, [activityEpoch]);
+  useEffect(() => {
+    // Mount and Reset show existing history quietly. Only later additions announce activity.
+    seen.current = new Set([...transfers.map(item => item.id), ...admissions.map(item => `admission:${item.jobId}`)]);
+    activity.current?.clear();
+  }, [activityEpoch]);
   useEffect(() => {
     const view = L.map(container.current!, { zoomControl: false, scrollWheelZoom: true, zoomAnimation: false, zoomSnap: .25 });
     map.current = view;
+    activity.current = createFleetActivity(view);
     view.fitBounds([[25, -125], [49, -67]], { padding: [40, 55], animate: false });
     L.control.zoom({ position: 'bottomleft' }).addTo(view);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -36,7 +42,7 @@ export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob
     }).addTo(view);
     const resize = new ResizeObserver(() => view.invalidateSize({ pan: false }));
     resize.observe(container.current!);
-    return () => { resize.disconnect(); view.remove(); map.current = null; };
+    return () => { resize.disconnect(); activity.current?.clear(); view.remove(); map.current = null; activity.current = null; };
   }, []);
   useEffect(() => {
     const layer = L.layerGroup().addTo(map.current!);
@@ -89,7 +95,12 @@ export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob
       line.bindTooltip(`${transfer.jobId} · ${from.name} → ${to.name} · modeled transfer`);
       line.on('click', () => callbacks.current.onJob(transfer.jobId));
       path?.addEventListener('keydown', event => { if ((event as KeyboardEvent).key === 'Enter') callbacks.current.onJob(transfer.jobId); });
-      if (!seen.current.has(transfer.id)) { seen.current.add(transfer.id); showMapActivity(view, points); }
+      if (!seen.current.has(transfer.id)) {
+        seen.current.add(transfer.id);
+        activity.current?.show({ id: transfer.id, jobId: transfer.jobId, kind: 'transfer', route: points,
+          from: { name: from.name, point: [from.latitude, from.longitude] },
+          to: { name: to.name, point: [to.latitude, to.longitude] } });
+      }
     }
     return () => { layer.remove(); };
   }, [transfers, activityEpoch]);
@@ -124,7 +135,12 @@ export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob
       line.getElement()?.setAttribute('data-event-id', identity);
       line.bindTooltip(`${admission.jobId} · simulated submission from ${source.name}`);
       line.on('click', () => callbacks.current.onJob(admission.jobId));
-      if (!seen.current.has(identity)) { seen.current.add(identity); showMapActivity(view, points, '#80b5d3'); }
+      if (!seen.current.has(identity)) {
+        seen.current.add(identity);
+        activity.current?.show({ id: identity, jobId: admission.jobId, kind: 'submission', route: points,
+          from: { name: source.name, point: [source.latitude, source.longitude] },
+          to: { name: destination.name, point: [destination.latitude, destination.longitude] } });
+      }
     }
     return () => { layer.remove(); };
   }, [admissions, activityEpoch]);

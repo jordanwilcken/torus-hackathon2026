@@ -2,16 +2,19 @@ import L from 'leaflet';
 
 /** A supplied activity gets one transient visual trail; this does not represent completed work. */
 export function showMapActivity(view: L.Map, points: L.LatLngTuple[], color = '#63bc98') {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return () => {};
   const layer = L.layerGroup().addTo(view);
   const renderer = L.svg().addTo(view);
   let closed = false;
+  let timeout: ReturnType<typeof setTimeout>;
   const cleanup = () => {
     if (closed) return;
     closed = true;
+    clearTimeout(timeout);
     view.off('unload', cleanup);
     layer.remove(); renderer.remove();
   };
+  timeout = setTimeout(cleanup, 2_000);
   view.once('unload', cleanup);
   for (const part of [
     { name: 'tail', length: .18, width: 5, strength: .22 },
@@ -32,4 +35,5 @@ export function showMapActivity(view: L.Map, points: L.LatLngTuple[], color = '#
       path.addEventListener('animationcancel', cleanup, { once: true });
     }
   }
+  return cleanup;
 }
