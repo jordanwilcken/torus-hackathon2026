@@ -5,11 +5,18 @@ import eiaCapture from '../../fixtures/public-grid/eia.json' with { type: 'json'
 import caisoCapture from '../../fixtures/public-grid/caiso.json' with { type: 'json' };
 import { LiveExecutionFlow } from './live-execution-flow';
 
+function runtimeEvidence(projectName: string) {
+  return projectName.startsWith('cloudflare-')
+    ? { location: 'Cloudflare', backend: 'cloudflare-durable-object', pid: null, exitCode: null }
+    : { location: 'Application server', backend: 'node-child-process', pid: expect.any(Number), exitCode: 0 };
+}
+
 // These cases share the application's single local worker, so run this file in order.
 // Other browser files keep their configured parallelism.
 test.describe.configure({ mode: 'default' });
 
-test('[LIVE-01] current public inputs drive a scheduler decision and an actual job result', async ({ page }) => {
+test('[LIVE-01] current public inputs drive a scheduler decision and an actual job result', async ({ page }, testInfo) => {
+  const runtime = runtimeEvidence(testInfo.project.name);
   const flow = new LiveExecutionFlow(page);
   await flow.open();
   const requestId = randomUUID();
@@ -25,7 +32,7 @@ test('[LIVE-01] current public inputs drive a scheduler decision and an actual j
   expect(run.decision.scheduler).toBe('public-input-local-v1');
   expect(run.decision.action).toBe('run');
   expect(run.decision.asOf).toBe(manifest.asOf);
-  expect(run.decision.executionLocation).toBe('This computer');
+  expect(run.decision.executionLocation).toBe(runtime.location);
   expect(run.decision.explanation.trim()).not.toBe('');
   expect(run.decision.policy).toEqual(run.request.policy);
   expect(run.decision.inputs.map(input => input.feed).toSorted()).toEqual(['caiso', 'eia']);
@@ -59,15 +66,16 @@ test('[LIVE-01] current public inputs drive a scheduler decision and an actual j
   expect(Number.isFinite(decidedAt)).toBe(true);
   expect(decidedAt).toBeGreaterThanOrEqual(Date.parse(manifest.asOf));
   expect(run.id).toBe(requestId);
-  expect(run.execution.backend).toBe('node-child-process');
-  expect(run.execution.location).toBe('This computer');
+  expect(run.execution.backend).toBe(runtime.backend);
+  expect(run.execution.location).toBe(runtime.location);
   expect(run.execution.simulated).toBe(false);
-  expect(run.execution.pid).toBeGreaterThan(0);
+  expect(run.execution.pid).toEqual(runtime.pid);
+  if (runtime.pid !== null) expect(run.execution.pid).toBeGreaterThan(0);
   expect(run.execution.startedAt).not.toBeNull();
   expect(run.execution.completedAt).not.toBeNull();
   expect(Date.parse(run.execution.startedAt!)).toBeGreaterThanOrEqual(decidedAt);
   expect(Date.parse(run.execution.completedAt!)).toBeGreaterThanOrEqual(Date.parse(run.execution.startedAt!));
-  expect(run.execution.exitCode).toBe(0);
+  expect(run.execution.exitCode).toBe(runtime.exitCode);
   expect(run.execution.error).toBeNull();
   expect(run.execution.events.map(event => event.state)).toEqual(expect.arrayContaining(['running', 'progress', 'done']));
   expect(run.execution.events).toContainEqual(expect.objectContaining({ state: 'progress', completed: 4, total: 4 }));
@@ -110,7 +118,8 @@ test('[LIVE-01] current public inputs drive a scheduler decision and an actual j
   await flow.expectEvidenceLabels(run);
 });
 
-test('a public-demand limit refuses execution, then a new request runs under a permissive limit', async ({ page }) => {
+test('a public-demand limit refuses execution, then a new request runs under a permissive limit', async ({ page }, testInfo) => {
+  const runtime = runtimeEvidence(testInfo.project.name);
   const flow = new LiveExecutionFlow(page);
   await flow.open();
   const refused = await flow.submitIntegerSum({ requestId: randomUUID(), values: [1, 2], maximumDemandMW: 0 });
@@ -133,11 +142,13 @@ test('a public-demand limit refuses execution, then a new request runs under a p
   expect(accepted.request.inputRevisions).toEqual(refused.request.inputRevisions);
   expect(accepted.status).toBe('done');
   expect(accepted.decision.action).toBe('run');
-  expect(accepted.execution.pid).toBeGreaterThan(0);
+  expect(accepted.execution.pid).toEqual(runtime.pid);
+  if (runtime.pid !== null) expect(accepted.execution.pid).toBeGreaterThan(0);
   expect(JSON.parse(await flow.downloadOutput())).toEqual({ requestId, sum: 3 });
 });
 
-test('an actual worker overflow fails without reusing the previous successful artifact', async ({ page }) => {
+test('an actual worker overflow fails without reusing the previous successful artifact', async ({ page }, testInfo) => {
+  const runtime = runtimeEvidence(testInfo.project.name);
   const flow = new LiveExecutionFlow(page);
   await flow.open();
   const previous = await flow.submitIntegerSum({ requestId: randomUUID(), values: [5] });
@@ -148,9 +159,13 @@ test('an actual worker overflow fails without reusing the previous successful ar
   expect(failed.id).not.toBe(previous.id);
   expect(failed.status).toBe('failed');
   expect(failed.decision.action).toBe('run');
-  expect(failed.execution.pid).toBeGreaterThan(0);
-  expect(failed.execution.exitCode).not.toBeNull();
-  expect(failed.execution.exitCode).not.toBe(0);
+  expect(failed.execution.pid).toEqual(runtime.pid);
+  if (runtime.pid === null) expect(failed.execution.exitCode).toBeNull();
+  else {
+    expect(failed.execution.pid).toBeGreaterThan(0);
+    expect(failed.execution.exitCode).not.toBeNull();
+    expect(failed.execution.exitCode).not.toBe(0);
+  }
   expect(failed.execution.error).toMatch(/safe integer/i);
   expect(failed.execution.output).toBeNull();
   expect(failed.execution.events.map(event => event.state)).toContain('running');
@@ -159,7 +174,8 @@ test('an actual worker overflow fails without reusing the previous successful ar
   expect(failed.measuredEnergyKWh).toBeNull();
 });
 
-test('reloading a stored run preserves its receipt and artifact without submitting another job', async ({ page }) => {
+test('reloading a stored run preserves its receipt and artifact without submitting another job', async ({ page }, testInfo) => {
+  const runtime = runtimeEvidence(testInfo.project.name);
   const flow = new LiveExecutionFlow(page);
   await flow.open();
   const requestId = randomUUID();
@@ -175,7 +191,8 @@ test('reloading a stored run preserves its receipt and artifact without submitti
   expect(flow.submittedRunCount).toBe(1);
 });
 
-test('the grid-summary workload computes its artifact from the pinned public EIA snapshot', async ({ page }) => {
+test('the grid-summary workload computes its artifact from the pinned public EIA snapshot', async ({ page }, testInfo) => {
+  const runtime = runtimeEvidence(testInfo.project.name);
   const flow = new LiveExecutionFlow(page);
   await flow.open();
   const requestId = randomUUID();
@@ -190,10 +207,11 @@ test('the grid-summary workload computes its artifact from the pinned public EIA
   });
   expect(run.decision.action).toBe('run');
   expect(run.decision.inputs.find(input => input.feed === 'eia')?.revision).toBe(manifest.feeds.eia.revision);
-  expect(run.execution.backend).toBe('node-child-process');
+  expect(run.execution.backend).toBe(runtime.backend);
   expect(run.execution.simulated).toBe(false);
-  expect(run.execution.pid).toBeGreaterThan(0);
-  expect(run.execution.exitCode).toBe(0);
+  expect(run.execution.pid).toEqual(runtime.pid);
+  if (runtime.pid !== null) expect(run.execution.pid).toBeGreaterThan(0);
+  expect(run.execution.exitCode).toBe(runtime.exitCode);
 
   const outputText = await flow.downloadOutput();
   // Literal totals independently checked against the 72 committed EIA demand observations.

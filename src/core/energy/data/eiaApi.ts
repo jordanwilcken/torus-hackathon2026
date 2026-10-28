@@ -1,7 +1,7 @@
 import type { GridObservation } from '../GridObservation.interface.js';
 import type { SlotForecast } from '../SlotForecast.type.js';
 import type { ForecastPoint } from '../ForecastPoint.type.js';
-import { EIA930_BASIS, isoTime } from './eia930.js';
+import { EIA930_BASIS, isoTime } from './eia930.ts';
 
 export type EiaApiSnapshot = {
   source: string;

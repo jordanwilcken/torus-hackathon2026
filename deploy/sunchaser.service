@@ -1,0 +1,31 @@
+[Unit]
+Description=Sunchaser public data and actual CPU demo
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sunchaser
+Group=sunchaser
+WorkingDirectory=/opt/sunchaser/current
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=3000
+Environment=DIST_DIRECTORY=/opt/sunchaser/current/dist
+Environment=GRID_SNAPSHOT_DIR=/var/lib/sunchaser/grid
+Environment=JOB_RUN_DIRECTORY=/var/lib/sunchaser/jobs
+EnvironmentFile=/etc/sunchaser/runtime.env
+ExecStart=/opt/sunchaser/node/bin/node /opt/sunchaser/current/src/server/start.ts
+Restart=on-failure
+RestartSec=3
+KillMode=mixed
+TimeoutStopSec=20
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/sunchaser
+
+[Install]
+WantedBy=multi-user.target

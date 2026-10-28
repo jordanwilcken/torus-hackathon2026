@@ -2,6 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './test/userflows',
+  // Cloudflare flows own a different runtime and run through their blocking CI gate.
+  testIgnore: '**/cloudflare/**',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,

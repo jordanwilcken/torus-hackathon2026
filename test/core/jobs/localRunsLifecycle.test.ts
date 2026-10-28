@@ -52,7 +52,7 @@ function request(requestId = firstId): LocalRunRequest {
   };
 }
 function failed(): WorkerResult {
-  return { pid: 123, startedAt: at, completedAt: at, exitCode: null, signal: 'SIGTERM', outputText: null, error: 'Local workload was cancelled.' };
+  return { status: 'failed', pid: 123, startedAt: at, completedAt: at, exitCode: null, signal: 'SIGTERM', outputText: null, error: 'Local workload was cancelled.' };
 }
 function workerSubstitute() {
   const started = Promise.withResolvers<void>();
@@ -66,7 +66,7 @@ function workerSubstitute() {
 }
 function service(store: JobRunStore<LocalRun>, worker: typeof runLocalWorkload) {
   return createLocalRuns({ store, snapshots, feeds: createRecordedGridFeeds(snapshots),
-    recordedAsOf: manifest.asOf, now: () => Date.parse(at), worker });
+    recordedAsOf: manifest.asOf, now: () => Date.parse(at), executor: { backend: 'node-child-process', location: 'Application server', run: worker } });
 }
 const nextTurn = () => new Promise<void>(resolve => setImmediate(resolve));
 
@@ -192,7 +192,7 @@ test('concurrent duplicate requests launch once, changed work is rejected, and a
     const waiting = await jobs.submit(request(secondId));
     expect(waiting).toMatchObject({ status: 'blocked', decision: { action: 'wait' }, execution: { pid: null, output: null } });
     expect(waiting.decision.inputs.every(input => input.accepted)).toBe(true);
-    controlled.outcome.resolve({ pid: 123, startedAt: at, completedAt: at, exitCode: 0, signal: null,
+    controlled.outcome.resolve({ status: 'done', pid: 123, startedAt: at, completedAt: at, exitCode: 0, signal: null,
       outputText: JSON.stringify({ requestId: firstId, sum: 10 }) });
     await nextTurn();
     expect((await jobs.read(firstId))?.status).toBe('done');
@@ -259,7 +259,7 @@ test('an earlier running read cannot overwrite a completed result with a restart
     delayNextRead = true;
     reading = jobs.read(firstId);
     await readCaptured.promise;
-    controlled.outcome.resolve({ pid: 123, startedAt: at, completedAt: at, exitCode: 0, signal: null,
+    controlled.outcome.resolve({ status: 'done', pid: 123, startedAt: at, completedAt: at, exitCode: 0, signal: null,
       outputText: JSON.stringify({ requestId: firstId, sum: 10 }) });
     await nextTurn();
     expect((await durable.read(firstId))?.value.status).toBe('done');

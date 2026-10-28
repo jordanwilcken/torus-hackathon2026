@@ -59,12 +59,12 @@ export function LocalExecution() {
     finally { setSubmitting(false); }
   }
   const available = Boolean(context?.inputs.eia.revision && context.inputs.caiso.revision);
-  return <section className="local-execution" aria-label="Local execution">
-    <header><h2>Run real work on this computer</h2>
-      <p>Public inputs → policy decision → actual CPU process → saved output</p></header>
+  return <section className="local-execution" aria-label="Server execution">
+    <header><h2>Run real work on the application server</h2>
+      <p>Public inputs → policy decision → actual CPU execution → saved output</p></header>
     {context && <p className="input-mode">{context.mode === 'recorded' ? 'Recorded public inputs' : 'Live public inputs'} · evaluated as of {context.asOf}
       {context.mode === 'recorded' && ' · Historical input replay; the worker executes now.'}</p>}
-    <p>PACE is the reference grid region. This computer’s physical grid region is unverified. The policy below uses regional demand and wholesale prices as operator-selected signals.</p>
+    <p>PACE is the reference grid region. The application server’s physical grid region is unverified. The policy below uses regional demand and wholesale prices as operator-selected signals.</p>
     <button type="button" onClick={() => void loadContext()}>Refresh public inputs</button>
     {context && <ul className="input-revisions">{(['eia', 'caiso'] as const).map(feed => <li key={feed}>
       {feed.toUpperCase()} revision: {context.inputs[feed].revision ?? 'unavailable'}
@@ -75,16 +75,16 @@ export function LocalExecution() {
       </select></label>
       {kind === 'integer-sum' && <label>Integer values<input value={values} onChange={event => setValues(event.target.value)} /></label>}
       <label>Request ID<input value={requestId} onChange={event => setRequestId(event.target.value)} required /></label>
-      <fieldset><legend>Local dispatch policy</legend>
+      <fieldset><legend>Server dispatch policy</legend>
         <label>Maximum PACE demand (MW)<input type="number" min="0" value={demand} onChange={event => setDemand(event.target.value)} required /></label>
         <label>Maximum wholesale price (USD/MWh)<input type="number" step="any" value={price} onChange={event => setPrice(event.target.value)} required /></label>
-        <p>Reported demand must be within 240 minutes; price and retrieval age within 30 minutes for CAISO. One local process can run at a time. These settings are policy choices, not site capacity or a retail tariff.</p>
+        <p>Reported demand must be within 240 minutes; price and retrieval age within 30 minutes for CAISO. One workload can run at a time. These settings are policy choices, not site capacity or a retail tariff.</p>
       </fieldset>
       <fieldset><legend>Separate Torus storage scenario</legend>
         <label>Assumed compute energy (kWh)<input type="number" min="0.000001" step="any" value={energy} onChange={event => setEnergy(event.target.value)} required /></label>
         <label>Assumed round-trip efficiency (%)<input type="number" min="0.01" max="100" step="any" value={efficiency} onChange={event => setEfficiency(event.target.value)} required /></label>
       </fieldset>
-      <button disabled={!available || submitting} type="submit">{submitting ? 'Recording request…' : 'Run locally'}</button>
+      <button disabled={!available || submitting} type="submit">{submitting ? 'Recording request…' : 'Run on server'}</button>
     </form>
     {error && <p role="alert">{error}</p>}
     {run && <article aria-label="Saved run">
@@ -94,9 +94,9 @@ export function LocalExecution() {
         {input.feed.toUpperCase()}: {input.value} {input.unit} · {input.interval.startAt} to {input.interval.endAt} · retrieved {input.retrievedAt} · {input.accepted ? 'accepted' : 'not accepted'}
         <br /><a href={`/api/grid/${input.feed}?revision=${input.revision}`} target="_blank" rel="noreferrer">Input revision {input.revision}</a>
       </li>)}</ul>
-      <h4>Actual execution</h4><p>{run.execution.location} · CPU · {run.execution.backend} · process {run.execution.pid ?? 'not started'}</p>
+      <h4>Actual execution</h4><p>{run.execution.location === 'This computer' ? 'Application server (archived label: “This computer”)' : run.execution.location} · CPU · {run.execution.backend} · {run.execution.backend === 'node-child-process' ? ('process ' + (run.execution.pid ?? 'not started')) : 'managed JavaScript isolate; no operating-system PID'}</p>
       <p>{run.execution.events.map(event => event.state).join(' → ')}</p>
-      <p>Started: {run.execution.startedAt ?? 'not started'} · Completed: {run.execution.completedAt ?? 'not completed'} · Exit code: {run.execution.exitCode ?? 'unavailable'}</p>
+      <p>Started: {run.execution.startedAt ?? 'not started'} · Completed: {run.execution.completedAt ?? 'not completed'} · {run.execution.backend === 'node-child-process' ? ('Exit code: ' + (run.execution.exitCode ?? 'unavailable')) : 'Operating-system exit code: not applicable'}</p>
       {run.execution.error && <p role="alert">{run.execution.error}</p>}
       <p>Measured energy: unavailable · Measured carbon: unavailable · Actual electricity cost: unavailable</p>
       {run.execution.output && <><a href={`/api/jobs/runs/${run.id}/output`} download={`${run.id}.json`}>Download actual output</a>

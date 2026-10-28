@@ -23,7 +23,11 @@
     "score:report": "node scripts/score.mjs --report-only",
     "test:tooling": "node --test test/tooling/score.test.ts test/tooling/ci-summary.test.ts test/tooling/scorecard-links.test.ts",
     "generate:execution-math": "node src/core/execution/runner/math/generate.mjs",
-    "check:execution-math": "node src/core/execution/runner/math/generate.mjs --check"
+    "check:execution-math": "node src/core/execution/runner/math/generate.mjs --check",
+    "start": "node src/server/start.ts",
+    "test:hosting": "playwright test --config playwright.hosting.config.ts",
+    "test:cloudflare": "playwright test --config playwright.cloudflare.config.ts",
+    "deploy:cloudflare": "wrangler deploy"
   },
   "dependencies": {
     "@cortex-js/compute-engine": "0.171.0",
@@ -42,6 +46,11 @@
     "read-excel-file": "9.3.13",
     "typescript": "5.9.3",
     "vite": "8.3.3",
-    "vitest": "5.0.2"
+    "vitest": "5.0.2",
+    "wrangler": "4.154.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "workerd@1.20261023.1": true
   }
 }

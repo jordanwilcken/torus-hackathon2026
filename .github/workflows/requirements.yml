@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
+      cloudflare_manifest_sha256: ${{ steps.cloudflare_package.outputs.manifest_sha256 }}
+      cloudflare_artifact_id: ${{ steps.cloudflare_artifact.outputs.artifact-id }}
       score_label: ${{ steps.summary.outputs.score_label }}
       artifact_url: ${{ steps.score_artifact.outputs.artifact-url }}
     steps:
@@ -47,6 +49,35 @@ jobs:
         if: always()
         continue-on-error: true
         run: node scripts/score.mjs
+      - name: Verify hosting, durable storage and real execution contracts
+        if: steps.dependencies.outcome == 'success'
+        run: node node_modules/vitest/vitest.mjs run test/core/cloudflare test/core/server test/core/jobs
+      - name: Verify production demo flows on desktop and mobile
+        if: steps.build.outcome == 'success' && steps.browser.outcome == 'success'
+        run: node node_modules/@playwright/test/cli.js test --config playwright.hosting.config.ts
+      - name: Verify Cloudflare execution, authentication and durable restart
+        if: steps.build.outcome == 'success' && steps.browser.outcome == 'success'
+        env:
+          CLOUDFLARE_SEND_METRICS: 'false'
+        run: npm run test:cloudflare
+      - name: Package the exact Cloudflare release
+        id: cloudflare_package
+        env:
+          CLOUDFLARE_SEND_METRICS: 'false'
+        run: node scripts/package-cloudflare.mjs
+      - name: Verify the packaged production Worker in workerd
+        env:
+          CLOUDFLARE_SEND_METRICS: 'false'
+        run: node scripts/smoke-cloudflare-package.mjs .cache/cloudflare/release
+      - name: Preserve the verified deployment artifact
+        id: cloudflare_artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: cloudflare-${{ github.sha }}-attempt-${{ github.run_attempt }}
+          path: .cache/cloudflare/release/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
       - name: Attach the scorecard and rubric
         id: score_artifact
         if: always()
@@ -127,3 +158,42 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SCORE_ARTIFACT_URL: ${{ needs.evidence.outputs.artifact_url }}
         run: node scripts/update-scorecard-links.mjs
+
+  cloudflare_deploy:
+    name: Deploy tested Cloudflare artifact
+    needs: evidence
+    if: ${{ needs.evidence.result == 'success' && github.ref == 'refs/heads/main' && vars.CLOUDFLARE_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: cloudflare-demo
+    permissions:
+      contents: read
+      actions: read
+    concurrency:
+      group: cloudflare-demo
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm install --global npm@11.20.0
+      - run: npm ci --no-audit --no-fund
+      - uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ needs.evidence.outputs.cloudflare_artifact_id }}
+          path: .cache/cloudflare/release
+      - name: Verify approved commit and immutable artifact
+        env:
+          EXPECTED_MANIFEST_SHA256: ${{ needs.evidence.outputs.cloudflare_manifest_sha256 }}
+        run: node scripts/verify-cloudflare-package.mjs .cache/cloudflare/release --commit "$GITHUB_SHA" --manifest-sha256 "$EXPECTED_MANIFEST_SHA256"
+      - name: Deploy the verified bundle without rebuilding
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_SEND_METRICS: 'false'
+        run: node node_modules/wrangler/bin/wrangler.js deploy --no-bundle --config .cache/cloudflare/release/wrangler.json

@@ -19,7 +19,7 @@ export class LiveExecutionFlow {
 
   constructor(private readonly page: Page) {
     this.app = new ComputeFlow(page);
-    this.panel = page.getByRole('region', { name: 'Local execution', exact: true });
+    this.panel = page.getByRole('region', { name: 'Server execution', exact: true });
     page.on('request', request => {
       if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/jobs/runs') this.posts++;
     });
@@ -38,7 +38,7 @@ export class LiveExecutionFlow {
   private async ready(): Promise<void> {
     await expect(this.panel).toBeVisible();
     await expect(this.panel.getByText('Recorded public inputs', { exact: false })).toBeVisible();
-    await expect(this.panel.getByRole('button', { name: 'Run locally', exact: true })).toBeEnabled();
+    await expect(this.panel.getByRole('button', { name: 'Run on server', exact: true })).toBeEnabled();
   }
 
   async submitIntegerSum(job: IntegerSumSubmission): Promise<LocalRun> {
@@ -57,7 +57,7 @@ export class LiveExecutionFlow {
     await this.panel.getByLabel('Maximum PACE demand (MW)', { exact: true }).fill(String(job.maximumDemandMW ?? 20_000));
     await this.panel.getByLabel('Maximum wholesale price (USD/MWh)', { exact: true })
       .fill(String(job.maximumWholesaleUsdPerMWh ?? 1_000));
-    await this.panel.getByRole('button', { name: 'Run locally', exact: true }).click();
+    await this.panel.getByRole('button', { name: 'Run on server', exact: true }).click();
     return this.completedRun(job.requestId);
   }
 
@@ -103,7 +103,8 @@ export class LiveExecutionFlow {
     }
     await expect(this.panel.getByRole('heading', { name: 'Decision', exact: true })).toBeVisible();
     await expect(this.panel.getByText(run.decision.explanation, { exact: true })).toBeVisible();
-    await expect(this.panel).toContainText('This computer');
+    await expect(this.panel.getByRole('heading', { name: 'Run real work on the application server', exact: true })).toBeVisible();
+    await expect(this.panel.getByText(new RegExp('^' + run.execution.location + ' · CPU ·'))).toBeVisible();
     await expect(this.panel).toContainText('Measured energy: unavailable');
     await expect(this.panel.getByRole('heading', { name: 'Modeled Torus storage comparison', exact: true })).toBeVisible();
   }

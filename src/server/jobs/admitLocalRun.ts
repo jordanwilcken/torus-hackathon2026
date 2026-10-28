@@ -18,7 +18,7 @@ export function admitLocalRun(
 ): LocalRunDecision {
   const decision = (action: LocalRunDecision['action'], explanation: string, inputs: PublicRunInput[] = []): LocalRunDecision => ({
     scheduler: 'public-input-local-v1', asOf: context.asOf, evaluatedAt: context.evaluatedAt,
-    action, executionLocation: 'This computer', explanation, inputs,
+    action, executionLocation: 'Application server', explanation, inputs,
     policy: structuredClone(policy),
   });
   let asOf: number;
@@ -39,9 +39,9 @@ export function admitLocalRun(
   const unavailable = inspected.flatMap(result => result.unavailable ? [result.unavailable] : []);
   if (unavailable.length) return decision('unavailable', unavailable.join('; '), inputs);
   const waiting = inspected.flatMap(result => result.waiting ? [result.waiting] : []);
-  if (!context.workerAvailable) waiting.push('The local worker is occupied');
+  if (!context.workerAvailable) waiting.push('The server worker is occupied');
   if (waiting.length) return decision('wait', waiting.join('; '), inputs);
-  return decision('run', 'Reported regional demand and wholesale price meet the configured local policy; the local worker is available', inputs);
+  return decision('run', 'Reported regional demand and wholesale price meet the configured dispatch policy; the server worker is available', inputs);
 }
 
 function validatePolicy(policy: LocalRunPolicy): void {
