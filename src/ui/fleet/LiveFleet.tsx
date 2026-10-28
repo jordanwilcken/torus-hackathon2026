@@ -12,6 +12,8 @@ import { useFeed } from '../data/useFeed';
 import { useReplayPlayback } from '../replay/useReplayPlayback';
 import { FleetMap, type FleetSiteVisual } from './FleetMap';
 import type { ReplayProgress } from '../../core/execution/replay/createPairedReplaySession';
+import { SourceSignals } from './SourceSignals';
+import { FleetSummary } from './FleetSummary';
 import './LiveFleet.css';
 
 const number = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 3 });
@@ -34,8 +36,6 @@ export function LiveFleet({ grid }: { grid: PublicGridClient }) {
   const candidate = useMemo(() => captureLiveFleet(weather, market, now), [weather, market, now]);
   useEffect(() => { if (!capture && !requestedCapture && candidate.available) setCapture(candidate.capture); }, [capture, candidate, requestedCapture]);
   const changed = capture && candidate.available && candidate.capture.scenario.inputRevision !== capture.scenario.inputRevision;
-  const demand = eia.snapshot?.observations.filter(item => item.metric === 'demand' && item.value !== null)
-    .toSorted((a, b) => a.window.endAt.localeCompare(b.window.endAt)).at(-1);
   async function restoreSaved(saved: SavedFleetMoment) {
     const session = await restoreFrozenFleet(saved.capture);
     const sources = saved.capture.runInputs;
@@ -64,18 +64,14 @@ export function LiveFleet({ grid }: { grid: PublicGridClient }) {
     return { capturedAt: new Date().toISOString(), weather: publication(weatherClient), caiso: publication(grid.caiso), eia: publication(grid.eia) };
   }
   return <section className="live-fleet" aria-label="Live input fleet">
-    <div className="fleet-heading"><div><p className="eyebrow">FOLLOW THE ENERGY</p><h2>A moving picture of compute</h2></div>
-      <span className="fleet-mode">Modeled execution</span></div>
+    <div className="fleet-heading"><div className="fleet-heading-label"><h2>Live fleet</h2><span className="fleet-mode">Modeled execution</span></div>
+      <SourceSignals weather={weather} market={market} eia={eia} capture={capture} now={now} onRefresh={() => { void weatherClient.refresh(); void grid.caiso.refresh(); void grid.eia.refresh(); }} />
+    </div>
     {capture ? <FleetSession key={generation} capture={capture} restored={restored} freezeAnchor={freezeAnchor} latestSources={latestSources} onRestore={restoreSaved} /> : <>
       <FleetMap sites={unconnected} transfers={[]} playing={false} onInspect={() => {}} onJob={() => {}} />
       <p className="fleet-empty" role="status">{loadingMoment ? 'Retrieving the frozen moment…' : loadError || (candidate.available ? 'Preparing the fleet…' : candidate.reason)}</p>
     </>}
-    <div className="fleet-sources"><small>Latest source context</small><span className={weather.status === 'ready' ? 'connected' : ''}>Open-Meteo · {weather.status}</span>
-      <span className={market.status === 'ready' ? 'connected' : ''}>CAISO · {market.status}</span>
-      <span>EIA PACE · {eia.status} · {demand?.value != null ? number(demand.value) + ' MW' : 'unavailable'}{demand && ` · ${demand.window.endAt.slice(0, 10)} ${time(demand.window.endAt)}`}</span>
-      <button onClick={() => { void weatherClient.refresh(); void grid.caiso.refresh(); void grid.eia.refresh(); }}>Refresh inputs</button>
-      {changed && <button onClick={() => { if (candidate.available) { setCapture(candidate.capture); setRestored(undefined); setFreezeAnchor(undefined); setMomentId(''); setGeneration(value => value + 1); const url = new URL(location.href); url.searchParams.delete('capture'); history.replaceState(null, '', url); } }}>Start with latest inputs</button>}
-    </div>
+    {changed && <div className="fleet-new-input"><span>New public inputs available</span><button onClick={() => { if (candidate.available) { setCapture(candidate.capture); setRestored(undefined); setFreezeAnchor(undefined); setMomentId(''); setGeneration(value => value + 1); const url = new URL(location.href); url.searchParams.delete('capture'); history.replaceState(null, '', url); } }}>Start with latest inputs</button></div>}
     <details className="fleet-provenance"><summary>Retrieve a frozen moment</summary>
       <label>Capture ID <input aria-label="Frozen capture ID" value={momentId} onChange={event => setMomentId(event.target.value)} /></label>
       <button disabled={loadingMoment} onClick={async () => { setLoadingMoment(true); try { await restoreSaved(await loadFleetMoment(momentId)); }
@@ -176,39 +172,41 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
       <output aria-label="Fleet model hour" data-hour={progress.hour}>{progress.hour} / {progress.totalHours} h</output>
       <small>{time(currentAt)} · 1 model hour ≈ {number(5.8 / playback.speed)} s</small></div>
       <button className="fleet-monkey" aria-label="Chaos monkey" aria-expanded={monkey} onClick={() => setMonkey(value => !value)}>🐒 <span>Disrupt</span></button></div>
+    <FleetSummary progress={progress} />
     <div className="fleet-stage">
       <FleetMap activityEpoch={activityEpoch} sites={sites} transfers={progress.selected.run.transfers} playing={playback.playing}
         admissions={admissions} onOrigin={id => { setOriginId(id); setSelected(undefined); setJobId(undefined); }} selected={selected} onInspect={inspect} onJob={id => { setOriginId(undefined); setJobId(id); setSelected(undefined); }} />
       {(active || job || origin) && <aside className="fleet-inspector">
         <button className="fleet-close" aria-label="Close activity" onClick={() => { setSelected(undefined); setJobId(undefined); setOriginId(undefined); }}>×</button>
-        {origin && <section aria-label="Data center activity" data-origin-id={origin.id}><p className="eyebrow">SIMULATED JOB SOURCE</p><h3>{origin.name}</h3>
+        {origin && <section aria-label="Data center activity" data-origin-id={origin.id}><p className="eyebrow">DATA CENTER · SIMULATED JOB SOURCE</p><h3>{origin.name}</h3>
           <p>{admissions.filter(job => originForJob(job.jobId).id === origin.id).length} simulated submissions</p>
-          <p>Publicly documented data-center location. Marker uses a city reference; jobs are generated by this model.</p>
+          <p className="fleet-origin-note">Public location · generated GPU batches</p>
           <a href={origin.sourceUrl} target="_blank" rel="noreferrer">Operator location source</a>
           <div className="fleet-site-jobs">{arrived.filter(job => originForJob(job.id).id === origin.id).slice(-6).map(job => <button key={job.id} onClick={() => { setJobId(job.id); setOriginId(undefined); }}>{job.id}<span>{job.state}</span></button>)}</div>
           <small>No facility workload or telemetry connection.</small>
         </section>}
         {active && <section aria-label="Location activity" data-location-id={active.id} data-hour={progress.hour}>
-          <p className="eyebrow">LIVE MODEL STATE</p><h3>{active.name}</h3><p className="fleet-inspect-time">{time(currentAt)} · modeled interval</p>
+          <p className="eyebrow">ENERGY SITE · MODELED</p><h3>{active.name}</h3><p className="fleet-inspect-time">{time(currentAt)} · {progress.scenario.sites.find(site => site.configuration.locationId === active.id)?.regionId}</p>
           <div className="fleet-capacity"><strong>{active.availableGpus}<small> / {active.capacity}</small></strong><span>GPUs for a full hour</span></div>
           <div className="fleet-capacity-bar">{Array.from({ length: active.capacity }, (_, index) => <i key={index} data-free={index < active.availableGpus} />)}</div>
-          <dl className="fleet-metrics"><div><dt>Modeled solar</dt><dd><span data-testid="location-solar-kw" data-value={active.solarKW}>{number(active.solarKW)}</span> kW</dd></div>
-            <div><dt>Compute used</dt><dd><span data-testid="location-compute-kwh" data-value={activeMeter?.computeKWh ?? 0}>{activeMeter ? number(activeMeter.computeKWh) : 'Pending'}</span>{activeMeter && ' kWh'}</dd></div>
-            <div><dt>Stored energy</dt><dd><span data-testid="location-storage-kwh" data-value={active.storedKWh}>{number(active.storedKWh)}</span> / {number(active.storageCapacityKWh)} kWh</dd></div>
-            <div><dt>Grid import</dt><dd>{activeMeter ? number(activeMeter.gridImportKWh) + ' kWh' : 'Pending dispatch'}</dd></div></dl>
+          <dl className="fleet-metrics"><div><dt><i className="energy-key solar" />Solar</dt><dd><span data-testid="location-solar-kw" data-value={active.solarKW}>{number(active.solarKW)}</span> kW</dd></div>
+            <div><dt><i className="energy-key compute" />GPU energy</dt><dd><span data-testid="location-compute-kwh" data-value={activeMeter?.computeKWh ?? 0}>{activeMeter ? number(activeMeter.computeKWh) : 'Pending'}</span>{activeMeter && ' kWh'}</dd></div>
+            <div><dt><i className="energy-key battery" />Stored</dt><dd><span data-testid="location-storage-kwh" data-value={active.storedKWh}>{number(active.storedKWh)}</span> / {number(active.storageCapacityKWh)} kWh</dd></div>
+            <div><dt><i className="energy-key grid" />Grid</dt><dd>{activeMeter ? number(activeMeter.gridImportKWh) + ' kWh' : 'Pending dispatch'}</dd></div></dl>
           <div className="fleet-battery"><i style={{ width: Math.max(0, Math.min(100, active.storageCapacityKWh ? active.storedKWh / active.storageCapacityKWh * 100 : 0)) + '%' }} /></div>
-          <p>{active.activeJobs} allocated · {active.queuedJobs} queued</p>
-          <small>{progress.scenario.sites.find(site => site.configuration.locationId === active.id)?.regionId} grid context · city reference</small>
+          <div className="fleet-carbon-readout"><span>Carbon · this hour</span><strong>{activeMeter ? activeMeter.carbonKg === undefined ? 'Unknown' : number(activeMeter.carbonKg * 1000) + ' g' : 'Pending'}</strong></div>
+          <p className="fleet-active-count">{active.activeJobs} allocated · {active.queuedJobs} queued</p>
+          <small>Modeled energy & carbon · city reference</small>
           <div className="fleet-site-jobs">{arrived.filter(job => job.currentLocation === active.id || job.transferToLocation === active.id).slice(-5).map(job =>
             <button key={job.id} onClick={() => { setJobId(job.id); setSelected(undefined); setOriginId(undefined); }}>{job.id}<span>{job.state}</span></button>)}</div>
         </section>}
-        {job && <section aria-label="Job activity" data-job-id={job.id}><p className="eyebrow">MODELED JOB</p><h3>{job.id}</h3>
-          <p>Source: {originForJob(job.id).name} · simulated submission</p><p>{job.state} · {place(job.currentLocation)}{job.transferToLocation && ` → ${place(job.transferToLocation)}`}</p>
+        {job && <section aria-label="Job activity" data-job-id={job.id}><p className="eyebrow">GPU BATCH · SYNTHETIC WORKLOAD</p><h3>{job.id}<span className="fleet-job-status">{job.state}</span></h3>
+          <div className="fleet-job-route"><span><small>SUBMITTED FROM</small>{originForJob(job.id).name}</span><i aria-hidden="true">↓</i><span><small>EXECUTION SITE · MODELED</small>{place(job.currentLocation)}{job.transferToLocation && ' → ' + place(job.transferToLocation)}</span></div>
+          <div className="fleet-job-progress-label"><strong>{Math.round((1 - job.remainingGpuH / job.workGpuH) * 100)}%</strong><span>{number(job.workGpuH - job.remainingGpuH)} / {job.workGpuH} GPU·h</span></div>
           <div className="fleet-work-progress"><i style={{ width: (1 - job.remainingGpuH / job.workGpuH) * 100 + '%' }} /></div>
-          <strong>{number(job.workGpuH - job.remainingGpuH)} / {job.workGpuH} GPU-hours</strong>
-          <p>Ready {time(job.readyAt)} · deadline {time(job.window.endAt)}</p>
-          <p>{progress.selected.decisions.findLast(decision => decision.results.some(result => result.jobId === job.id))?.results.find(result => result.jobId === job.id)?.selection.explanation}</p>
-          <small>{jobReceipts.length} executor receipts · {number(jobReceipts.reduce((sum, receipt) => sum + receipt.computeKWh, 0))} modeled compute kWh</small>
+          <div className="fleet-job-timing"><span><small>READY</small>{time(job.readyAt)}</span><span><small>DEADLINE</small>{time(job.window.endAt)}</span></div>
+          <div className="fleet-carbon-readout"><span>GPU energy used</span><strong>{number(jobReceipts.reduce((sum, receipt) => sum + receipt.computeKWh, 0))} kWh</strong></div>
+          <details className="fleet-job-why"><summary>Why this schedule?</summary><p>{progress.selected.decisions.findLast(decision => decision.results.some(result => result.jobId === job.id))?.results.find(result => result.jobId === job.id)?.selection.explanation}</p><small>{jobReceipts.length} executor receipts · carbon counted in site totals</small></details>
         </section>}
       </aside>}
       {monkey && <section className="fleet-chaos" aria-label="Fleet simulation controls"><div><h3>Crash the party</h3><button aria-label="Close controls" onClick={() => setMonkey(false)}>×</button></div>
@@ -226,9 +224,9 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
       </section>}
     </div>
     <div className="fleet-work-strip" aria-label="Fleet jobs">{arrived.slice(-12).map(job => <button key={job.id} aria-label={`Inspect ${job.id}`} data-job-state={job.state}
-      aria-pressed={jobId === job.id} onClick={() => { setJobId(job.id); setSelected(undefined); setOriginId(undefined); }}><i /><strong>{job.id}</strong><span>{job.state}</span></button>)}</div>
+      aria-pressed={jobId === job.id} onClick={() => { setJobId(job.id); setSelected(undefined); setOriginId(undefined); }}><i /><small className="fleet-work-kind">GPU</small><strong>{job.id}</strong><span>{job.state}</span></button>)}</div>
     <div className="fleet-footer"><span>{arrived.length} arrivals · {arrived.filter(job => job.state === 'done').length} completed · {progress.selected.run.transfers.length} transfers</span>
-      <small>Captured public inputs · synthetic jobs & assets · accelerated model clock</small><button onClick={() => download(progress)}>Download model evidence</button></div>
+      <small>GPU batches · simulated sites · public input snapshot</small><button onClick={() => download(progress)}>Download model evidence</button></div>
     {failure && <p role="alert">Model stopped: {failure.explanation} Partial receipts retained.</p>}
   </>;
 }

@@ -14,13 +14,14 @@ export class DemoFlow {
 
   constructor(private readonly page: Page) {
     this.cpu = new LiveExecutionFlow(page);
-    this.publicInputs = page.getByRole('region', { name: 'Live regional inputs', exact: true });
+    this.publicInputs = page.getByRole('region', { name: 'Source details', exact: true });
     this.cpuPanel = page.getByRole('region', { name: 'Local execution', exact: true });
     this.replay = page.getByRole('region', { name: 'Paired replay', exact: true });
     this.controls = page.getByRole('region', { name: 'Simulation controls', exact: true });
   }
 
   get submittedRunCount(): number { return this.cpu.submittedRunCount; }
+  get lastSubmittedRequestId(): string { return this.cpu.lastSubmittedRequestId; }
   get runIdInAddress(): string | null { return this.cpu.runIdInAddress; }
 
   async open(): Promise<void> {
@@ -28,42 +29,70 @@ export class DemoFlow {
     await this.cpu.open();
     expect(new URL(this.page.url()).pathname).toBe('/');
     expect(new URL(this.page.url()).search).toBe('');
-    await expect(this.replay).toBeVisible();
+    await this.closeTool();
+    await expect(this.page.getByRole('region', { name: 'Live input fleet', exact: true })).toBeVisible();
+    await expect(this.replay).toHaveCount(0);
     await expect(this.page.getByRole('button', { name: /Route (?:next )?Fake job/i })).toHaveCount(0);
-    await this.expectPanelsMounted();
+    await this.expectNavigationAvailable();
   }
 
-  private async expectPanelsMounted(): Promise<void> {
-    await expect(this.publicInputs).toBeVisible();
-    await expect(this.cpuPanel).toBeVisible();
-    await expect(this.replay).toBeVisible();
+  private async expectNavigationAvailable(): Promise<void> {
+    const navigation = this.page.getByRole('navigation', { name: 'Demo flow', exact: true, includeHidden: true });
+    // A native modal makes background links inert, while retaining the workspace and mounted CPU receipt.
+    for (const name of ['Live fleet', 'Run CPU work', 'Compare scheduling']) {
+      await expect(navigation.getByRole('link', { name, exact: true, includeHidden: true })).toBeVisible();
+    }
+  }
+
+  private async closeTool(): Promise<void> {
+    const close = this.page.getByRole('button', { name: 'Close tool', exact: true });
+    if (await close.isVisible()) await close.click();
   }
 
   async visit(section: 'Public inputs' | 'Run CPU work' | 'Compare scheduling'): Promise<void> {
-    await this.page.getByRole('link', { name: section, exact: true }).click();
-    const panel = section === 'Public inputs' ? this.publicInputs : section === 'Run CPU work' ? this.cpuPanel : this.replay;
-    await expect(panel).toBeInViewport();
-    await this.expectPanelsMounted();
+    await this.closeTool();
+    if (section === 'Public inputs') {
+      await this.page.getByRole('link', { name: 'Live fleet', exact: true }).click();
+      await this.page.getByRole('button', { name: 'EIA source', exact: true }).click();
+      await expect(this.publicInputs).toBeInViewport();
+    } else {
+      await this.page.getByRole('link', { name: section, exact: true }).click();
+      await expect(section === 'Run CPU work' ? this.cpuPanel : this.replay).toBeInViewport();
+    }
+    await this.expectNavigationAvailable();
   }
 
   async expectPublicInputs(demand: string, sources: { eia: string; caiso: string }): Promise<void> {
-    await expect(this.publicInputs.getByRole('row', { name: /Regional demand/ })).toContainText(demand);
-    await expect(this.publicInputs.getByRole('link', { name: 'EIA-930 source', exact: true })).toHaveAttribute('href', sources.eia);
-    await expect(this.publicInputs.getByRole('link', { name: 'CAISO OASIS source', exact: true })).toHaveAttribute('href', sources.caiso);
+    await expect(this.publicInputs).toContainText(demand);
+    await expect(this.publicInputs.getByRole('link', { name: 'EIA source', exact: true })).toHaveAttribute('href', sources.eia);
+    await this.publicInputs.getByRole('button', { name: 'Close source details', exact: true }).click();
+    await this.page.getByRole('button', { name: 'CAISO source', exact: true }).click();
+    await expect(this.publicInputs.getByRole('link', { name: 'CAISO source', exact: true })).toHaveAttribute('href', sources.caiso);
+    await this.publicInputs.getByRole('button', { name: 'Close source details', exact: true }).click();
   }
 
-  async analyzePublicDemand(requestId: string): Promise<LocalRun> {
+  async analyzePublicDemand(): Promise<LocalRun> {
     await expect(this.cpuPanel.getByRole('combobox', { name: 'Workload', exact: true })).toHaveValue('grid-summary');
-    await expect(this.cpuPanel.getByLabel('Maximum wholesale price (USD/MWh)', { exact: true })).toHaveValue('100');
-    return this.cpu.submitGridSummary({ requestId, maximumWholesaleUsdPerMWh: 100 });
+    await expect(this.cpuPanel.getByRole('button', { name: 'Normal', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    const run = await this.cpu.submitGridSummary();
+    expect(run.request.policy.maximumWholesaleUsdPerMWh).toBe(100);
+    return run;
   }
-
   async expectExecutionLabels(): Promise<void> {
     await expect(this.cpuPanel).toContainText('Recorded public inputs');
+    const inputDetails = this.cpuPanel.getByText('Historical input replay; the worker executes now.', { exact: false });
+    await this.reveal(inputDetails);
+    await expect(inputDetails).toBeVisible();
     await expect(this.cpuPanel).toContainText('Historical input replay; the worker executes now.');
     await expect(this.cpuPanel).toContainText('Measured energy: unavailable');
     await expect(this.cpuPanel).toContainText('Measured carbon: unavailable');
-    await expect(this.cpuPanel.getByRole('heading', { name: 'Modeled Torus storage comparison', exact: true })).toBeVisible();
+    const comparison = this.cpuPanel.getByRole('heading', { name: 'Modeled Torus storage comparison', exact: true, includeHidden: true });
+    await this.reveal(comparison);
+    await expect(comparison).toBeVisible();
+  }
+
+  private async reveal(content: Locator): Promise<void> {
+    if (!await content.isVisible()) await content.locator('xpath=ancestor::details[1]').locator('summary').click();
   }
 
   private async download(action: Locator): Promise<string> {
@@ -75,6 +104,7 @@ export class DemoFlow {
 
   async downloadCpuOutput(): Promise<string> {
     const text = await this.download(this.cpuPanel.getByRole('link', { name: 'Download actual output', exact: true }));
+    await this.reveal(this.cpuPanel.getByTestId('actual-output'));
     await expect(this.cpuPanel.getByTestId('actual-output')).toHaveText(text);
     return text;
   }
@@ -151,7 +181,7 @@ export class DemoFlow {
 
   async reloadSavedRun(requestId: string): Promise<LocalRun> {
     const result = await this.cpu.reloadRun(requestId);
-    await this.expectPanelsMounted();
+    await this.expectNavigationAvailable();
     return result;
   }
 }

@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import manifest from '../../fixtures/public-grid/manifest.json' with { type: 'json' };
 import eiaCapture from '../../fixtures/public-grid/eia.json' with { type: 'json' };
@@ -12,8 +12,8 @@ test.describe.configure({ mode: 'default' });
 test('[LIVE-01] current public inputs drive a scheduler decision and an actual job result', async ({ page }) => {
   const flow = new LiveExecutionFlow(page);
   await flow.open();
-  const requestId = randomUUID();
-  const run = await flow.submitIntegerSum({ requestId, values: [1, 2, 3, 4] });
+  const run = await flow.submitIntegerSum({ values: [1, 2, 3, 4] });
+  const requestId = flow.lastSubmittedRequestId;
 
   expect(run.mode).toBe('recorded');
   expect(run.status).toBe('done');
@@ -113,7 +113,7 @@ test('[LIVE-01] current public inputs drive a scheduler decision and an actual j
 test('a public-demand limit refuses execution, then a new request runs under a permissive limit', async ({ page }) => {
   const flow = new LiveExecutionFlow(page);
   await flow.open();
-  const refused = await flow.submitIntegerSum({ requestId: randomUUID(), values: [1, 2], maximumDemandMW: 0 });
+  const refused = await flow.submitIntegerSum({ values: [1, 2], policy: 'Hold' });
 
   expect(refused.status).toBe('blocked');
   expect(refused.decision.action).toBe('wait');
@@ -127,8 +127,8 @@ test('a public-demand limit refuses execution, then a new request runs under a p
   expect(refused.execution.events.map(event => event.state)).not.toContain('running');
   expect(await flow.hasOutputArtifact()).toBe(false);
 
-  const requestId = randomUUID();
-  const accepted = await flow.submitIntegerSum({ requestId, values: [1, 2], maximumDemandMW: 20_000 });
+  const accepted = await flow.submitIntegerSum({ values: [1, 2], policy: 'Normal' });
+  const requestId = flow.lastSubmittedRequestId;
   expect(accepted.id).not.toBe(refused.id);
   expect(accepted.request.inputRevisions).toEqual(refused.request.inputRevisions);
   expect(accepted.status).toBe('done');
@@ -140,11 +140,11 @@ test('a public-demand limit refuses execution, then a new request runs under a p
 test('an actual worker overflow fails without reusing the previous successful artifact', async ({ page }) => {
   const flow = new LiveExecutionFlow(page);
   await flow.open();
-  const previous = await flow.submitIntegerSum({ requestId: randomUUID(), values: [5] });
+  const previous = await flow.submitIntegerSum({ values: [5] });
   expect(previous.status).toBe('done');
   expect(JSON.parse(await flow.downloadOutput())).toEqual({ requestId: previous.id, sum: 5 });
 
-  const failed = await flow.submitIntegerSum({ requestId: randomUUID(), values: [Number.MAX_SAFE_INTEGER, 1] });
+  const failed = await flow.submitIntegerSum({ values: [Number.MAX_SAFE_INTEGER, 1] });
   expect(failed.id).not.toBe(previous.id);
   expect(failed.status).toBe('failed');
   expect(failed.decision.action).toBe('run');
@@ -162,8 +162,8 @@ test('an actual worker overflow fails without reusing the previous successful ar
 test('reloading a stored run preserves its receipt and artifact without submitting another job', async ({ page }) => {
   const flow = new LiveExecutionFlow(page);
   await flow.open();
-  const requestId = randomUUID();
-  const original = await flow.submitIntegerSum({ requestId, values: [7, 8] });
+  const original = await flow.submitIntegerSum({ values: [7, 8] });
+  const requestId = flow.lastSubmittedRequestId;
   const originalOutput = await flow.downloadOutput();
   expect(JSON.parse(originalOutput)).toEqual({ requestId, sum: 15 });
   expect(flow.runIdInAddress).toBe(original.id);
@@ -178,8 +178,8 @@ test('reloading a stored run preserves its receipt and artifact without submitti
 test('the grid-summary workload computes its artifact from the pinned public EIA snapshot', async ({ page }) => {
   const flow = new LiveExecutionFlow(page);
   await flow.open();
-  const requestId = randomUUID();
-  const run = await flow.submitGridSummary({ requestId });
+  const run = await flow.submitGridSummary();
+  const requestId = flow.lastSubmittedRequestId;
 
   expect(run.mode).toBe('recorded');
   expect(run.status).toBe('done');

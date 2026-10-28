@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import manifest from '../../fixtures/public-grid/manifest.json' with { type: 'json' };
 import { DemoFlow } from './demo-flow';
@@ -16,8 +16,8 @@ test('a judge follows public inputs through real CPU output and a separate model
   });
 
   await demo.visit('Run CPU work');
-  const requestId = randomUUID();
-  const run = await demo.analyzePublicDemand(requestId);
+  const run = await demo.analyzePublicDemand();
+  const requestId = demo.lastSubmittedRequestId;
   expect(run.mode).toBe('recorded');
   expect(run.status).toBe('done');
   expect(run.request.workload).toEqual({ kind: 'grid-summary' });
