@@ -99,12 +99,12 @@ export function PriceDetails({ siteName, hour }: PriceDetailsProps) {
 }
 
 /** A recorded routing choice is displayed as supplied; no execution or history is produced here. */
-export function JobPriceChoice({ jobName, outcome, siteNames, history = [] }: JobPriceChoiceProps) {
+export function JobPriceChoice({ jobName, outcome, siteNames, history = [], execution }: JobPriceChoiceProps) {
   const allocation = outcome?.selected ? outcome.allocation : undefined;
   const plannedKWh = allocation?.energy.length ? allocation.energy.reduce((total, period) => total + period.estimatedKWh, 0) : undefined;
   return <section className="posted-prices job-price-choice" aria-label="Job choice">
     <header><p className="price-eyebrow">THE JOB'S CHOICE</p><h3>{jobName}</h3></header>
-    <span className="price-choice-state">{allocation ? 'Selected · not executed' : outcome ? 'No slot selected' : 'No decision yet'}</span>
+    <span className="price-choice-state">{execution === 'modeled-complete' ? 'Modeled execution complete' : execution === 'modeled-running' ? 'Modeled execution running' : allocation ? 'Selected · not executed' : outcome ? 'No slot selected' : 'No decision yet'}</span>
     {allocation && <>
       <p className="price-destination"><span className="price-destination-dot" aria-hidden="true" />{siteNames[allocation.slot.locationId] ?? allocation.slot.locationId}</p>
       <p className="price-choice-rate">{dollars(allocation.postedUsdPerGpuHour)}<small>per GPU-hour</small></p>

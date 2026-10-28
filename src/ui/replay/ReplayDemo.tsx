@@ -8,6 +8,7 @@ import { hourStart } from '../../core/execution/simulation/workload';
 import { EnergyMapView } from '../energy/EnergyMapView';
 import { ChaosMonkeyControls } from '../core/controls/ChaosMonkeyControls';
 import { replayFailures, useReplayPlayback, type ReplayProgress } from './useReplayPlayback';
+import { ReplayPrices } from './ReplayPrices';
 import './ReplayDemo.css';
 
 const exampleLocations = {
@@ -28,8 +29,8 @@ function jobState(job: Job, progress: ReplayProgress): string {
 }
 
 /** Production replay composition: live engine publications, existing map and controls. */
-export function ReplayDemo() {
-    const playback = useReplayPlayback(captured as ReplayScenario);
+export function ReplayDemo({ scenario = captured as ReplayScenario }: { scenario?: ReplayScenario } = {}) {
+    const playback = useReplayPlayback(scenario);
     const { progress, completed, actions } = playback;
     const [activeJobId, setActiveJobId] = useState(progress.scenario.jobs[0].id);
     const [inspectedSlot, setInspectedSlot] = useState<SlotReference>();
@@ -42,6 +43,7 @@ export function ReplayDemo() {
     const report = createJobReport({ jobId: activeJob.id, submittedJob: originalJob, routingOutcome: latest?.selection },
         { fake: false, label: 'Live modeled home-site execution; fleet comparison reported separately.' });
     const activity = {
+        simulated: progress.selected.run.simulated,
         meters: progress.selected.run.ticks.flatMap(tick => tick.meters),
         executions: progress.selected.run.ticks.flatMap(tick => tick.executions),
         transfers: [...progress.selected.run.transfers],
@@ -125,6 +127,10 @@ export function ReplayDemo() {
         <EnergyMapView map={displayMap} jobFlow={{ job: activeJob, report, routeAttempt: history.length }}
             inspection={{ inspectedSlot, focusSlot: latest?.selection.selected ? latest.selection.allocation.slot : undefined,
                 onInspect: setInspectedSlot }} activity={mapActivity} controls={controls} />
+        <ReplayPrices map={displayMap} jobName={activeJob.id} outcome={latest?.selection}
+            execution={activeJob.state === 'done' ? 'modeled-complete' : activeJob.state === 'running' ? 'modeled-running' : undefined}
+            history={history.map(item => ({ at: hourStart(progress.scenario.startAt, item.hour), reason: item.selection.explanation }))}
+            inspected={inspectedSlot} onInspect={setInspectedSlot} />
         <section className="replay-job-detail" role="region" aria-label="Job details" data-active-job-id={activeJob.id}>
             <div><p className="eyebrow">INSPECTED JOB</p><h2>{activeJob.id}</h2>
                 <p>{jobState(originalJob, progress)} · {number(activeJob.remainingGpuH)} GPU-hours remaining · home {originalJob.homeLocation}</p></div>
@@ -155,7 +161,12 @@ export function ReplayDemo() {
                         <tr><th>Modeled cost (USD)</th><td data-value={completed.baseline.impact.modeledCostUsd}>{number(completed.baseline.impact.modeledCostUsd, 3)}</td><td data-value={completed.selected.impact.modeledCostUsd}>{number(completed.selected.impact.modeledCostUsd, 3)}</td></tr>
                         <tr><th>Electricity (USD)</th><td data-value={completed.baseline.impact.electricityUsd}>{number(completed.baseline.impact.electricityUsd, 3)}</td><td data-value={completed.selected.impact.electricityUsd}>{number(completed.selected.impact.electricityUsd, 3)}</td></tr></tbody>
                 </table></div>
-                <p>Carbon reduction: {number(completed.reductions.carbonKg)} kg · Modeled cost reduction: {completed.reductions.modeledCostUsd === null ? 'Unavailable' : '$' + number(completed.reductions.modeledCostUsd, 3)}</p>
+                <dl className="replay-fairness" aria-label="Comparison fairness">
+                    <div><dt>Completed GPU-hours · FIFO / coordinated</dt><dd>{number(completed.baseline.impact.work.reduce((sum, job) => sum + job.completedGpuH, 0))} / {number(completed.selected.impact.work.reduce((sum, job) => sum + job.completedGpuH, 0))}</dd></div>
+                    <div><dt>Ending storage (kWh) · FIFO / coordinated, by site</dt><dd>{completed.baseline.impact.inventory.map(site => `${site.locationId}: ${number(site.endingStoredKWh)} / ${number(completed.selected.impact.inventory.find(other => other.locationId === site.locationId)?.endingStoredKWh)}`).join(' · ')}</dd></div>
+                </dl>
+                <p>Carbon reduction: <span data-testid="modeled-carbon-reduction">{number(completed.reductions.carbonKg)}</span> kg · Modeled cost reduction: <span data-testid="modeled-cost-reduction">{completed.reductions.modeledCostUsd === null ? 'Unavailable' : '$' + number(completed.reductions.modeledCostUsd, 3)}</span></p>
+                {(completed.reductions.carbonKg !== null && completed.reductions.carbonKg < 0 || completed.reductions.modeledCostUsd !== null && completed.reductions.modeledCostUsd < 0) && <p>The coordinated run performed worse. Negative reductions are retained.</p>}
                 {completed.comparison.carbon.unavailableReason && <p>{completed.comparison.carbon.unavailableReason}</p>}
                 {completed.comparison.cost.unavailableReason && completed.comparison.cost.unavailableReason !== completed.comparison.carbon.unavailableReason && <p>{completed.comparison.cost.unavailableReason}</p>}
                 <p>Raw receipts include idle sites and storage inventory. Selection alone earns no savings.</p>

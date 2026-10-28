@@ -34,7 +34,7 @@ test('shows supplied local storage, forecast provenance and capacity on the ener
       points: [{ window: snapshots.window, value: 275 }],
     } } } }) + ';',
   }));
-  await page.goto('/');
+  await page.goto('/?scenario=fake-preview');
   const map = page.getByRole('region', { name: 'Energy sites' });
   await map.getByRole('button', { name: 'Explore Utah', exact: true }).click();
   await map.getByRole('button', { name: 'Inspect Utah grid example', exact: true }).click();
@@ -66,7 +66,7 @@ test('renders unavailable slot evidence without a zero or an available-now recom
   const data = structuredClone(snapshots);
   Object.assign(data.sites[0].snapshot, { status: 'unavailable' });
   await useFakeSnapshots(page, data);
-  await page.goto('/');
+  await page.goto('/?scenario=fake-preview');
   const map = page.getByRole('region', { name: 'Energy sites' });
   const site = map.getByRole('button', { name: 'View Utah grid example', exact: true });
   await expect(site).toHaveAttribute('data-site-freshness', 'unavailable');
@@ -113,7 +113,7 @@ test('shows recorded meter and work intervals with separate supplied transfer ev
 });
 
 test('drills from US regional references into Utah sites and keeps viewing separate from job selection', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?scenario=fake-preview');
   const map = page.getByRole('region', { name: 'Energy sites' });
   const overviewMap = map.getByRole('region', { name: 'US energy map' });
   await expect(overviewMap.getByRole('button', { name: /^Inspect .* region$/ })).toHaveCount(5);
@@ -247,7 +247,7 @@ test('drills from US regional references into Utah sites and keeps viewing separ
 
 test('keeps site inspection and timeline usable on a narrow screen', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/?scenario=fake-preview');
   const map = page.getByRole('region', { name: 'Energy sites' });
   await map.getByRole('button', { name: 'Explore Utah', exact: true }).click();
   await map.getByRole('button', { name: 'Inspect Utah solar example', exact: true }).click();
@@ -266,7 +266,7 @@ test('preserves missing coordinates, stale evidence, and supplied source provena
   await useFakeSnapshots(page, {
     ...snapshots, sites: [{ ...grid, latitude: undefined, longitude: undefined }, solar],
   });
-  await page.goto('/');
+  await page.goto('/?scenario=fake-preview');
 
   const map = page.getByRole('region', { name: 'Energy sites' });
   await map.getByRole('button', { name: 'Explore Utah', exact: true }).click();
@@ -292,7 +292,7 @@ test('every supplied same-site interval is available to inspect in the timeline'
   later.snapshot.slot.window = { startAt: '2026-10-27T18:30:00Z', endAt: '2026-10-27T19:00:00Z' };
   later.snapshot.slot.availableEnergyKWh = .25;
   await useFakeSnapshots(page, { ...snapshots, sites: [grid, later, solar] });
-  await page.goto('/');
+  await page.goto('/?scenario=fake-preview');
 
   const map = page.getByRole('region', { name: 'Energy sites' });
   await map.getByRole('button', { name: 'Explore Utah', exact: true }).click();
@@ -305,7 +305,7 @@ test('every supplied same-site interval is available to inspect in the timeline'
 });
 
 test('reload returns to a ready Fake job with the same site energy and no routing selection', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?scenario=fake-preview');
   const map = page.getByRole('region', { name: 'Energy sites' });
   await map.getByRole('button', { name: 'Explore Utah', exact: true }).click();
   const pins = map.getByRole('region', { name: 'US energy map' }).getByRole('button', { name: /^Inspect Utah/ });
@@ -340,7 +340,7 @@ test('reload returns to a ready Fake job with the same site energy and no routin
 
 test('site inspection still works when the basemap tiles cannot load', async ({ page }) => {
   await page.route(tileRequests, route => route.abort());
-  await page.goto('/');
+  await page.goto('/?scenario=fake-preview');
   const map = page.getByRole('region', { name: 'Energy sites' });
   await map.getByRole('button', { name: 'Explore Utah', exact: true }).click();
   await expect(map.getByText('Map tiles could not load', { exact: false })).toBeVisible();
@@ -366,7 +366,7 @@ test('shows a stay without a travel link when the supplied outcome keeps the job
     contentType: 'text/javascript',
     body: 'export async function routeFakeJob() { return ' + JSON.stringify(outcome) + '; }',
   }));
-  await page.goto('/');
+  await page.goto('/?scenario=fake-preview');
   const basemap = page.getByRole('region', { name: 'US energy map' });
   const origin = basemap.getByRole('button', { name: 'Inspect Utah grid example', exact: true });
   await expect(origin).toHaveAttribute('data-origin', 'true');

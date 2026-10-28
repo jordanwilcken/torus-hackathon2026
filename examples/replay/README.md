@@ -1,6 +1,16 @@
 # Captured paired replay
 
-For the interactive demo, start the app with `npm run dev` and open `/?scenario=paired-replay`, or click **Stream jobs on the map** in the main navigation. This uses `job-stream.json` and steps the actual paired simulator; the animations do not play a precomputed result.
+For the interactive demo, start the app with `npm run dev` and open `/`. The normal application now starts with the computed job stream; `/?scenario=paired-replay` remains a compatible entry. The old fixed routing preview is available only through `/?scenario=fake-preview` (and the existing stale/recorded regression scenarios).
+
+The navigation keeps three kinds of evidence on the same page:
+
+- **Public inputs:** EIA PACE and CAISO reference prices with original intervals, age and sources. Their availability depends on the configured server feeds.
+- **Run CPU work:** analyze the pinned EIA demand revision, inspect the admission decision, actual child-process result and saved receipt, and download its output. Reloading a `?run=` URL reads the saved result without resubmitting. Measured CPU energy and carbon remain unknown.
+- **Compare scheduling:** run the separate declared-site model. The public feed and CPU receipt are not inputs to this synthetic GPU replay and are not claimed as its measured energy.
+
+The **Modeled scenario** selector provides **Streamed jobs**, **Wait for solar**, and **Forecast miss**. Changing it resets only the model; the saved CPU receipt stays mounted. Price strips and map inspection read the same retained publication before that hour's reservations. Later jobs in a batch can see newer capacity versions. Completed GPU-hours and ending storage are shown with the fleet comparison. The forecast-miss example retains its negative reductions rather than claiming savings.
+
+The default stream uses `job-stream.json` and steps the actual paired simulator; the animations do not play a precomputed result.
 
 1. Open the monkey icon in the map corner and click **Step**. Job 01 arrives and waits for the cheaper solar hour.
 2. Step again. Job 01 runs at A, and job 02 arrives and waits because the current capacity is taken.
@@ -8,7 +18,7 @@ For the interactive demo, start the app with `npm run dev` and open `/?scenario=
 4. Step the final hour to include idle demand and ending storage, then download the paired evidence JSON. **Play**, **Pause**, speed and **Reset** control this same engine.
 5. Reset, settle the first hour, then apply **Solar drop at Site A** before continuing. The event changes realized supply in both runs, leaves the forecast intact and is retained in the export.
 
-This proves admission, home-site time selection, capacity competition, modeled execution and fleet accounting. It does not prove automatic cross-site migration. A/B capacity, energy and job demand are declared synthetic inputs; their city coordinates are display references. The separate **Public inputs and real CPU execution** mode demonstrates the actual bounded CPU worker. Public cluster traces can later supply historical job arrivals, but they do not provide live machines or measured energy for these modeled sites.
+This proves admission, home-site time selection, capacity competition, modeled execution and fleet accounting. It does not prove automatic cross-site migration. A/B capacity, energy and job demand are declared synthetic inputs; their city coordinates are display references. **Run CPU work** demonstrates the actual bounded CPU worker independently. Public cluster traces can later supply historical job arrivals, but they do not provide live machines or measured energy for these modeled sites. Existing cross-site FLOW-01/FLOW-02 requirements remain open.
 
 Both UI and CLI exports contain the full scenario and raw results. To replay a UI download with the CLI, save its `scenario` object as a scenario JSON file and pass that file to the command below. The CLI additionally records the input-byte hash and local Git provenance.
 
@@ -50,4 +60,5 @@ Run the scoped CLI checks with:
 ```sh
 node --test test/tooling/replay-cli.test.mjs
 node node_modules/@playwright/test/cli.js test --config test/userflows/replay/playwright.config.ts
+node node_modules/@playwright/test/cli.js test test/userflows/demo test/userflows/replay --workers=1
 ```
