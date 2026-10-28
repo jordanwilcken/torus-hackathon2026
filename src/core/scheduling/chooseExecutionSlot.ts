@@ -11,7 +11,7 @@ type SlotRoutingOptions = {
     asOf: string;
     maximumAgeMinutes: number;
     kWhPerGpuHour: number;
-    /** Opt in to explicit positive-duration transfer plans; default behavior is unchanged. */
+    /** Opt in to explicit transfer plans, including measured zero-duration arrivals; default behavior is unchanged. */
     planTransfers?: boolean;
     /** Rounded execution-ready duration and complete modeled transfer cost; never an implicit free rate. */
     transferTo: (locationId: string) => { hours: number; costUsd: number } | undefined;
@@ -141,7 +141,7 @@ export async function chooseExecutionSlot(
                 " using declared transfer cost and arrival. No destination capacity is reserved.",
         };
     }
-    const current = choices.filter(choice => choice.canExecuteNow)
+    const current = choices.filter(choice => choice.canExecuteNow && (!options.planTransfers || choice.reference.locationId === job.currentLocation))
         .sort((a, b) => a.priceWithTransfer - b.priceWithTransfer ||
             a.reference.locationId.localeCompare(b.reference.locationId) ||
             a.reference.slotId.localeCompare(b.reference.slotId))[0];
@@ -236,7 +236,7 @@ function cheaperTransfer(job: Job, choices: SlotChoice[], now: number): SlotChoi
     const stay = choices.filter(choice => choice.reference.locationId === job.currentLocation);
     const bestStayPrice = Math.min(...stay.map(choice => choice.priceWithTransfer));
     return choices.filter(choice => choice.reference.locationId !== job.currentLocation &&
-        choice.transfer.hours > 0 && choice.transfer.costUsd > 0 &&
+        choice.transfer.hours >= 0 && choice.transfer.costUsd >= 0 &&
         choice.start === now + choice.transfer.hours * hour && choice.priceWithTransfer < bestStayPrice)
         .sort((a, b) => a.priceWithTransfer - b.priceWithTransfer || a.start - b.start ||
             a.reference.locationId.localeCompare(b.reference.locationId) ||

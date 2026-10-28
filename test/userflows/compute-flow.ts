@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import type { ImpactView, JobInput } from './compute-flow.interface';
 
 function numberFromAttribute(value: string | null): number | null {
@@ -29,25 +29,43 @@ export class ComputeFlow {
   }
 
   async useScenario(name: 'curtailed-solar' | 'stale-site' | 'recorded-comparison'): Promise<void> {
-    if (name === 'curtailed-solar') this.unimplemented(`configure the real ${name} scenario`);
     await this.mockMapTiles();
     await this.page.goto('/test/userflows/legacy/index.html?scenario=' + encodeURIComponent(name));
   }
 
   async submitJob(job: JobInput): Promise<void> {
-    this.unimplemented(`submit ${job.name} through the application`);
+    await this.page.getByRole('button', { name: 'Build job', exact: true }).click();
+    const editor = this.page.getByRole('dialog', { name: 'Build job' });
+    await editor.getByRole('textbox', { name: 'Workload', exact: true }).fill(job.name);
+    await editor.getByLabel('Work (GPU-hours)', { exact: true }).fill(String(job.workGpuH));
+    await editor.getByLabel('GPU limit', { exact: true }).fill(String(job.maxGpus));
+    await editor.getByLabel('Deadline (UTC)', { exact: true })
+      .fill(new Date(Date.parse('2026-10-27T12:00:00Z') + job.deadlineHours * 3_600_000).toISOString().slice(0, 16));
+    for (const site of ['A', 'B'])
+      await editor.getByRole('checkbox', { name: 'Site ' + site, exact: true }).setChecked(job.allowedLocations.includes(site));
+    await editor.getByRole('button', { name: 'Send to scheduler', exact: true }).click();
+    await this.page.getByTestId('selected-site').waitFor({ state: 'visible' });
   }
 
   async executeAndCompare(): Promise<void> {
-    this.unimplemented('execute the selected work and open the impact report');
+    const execute = this.page.getByRole('button', { name: 'Execute and compare', exact: true });
+    await execute.click();
+    await expect(execute).toBeDisabled();
   }
 
   async postedPrices(): Promise<Array<{ site: string; usdPerGpuHour: number }>> {
-    return this.unimplemented('read the sites and posted hourly prices from the map or price board');
+    const rows = this.page.getByRole('list', { name: 'Posted prices' }).getByRole('listitem');
+    return Promise.all((await rows.all()).map(async row => {
+      const site = await row.getAttribute('data-location-id');
+      const usdPerGpuHour = numberFromAttribute(await row.getAttribute('data-posted-price'));
+      if (!site || usdPerGpuHour === null) throw new Error('Posted price is unavailable.');
+      return { site, usdPerGpuHour };
+    }));
   }
 
   async selectedSite(): Promise<string | null> {
-    return this.unimplemented('read the selected site');
+    const selected = await this.page.getByTestId('selected-site').textContent();
+    return selected === 'None' ? null : selected;
   }
 
   async completedGpuHours(): Promise<number> {
@@ -100,7 +118,4 @@ export class ComputeFlow {
     };
   }
 
-  private unimplemented(operation: string): never {
-    throw new Error(`Unimplemented user-flow driver: ${operation}. Connect this to the real application.`);
-  }
 }

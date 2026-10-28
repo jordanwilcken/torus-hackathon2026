@@ -1,3 +1,4 @@
+import type { CapacityPlanningPolicy, HourlyCapacityPlan } from "../../energy/planning/CapacityPlan.types.js";
 import type { Job } from "../../jobs/Job.type.js";
 import type { SiteEnergyConfiguration, SiteEnergyInput } from "../../energy/site/SiteEnergy.types.js";
 import type { SimulationLogEntry, InputEvent } from "../simulation/clock.js";
@@ -38,7 +39,9 @@ export type ReplayScenario = {
     storageToleranceKWh: number;
     events?: InputEvent[];
     /** Selected arm may move within allowedLocations; baseline remains home FIFO. */
-    routing?: { policy: "fleet"; transfer: TransferTerms };
+    routing?: { policy: "fleet"; transfer: TransferTerms; movePolicy?: "carbon-benefit" };
+    /** Opt-in job-aware soft quotas. Physical ledger limits remain authoritative. */
+    planning?: CapacityPlanningPolicy;
 };
 
 export type ReplayArm = {
@@ -48,6 +51,8 @@ export type ReplayArm = {
     decisions: Array<{ hour: number; results: JobRoutingResult[] }>;
     log: SimulationLogEntry[];
     finalJobs: Job[];
+    /** Conditional hourly planner witnesses; absent on older scenarios without planning. */
+    plans?: HourlyCapacityPlan[];
 };
 
 export type PairedReplay = {

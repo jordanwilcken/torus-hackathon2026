@@ -14,6 +14,7 @@ import { FleetMap, type FleetSiteVisual } from './FleetMap';
 import type { ReplayProgress } from '../../core/execution/replay/createPairedReplaySession';
 import { SourceSignals } from './SourceSignals';
 import { FleetSummary } from './FleetSummary';
+import { CapacityHorizon, MoveSignal } from './EngineSignals';
 import './LiveFleet.css';
 
 const number = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 3 });
@@ -100,6 +101,15 @@ function download(progress: ReplayProgress) {
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
+function nextSolarDisruption(progress: ReplayProgress, locationId: string) {
+  const site = progress.scenario.sites.find(item => item.configuration.locationId === locationId);
+  const atHour = site?.observations.findIndex((input, hour) => hour >= progress.hour && (input.supply?.solarKW ?? 0) > 0
+    && !progress.scenario.events?.some(event => event.kind === 'solar-drop' && event.atHour === hour
+      && (event.payload as { locationId: string }).locationId === locationId)) ?? -1;
+  if (!site || atHour < 0 || progress.done) return undefined;
+  const input = site.observations[atHour];
+  return { atHour, solarKW: input.supply!.solarKW, startAt: input.window.startAt };
+}
 function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestore }: {
   capture: FleetCapture; restored?: ReturnType<typeof createPairedReplaySession>; freezeAnchor?: SavedFleetMoment;
   latestSources: () => FleetSourceBundle; onRestore: (saved: SavedFleetMoment) => Promise<void>;
@@ -116,6 +126,7 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
   const [activityEpoch, setActivityEpoch] = useState(0);
   const [savedMoment, setSavedMoment] = useState<SavedFleetMoment | undefined>(freezeAnchor);
   const [saving, setSaving] = useState(false);
+  const [preparingDisruption, setPreparingDisruption] = useState(false);
   const latestDecision = progress.selected.decisions.at(-1);
   const displayHour = latestDecision?.hour ?? 0;
   const currentAt = new Date(Date.parse(progress.scenario.startAt) + displayHour * 3_600_000).toISOString();
@@ -142,11 +153,15 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
   const active = sites.find(site => site.id === selected);
   const activeMeter = currentTick?.meters.find(meter => meter.locationId === selected);
   const job = progress.selected.finalJobs.find(job => job.id === jobId);
+  const movement = progress.selected.decisions.findLast(decision => decision.results.some(result => result.jobId === jobId))?.results.find(result => result.jobId === jobId)?.selection.movement;
   const jobReceipts = progress.selected.run.ticks.flatMap(tick => tick.executions).filter(receipt => receipt.jobId === jobId);
   const arrived = progress.selected.finalJobs.filter(job => admissions.some(admission => admission.jobId === job.id));
-  const nextSolar = progress.scenario.sites.find(site => site.configuration.locationId === eventSite)?.observations[progress.hour]?.supply?.solarKW ?? 0;
+  const disruptionOptions = progress.scenario.sites.map(site => ({
+    id: site.configuration.locationId, name: site.name ?? site.configuration.locationId,
+    next: nextSolarDisruption(progress, site.configuration.locationId),
+  }));
+  const disruption = disruptionOptions.find(option => option.id === eventSite)?.next;
   const failure = progress.selected.run.ticks.find(tick => !tick.feasible);
-  const droppedAlready = progress.scenario.events?.some(event => event.atHour === progress.hour && (event.payload as { locationId: string }).locationId === eventSite);
   function inspect(id: string) { setOriginId(undefined); setSelected(id); setJobId(undefined); setEventSite(id); }
   async function freezeMoment() {
     setSaving(true);
@@ -160,18 +175,37 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
     } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
     finally { setSaving(false); }
   }
-  function disrupt() {
-    actions.pause();
-    try { actions.applyEvent({ atHour: progress.hour, kind: 'solar-drop', payload: { locationId: eventSite } });
-      setNotice(`Solar drop scheduled at ${place(eventSite)} for model hour ${progress.hour}. Step or play to see the response.`);
+  async function openDisruption() {
+    if (monkey) { setMonkey(false); return; }
+    setMonkey(true); setPreparingDisruption(true);
+    try {
+      await actions.pause();
+      const settled = playback.read();
+      const choices = settled.scenario.sites.map(site => ({ id: site.configuration.locationId,
+        next: nextSolarDisruption(settled, site.configuration.locationId) }));
+      const preferred = choices.find(option => option.id === eventSite && option.next?.atHour === settled.hour)
+        ?? choices.filter(option => option.next).toSorted((a, b) => a.next!.atHour - b.next!.atHour)[0];
+      if (preferred) setEventSite(preferred.id);
     } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
+    finally { setPreparingDisruption(false); }
+  }
+  async function disrupt() {
+    setPreparingDisruption(true);
+    try {
+      await actions.pause();
+      const target = nextSolarDisruption(playback.read(), eventSite);
+      if (!target) throw new Error('No remaining sunny hour at this site. Choose another site or reset the model.');
+      actions.applyEvent({ atHour: target.atHour, kind: 'solar-drop', payload: { locationId: eventSite } });
+      setNotice('Solar drop scheduled at ' + place(eventSite) + ' for model hour ' + target.atHour + ' (' + time(target.startAt) + '). Step or play to reach it. Captured forecast unchanged.');
+    } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
+    finally { setPreparingDisruption(false); }
   }
   return <>
     <div className="fleet-livebar"><div className="fleet-clock"><span className={playback.playing ? 'clock-pulse' : ''} />
       <strong>{failure ? 'Stopped' : progress.done ? 'Horizon complete' : playback.playing ? 'Running model' : 'Paused model'}</strong>
       <output aria-label="Fleet model hour" data-hour={progress.hour}>{progress.hour} / {progress.totalHours} h</output>
       <small>{time(currentAt)} · 1 model hour ≈ {number(5.8 / playback.speed)} s</small></div>
-      <button className="fleet-monkey" aria-label="Chaos monkey" aria-expanded={monkey} onClick={() => setMonkey(value => !value)}>🐒 <span>Disrupt</span></button></div>
+      <button className="fleet-monkey" aria-label="Chaos monkey" aria-expanded={monkey} onClick={() => void openDisruption()}>🐒 <span>Disrupt</span></button></div>
     <FleetSummary progress={progress} />
     <div className="fleet-stage">
       <FleetMap activityEpoch={activityEpoch} sites={sites} transfers={progress.selected.run.transfers} playing={playback.playing}
@@ -189,6 +223,7 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
           <p className="eyebrow">ENERGY SITE · MODELED</p><h3>{active.name}</h3><p className="fleet-inspect-time">{time(currentAt)} · {progress.scenario.sites.find(site => site.configuration.locationId === active.id)?.regionId}</p>
           <div className="fleet-capacity"><strong>{active.availableGpus}<small> / {active.capacity}</small></strong><span>GPUs for a full hour</span></div>
           <div className="fleet-capacity-bar">{Array.from({ length: active.capacity }, (_, index) => <i key={index} data-free={index < active.availableGpus} />)}</div>
+          <CapacityHorizon plan={progress.selected.plans?.at(-1)} locationId={active.id} />
           <dl className="fleet-metrics"><div><dt><i className="energy-key solar" />Solar</dt><dd><span data-testid="location-solar-kw" data-value={active.solarKW}>{number(active.solarKW)}</span> kW</dd></div>
             <div><dt><i className="energy-key compute" />GPU energy</dt><dd><span data-testid="location-compute-kwh" data-value={activeMeter?.computeKWh ?? 0}>{activeMeter ? number(activeMeter.computeKWh) : 'Pending'}</span>{activeMeter && ' kWh'}</dd></div>
             <div><dt><i className="energy-key battery" />Stored</dt><dd><span data-testid="location-storage-kwh" data-value={active.storedKWh}>{number(active.storedKWh)}</span> / {number(active.storageCapacityKWh)} kWh</dd></div>
@@ -206,17 +241,22 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
           <div className="fleet-work-progress"><i style={{ width: (1 - job.remainingGpuH / job.workGpuH) * 100 + '%' }} /></div>
           <div className="fleet-job-timing"><span><small>READY</small>{time(job.readyAt)}</span><span><small>DEADLINE</small>{time(job.window.endAt)}</span></div>
           <div className="fleet-carbon-readout"><span>GPU energy used</span><strong>{number(jobReceipts.reduce((sum, receipt) => sum + receipt.computeKWh, 0))} kWh</strong></div>
+          <MoveSignal decision={movement} destinationName={movement && place(movement.destinationLocationId)} />
           <details className="fleet-job-why"><summary>Why this schedule?</summary><p>{progress.selected.decisions.findLast(decision => decision.results.some(result => result.jobId === job.id))?.results.find(result => result.jobId === job.id)?.selection.explanation}</p><small>{jobReceipts.length} executor receipts · carbon counted in site totals</small></details>
         </section>}
       </aside>}
       {monkey && <section className="fleet-chaos" aria-label="Fleet simulation controls"><div><h3>Crash the party</h3><button aria-label="Close controls" onClick={() => setMonkey(false)}>×</button></div>
         <p>Change model inputs. Watch the scheduler respond.</p><div className="fleet-control-row">
-          <button onClick={() => void freezeMoment()} disabled={!playback.playing || saving}>Pause</button><button onClick={actions.play} disabled={playback.playing || progress.done || saving}>Play</button>
-          <button onClick={() => { actions.pause(); void actions.step(); }} disabled={playback.busy || progress.done || saving}>Step</button>
+          <button onClick={() => void freezeMoment()} disabled={!playback.playing || saving}>Pause</button><button onClick={actions.play} disabled={playback.playing || progress.done || saving || preparingDisruption}>Play</button>
+          <button onClick={() => { actions.pause(); void actions.step(); }} disabled={playback.busy || progress.done || saving || preparingDisruption}>Step</button>
           <select aria-label="Playback speed" value={playback.speed} onChange={event => actions.setSpeed(Number(event.target.value))}><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></div>
-        <label>Disruption location<select aria-label="Disruption location" value={eventSite} onChange={event => setEventSite(event.target.value)}>{progress.scenario.sites.map(site => <option key={site.configuration.locationId} value={site.configuration.locationId}>{site.name ?? site.configuration.locationId}</option>)}</select></label>
-        <button className="fleet-drop" onClick={disrupt} disabled={playback.busy || saving || progress.done || nextSolar <= 0 || droppedAlready}>Drop solar</button>
-        <small>{nextSolar > 0 ? `Remove ${number(nextSolar)} kW in the next model hour; retain the original forecast.` : 'No solar to remove in the next hour. Choose another site or advance time.'}</small>
+        <label>Disruption location<select aria-label="Disruption location" value={eventSite} disabled={preparingDisruption || saving} onChange={event => setEventSite(event.target.value)}>{disruptionOptions.map(option => <option key={option.id} value={option.id} disabled={!option.next}>{option.name}{option.next ? ' · ' + number(option.next.solarKW) + ' kW at ' + time(option.next.startAt) : ' · no remaining solar'}</option>)}</select></label>
+        <div className="fleet-disruption-target" aria-live="polite">{preparingDisruption ? 'Pausing at a settled model hour…'
+          : progress.done ? 'Horizon complete. Reset the model below to try a disruption.'
+            : disruption ? <><strong>{number(disruption.solarKW)} kW → 0 kW</strong><span>Model hour {disruption.atHour} · {time(disruption.startAt)}{disruption.atHour > progress.hour ? ' · next sunny hour' : ' · next step'}</span></>
+              : 'No sunny hours remain at this site. Choose another city or reset the model.'}</div>
+        <button className="fleet-drop" onClick={() => void disrupt()} disabled={preparingDisruption || saving || !disruption}>Drop solar</button>
+        <small>Only modeled realized solar changes. Both policies keep the captured forecast. Step or play to the displayed hour.</small>
         {notice && <p role="status">{notice}</p>}
         <button disabled={saving || playback.busy} onClick={() => void freezeMoment()}>{saving ? 'Saving frozen moment…' : 'Save frozen moment'}</button>
         {savedMoment && <div className="fleet-saved-moment"><small>Capture ID</small><code data-testid="frozen-capture-id">{savedMoment.revision}</code>

@@ -19,4 +19,4 @@ export type UnselectedJobOutcome = {
     explanation: string;
 };
 
-export type JobOutcome = SelectedJobOutcome | UnselectedJobOutcome;
+export type JobOutcome = (SelectedJobOutcome | UnselectedJobOutcome) & { movement?: import("./decideJobMove.js").MoveDecision };

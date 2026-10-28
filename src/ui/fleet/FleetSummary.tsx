@@ -8,6 +8,7 @@ const percent = (value: number, total: number) => total > 0 ? Math.min(100, Math
 
 export function FleetSummary({ progress }: { progress: ReplayProgress }) {
   const { work, energy, storage, carbon, comparison } = summarizeFleet(progress);
+  const plan = progress.selected.plans?.at(-1);
   const suppliedKWh = energy.solarUsedKWh + energy.gridImportKWh;
   const workPercent = percent(work.completedGpuH, work.totalGpuH);
   const solarPercent = percent(energy.solarUsedKWh, suppliedKWh);
@@ -49,5 +50,6 @@ export function FleetSummary({ progress }: { progress: ReplayProgress }) {
         <small className="fleet-summary-note" data-comparison={comparison.status} data-reduction-kg={comparison.carbonReductionKg ?? undefined}>{comparisonLabel}</small>
       </article>
     </div>
+    {plan && <p className="fleet-engine-state" data-degraded={plan.mode === 'degraded'} title={plan.reasons.join(' ') || 'Shared deadline capacity; no future reservations. Move only when modeled carbon benefit exceeds transfer emissions and total posted cost improves.'}><i />Hourly planner · {plan.deadlines.filter(job => job.status === 'covered').length}/{plan.deadlines.length} jobs fit · carbon-aware moves</p>}
   </section>;
 }

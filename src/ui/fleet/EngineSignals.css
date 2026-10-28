@@ -1,0 +1,15 @@
+.fleet-engine-plan,.fleet-move-signal { margin-top:14px; padding-top:12px; border-top:1px solid #e4eade; color:#708373; }
+.fleet-engine-plan>div:first-child,.fleet-move-signal>div { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:10px; }
+.fleet-engine-plan strong,.fleet-move-signal strong { color:#49634d; font-weight:600; }
+.fleet-engine-plan>div:first-child>span,.fleet-move-signal>div>span { font-size:8px; color:#8a9686; }
+.fleet-cap-horizon { display:flex; gap:3px; height:32px; margin-top:12px; align-items:end; }
+.fleet-cap-horizon>span { position:relative; height:100%; flex:1; min-width:3px; background:#f4f5ef; border-radius:2px; overflow:hidden; }
+.fleet-cap-horizon i { position:absolute; bottom:0; left:0; right:0; display:block; transition:height .3s; }
+.fleet-cap-physical { background:#dce5d6; }.fleet-cap-open { background:#80a87b; }
+.fleet-cap-horizon [data-status='stale'],.fleet-cap-horizon [data-status='unavailable'] { background:repeating-linear-gradient(45deg,#e8dfcd 0 2px,#f6f2e9 2px 4px); }
+.fleet-cap-labels { display:flex; justify-content:space-between; margin-top:4px; }.fleet-cap-labels small { font-size:8px; }
+.fleet-engine-plan p { display:flex; gap:6px; align-items:center; margin:9px 0 3px; font-size:10px; }
+.fleet-engine-plan p i { width:5px; height:5px; border-radius:50%; background:#719e72; }.fleet-engine-plan p i[data-warning='true'] { background:#b59b61; }
+.fleet-move-signal p { display:flex; align-items:baseline; gap:7px; margin:9px 0 5px; }.fleet-move-signal p b { font-size:18px; font-weight:600; color:#59825b; }.fleet-move-signal p span { font-size:9px; }.fleet-move-signal small { display:block; line-height:1.5; font-size:9px; }
+.fleet-engine-state { display:flex; align-items:center; gap:6px; font-size:9px; color:#728368; }.fleet-engine-state i { height:5px; width:5px; background:#80a87b; border-radius:50%; }.fleet-engine-state[data-degraded='true'] i { background:#b59b61; }
+.fleet-engine-plan { margin-top:0; padding-top:0; border-top:0; margin-bottom:16px; }.fleet-cap-horizon { height:24px; margin-top:8px; }.fleet-engine-state { margin:8px 0 0; }.fleet-engine-plan>small { font-size:8px; }

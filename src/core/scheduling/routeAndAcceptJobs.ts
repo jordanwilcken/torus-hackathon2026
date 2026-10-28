@@ -17,17 +17,28 @@ export type JobRoutingResult = {
  * if a later route or acceptance throws; this batch is not a transaction.
  */
 export async function routeAndAcceptJobs(
-    jobs: readonly Job[], router: Router, executor: Pick<Executor, "accept"> & Partial<Pick<Executor, "move">>,
+    jobs: readonly Job[], router: Router, executor: Pick<Executor, "accept"> & Partial<Pick<Executor, "move">> & { job?: (id: string) => Job | undefined },
 ): Promise<JobRoutingResult[]> {
     const queue = jobs.toSorted((a, b) =>
         Date.parse(a.window.endAt) - Date.parse(b.window.endAt) ||
         (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     const results: JobRoutingResult[] = [];
     for (const job of queue) {
-        const selection = await router.route(job);
-        const accepted = selection.selected ? executor.accept(selection) : false;
+        let selection = await router.route(job);
+        let accepted = selection.selected ? executor.accept(selection) : false;
         const transfer = !selection.selected && selection.transfer && executor.move
             ? executor.move(job, selection.transfer.destination, selection.transfer.startsAt) : undefined;
+        // An actual zero-duration receipt may arrive now. Re-read authoritative location,
+        // then request a fresh allocation once; never accept the pre-transfer quote.
+        if (transfer?.started && !selection.selected && selection.transfer &&
+            Date.parse(transfer.readyAt) <= Date.parse(selection.transfer.startsAt)) {
+            const arrived = executor.job?.(job.id);
+            if (arrived && arrived.currentLocation === selection.transfer.destination) {
+                const movement = selection.movement;
+                selection = { ...await router.route(arrived), ...(movement ? { movement } : {}) };
+                accepted = selection.selected ? executor.accept(selection) : false;
+            }
+        }
         results.push({ jobId: job.id, selection, accepted, ...(transfer ? { transfer } : {}) });
     }
     return results;

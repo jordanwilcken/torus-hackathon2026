@@ -41,3 +41,13 @@
 .source-signals-evidence summary { width:max-content; cursor:pointer; }
 .source-signals-evidence pre { max-height:240px; max-width:100%; margin:10px 0 0; padding:12px; overflow:auto; background:#f4f5ed; border-radius:6px; color:#5e6c5b; font-size:9px; line-height:1.5; }
 @media(max-width:540px) { .source-signals-strip { gap:5px; }.source-signals .source-signals-button { padding:8px; }.source-signals-name { gap:4px; font-size:9px; }.source-signals-name svg { width:13px; height:13px; }.source-signals-value { font-size:11px; }.source-signals-status { font-size:8px; }.source-signals-details { padding:13px; }.source-signals-publications { gap:15px; } }
+
+.source-signals-grid-evidence { margin-top:12px; padding-top:11px; border-top:1px solid #e9ebe1; font-size:10px; color:#657461; }
+.source-signals-grid-evidence>summary { cursor:pointer; width:fit-content; }
+.source-signals-grid-evidence .live-grid-inputs { margin:12px 0 0; max-height:65vh; overflow:auto; }
+.source-signals-grid-evidence .live-grid-cards { grid-template-columns:minmax(0,1fr); }
+.source-signals-grid-evidence .live-grid-card+.live-grid-card { border-left:0; border-top:1px solid #e1e7e0; }
+.source-signals-grid-evidence .live-grid-heading,.source-signals-grid-evidence .live-grid-card { padding:12px; }
+.source-signals-grid-evidence .live-grid-heading h2 { font-size:16px; }
+.source-signals-grid-evidence .table-scroll { max-width:100%; overflow-x:auto; }
+.source-signals-grid-evidence table { min-width:520px; }

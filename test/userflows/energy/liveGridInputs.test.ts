@@ -43,7 +43,9 @@ async function prepareBrowser(page: Page, at = '2026-10-28T07:30:00.000Z') {
   }));
 }
 
-function readings(page: Page) {
+async function readings(page: Page) {
+  await page.getByRole('button', { name: 'EIA source', exact: true }).click();
+  await page.getByText('Detailed grid evidence', { exact: true }).click();
   const panel = page.getByRole('region', { name: 'Live regional inputs', exact: true });
   return {
     panel,
@@ -57,7 +59,7 @@ test('shows supplied regional actuals, a distinct demand forecast and provisiona
   await page.route('**/api/grid/eia', route => route.fulfill({ json: ready(eiaSnapshot()) }));
   await page.route('**/api/grid/caiso', route => route.fulfill({ json: ready(caisoSnapshot()) }));
   await page.goto('/');
-  const { panel, eia, caiso } = readings(page);
+  const { panel, eia, caiso } = await readings(page);
 
   await expect(panel).toContainText('PacifiCorp East · Utah regional context');
   await expect(eia.getByRole('row', { name: /Regional demand/ })).toContainText('5,000 MW');
@@ -85,7 +87,7 @@ test('marks old source intervals as delayed even after a successful request whil
     status: 'unavailable', snapshot: null, revision: null, lastAttemptAt: '2026-10-28T10:00:00.000Z', nextRefreshAt: null, error: 'CAISO request unavailable.',
   } }));
   await page.goto('/');
-  const { eia, caiso } = readings(page);
+  const { eia, caiso } = await readings(page);
 
   await expect(eia).toContainText('Request succeeded');
   await expect(eia.getByRole('row', { name: /Regional demand/ })).toContainText('5,000 MW');
@@ -109,7 +111,7 @@ test('retains the last successful readings and original retrieval times after in
     return route.fulfill({ json: ready(caisoSnapshot()) });
   });
   await page.goto('/');
-  const { eia, caiso } = readings(page);
+  const { eia, caiso } = await readings(page);
   await expect(eia.getByRole('row', { name: /Regional demand/ })).toContainText('5,000 MW');
   await expect(caiso).toContainText('$38.42 / MWh');
 

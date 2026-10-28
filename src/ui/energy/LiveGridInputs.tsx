@@ -3,7 +3,8 @@ import { ApiRegionalGrid } from '../../core/energy/data/ApiRegionalGrid';
 import type { EiaApiSnapshot } from '../../core/energy/data/eiaApi';
 import type { GridContext } from '../../core/energy/GridContext.type';
 import type { TimeWindow } from '../../core/TimeWindow.type';
-import type { BrowserFeed } from '../../data/createFeedClient';
+import type { FeedState } from '../../data/FeedState.type';
+import type { CaisoSnapshot } from '../../server/caiso';
 import type { PublicGridClient } from '../../data/createPublicGridClient';
 import { useFeed } from '../data/useFeed';
 
@@ -30,7 +31,7 @@ function ageLabel(endAt: string, now: number, delayedAfter: number): string {
   return `${elapsed > delayedAfter ? 'Delayed · ' : ''}${age} old`;
 }
 
-function FeedStatus<T>({ feed }: { feed: BrowserFeed<T> }) {
+function FeedStatus<T>({ feed }: { feed: FeedState<T> & { loading?: boolean } }) {
   const label = feed.loading ? 'Connecting…' : feed.status === 'ready' ? 'Request succeeded'
     : feed.snapshot ? 'Refresh failed · showing last successful data' : 'Unavailable';
   return <>
@@ -65,6 +66,15 @@ export function LiveGridInputs({ feeds }: { feeds: PublicGridClient }) {
     const timer = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(timer);
   }, []);
+  return <LiveGridReadings eia={eia} caiso={caiso} now={now} />;
+}
+
+/** Read-only source evidence. Subscriptions and the clock remain owned by the caller. */
+export function LiveGridReadings({ eia, caiso, now }: {
+  eia: FeedState<EiaApiSnapshot> & { loading?: boolean };
+  caiso: FeedState<CaisoSnapshot> & { loading?: boolean };
+  now: number;
+}) {
   const context = useMemo(() => regionalContext(eia.snapshot), [eia.snapshot]);
   const actuals = ([['demand', 'Regional demand'], ['generation', 'Net generation'], ['interchange', 'Net interchange']] as const).map(([metric, label]) => ({
     label, observation: context.observations.filter(observation => observation.metric === metric && Date.parse(observation.window.endAt) <= now)

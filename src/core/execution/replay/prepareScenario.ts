@@ -65,8 +65,8 @@ export function prepareScenario(supplied: ReplayScenario): ReplayScenario {
             job.currentLocation !== job.homeLocation || job.transferToLocation !== undefined ||
             job.state !== "queued" || job.remainingGpuH !== job.workGpuH || job.workGpuH <= 0)
             fail("This replay supports fresh queued jobs at an allowed home site with a matching compute profile; initial migration is unsupported.");
-        if (scenario.routing && (!Number.isFinite(job.dataGB) || job.dataGB <= 0))
-            fail("Fleet transfer requires a positive declared job data size.");
+        if (scenario.routing && (!Number.isFinite(job.dataGB) || job.dataGB < 0))
+            fail("Fleet transfer requires a finite nonnegative declared job data size.");
         if (!Number.isFinite(Date.parse(job.readyAt)) || Date.parse(job.readyAt) < start || Date.parse(job.readyAt) >= end ||
             !Number.isFinite(Date.parse(job.window.startAt)) || Date.parse(job.window.startAt) < start ||
             !Number.isFinite(Date.parse(job.window.endAt)) || Date.parse(job.window.endAt) > end)

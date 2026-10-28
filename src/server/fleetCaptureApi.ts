@@ -12,9 +12,9 @@ function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Expected an object');
   return value as Record<string, unknown>;
 }
-function fields(value: unknown, names: readonly string[]): Record<string, unknown> {
+function fields(value: unknown, names: readonly string[], optional: readonly string[] = []): Record<string, unknown> {
   const result = object(value);
-  if (Object.keys(result).some(key => !names.includes(key)) || names.some(key => !Object.hasOwn(result, key)))
+  if (Object.keys(result).some(key => !names.includes(key) && !optional.includes(key)) || names.some(key => !Object.hasOwn(result, key)))
     throw new Error('Unexpected capture fields');
   return result;
 }
@@ -102,6 +102,30 @@ function bundle(value: unknown): Record<string, unknown> {
   return result;
 }
 
+/** Planner witnesses are optional in schema v1; older captures retain their exact shape and revision. */
+function capacityPlans(value: unknown, hours: number, siteCount: number, jobCount: number): void {
+  for (const supplied of list(value, hours)) {
+    const plan = fields(supplied, ['asOf', 'horizon', 'mode', 'reasons', 'safetyMargin',
+      'safetyMarginRequestedGpuH', 'safetyMarginOpenedGpuH', 'backlogHours', 'slots', 'deadlines']);
+    time(plan.asOf); period(plan.horizon);
+    if (!['planned', 'degraded'].includes(String(plan.mode)) ||
+        [plan.safetyMargin, plan.safetyMarginRequestedGpuH, plan.safetyMarginOpenedGpuH]
+          .some(amount => !finite(amount) || amount < 0) ||
+        (plan.backlogHours !== null && (!finite(plan.backlogHours) || plan.backlogHours < 0)))
+      throw new Error('Invalid capacity planning witness');
+    if (list(plan.reasons, siteCount * hours + jobCount).some(reason => typeof reason !== "string"))
+      throw new Error('Invalid capacity planning reason');
+    for (const slot of list(plan.slots, siteCount * hours)) {
+      const record = object(slot);
+      period(record.window);
+    }
+    for (const deadline of list(plan.deadlines, jobCount)) {
+      const record = object(deadline);
+      time(record.deadline);
+      list(record.allocations, siteCount * hours);
+    }
+  }
+}
 /** Validate a bounded evidence envelope and scenario structure. This never constructs or advances an executor. */
 function captureValue(value: unknown): FrozenFleetSnapshot {
   safeJson(value);
@@ -134,7 +158,8 @@ function captureValue(value: unknown): FrozenFleetSnapshot {
       (progress.phase === 'complete') !== progress.done || (progress.phase === 'ready' && hour !== 0)) throw new Error('Inconsistent capture phase');
   for (const label of ['baseline', 'selected'] as const) {
     const elapsed = integer(armHours[label], hour);
-    const arm = fields(progress[label], ['policy', 'run', 'impact', 'decisions', 'log', 'finalJobs']);
+    const arm = fields(progress[label], ['policy', 'run', 'impact', 'decisions', 'log', 'finalJobs'], ['plans']);
+    if (Object.hasOwn(arm, 'plans')) capacityPlans(arm.plans, hours, sites.length, jobs.length);
     const run = object(arm.run);
     if (run.simulated !== true || run.arm !== label || run.inputRevision !== scenario.inputRevision)
       throw new Error('Capture must identify modeled execution and its source revision');

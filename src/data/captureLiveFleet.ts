@@ -5,6 +5,7 @@ import type { FeedState } from './FeedState.type';
 import type { SiteWeatherSnapshot } from './SiteWeather.type';
 import type { CaisoSnapshot } from '../server/caiso';
 import { modeledSites } from './modeledSites';
+import { defaultCapacityPlanningPolicy } from '../core/energy/planning/CapacityPlan.types';
 
 const hour = 3_600_000;
 export const fleetAssumptions = {
@@ -90,7 +91,8 @@ export function captureLiveFleet(weather: FeedState<SiteWeatherSnapshot>, market
       label: 'Public weather and reference market inputs; modeled sites, jobs, execution and energy',
       seed: 17, startAt, hours, jobs, sites, carbonPriceUsdPerTonne: 0,
       maximumAgeMinutes: 48 * 60, storageToleranceKWh: .0001,
-      routing: { policy: 'fleet', transfer: { bandwidthGBPerHour: 1, kWhPerGB: .01, jobChargeUsdPerGB: .001,
+      planning: { ...defaultCapacityPlanningPolicy },
+      routing: { policy: 'fleet', movePolicy: 'carbon-benefit', transfer: { bandwidthGBPerHour: 1, kWhPerGB: .01, jobChargeUsdPerGB: .001,
         carbonGPerKWh: assumptions.gridCarbonGPerKWh, electricityUsdPerMWh: price.usdPerMWh, accountingBasis: basis } },
     },
   } };

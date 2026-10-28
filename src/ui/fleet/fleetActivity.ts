@@ -59,7 +59,7 @@ export function createFleetActivity(view: L.Map) {
     const endTrail = showMapActivity(view, event.route, color);
     for (const [endpoint, value] of [['source', event.from], ['destination', event.to]] as const) {
       const pulse = L.circleMarker(value.point, {
-        interactive: false, radius: 24, color, weight: 2, fillColor: color, fillOpacity: .12,
+        interactive: false, radius: 13, color, weight: 1.5, fillColor: color, fillOpacity: .08,
         className: 'fleet-event-pulse',
       }).addTo(layer).getElement()!;
       pulse.setAttribute('data-event-id', event.id);

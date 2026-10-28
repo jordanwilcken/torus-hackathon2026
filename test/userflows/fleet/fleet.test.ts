@@ -132,9 +132,9 @@ test('a calculated cross-site transfer is inspectable on the map through its own
   await fleet.open();
   await fleet.pause();
   let evidence = await fleet.evidence();
-  // The public capture drives the policy; observe a genuine transfer within the first four model hours.
+  // The public capture drives the policy; observe the first genuine transfer within its captured horizon.
   // This checks the UI handoff, while component examples prove the chooser against literal alternatives.
-  for (let hour = 0; hour < 4 && evidence.selected.run.transfers.length === 0; hour++) {
+  for (let hour = 0; hour < evidence.scenario.hours && evidence.selected.run.transfers.length === 0; hour++) {
     await fleet.step();
     evidence = await fleet.evidence();
   }

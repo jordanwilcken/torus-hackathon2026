@@ -6,6 +6,7 @@ import type { FeedState } from '../../data/FeedState.type';
 import type { CapturedSource } from '../../data/FrozenFleet.type';
 import type { SiteWeatherSnapshot } from '../../data/SiteWeather.type';
 import type { CaisoSnapshot } from '../../server/caiso';
+import { LiveGridReadings } from '../energy/LiveGridInputs';
 import './SourceSignals.css';
 
 type SourceId = 'weather' | 'market' | 'eia';
@@ -105,6 +106,13 @@ function Publication({ title, snapshot, revision, reading, pinned }: {
   </section>;
 }
 
+function DetailedGridEvidence({ eia, market, now }: Pick<SourceSignalsProps, 'eia' | 'market' | 'now'>) {
+  const [open, setOpen] = useState(false);
+  return <details className="source-signals-grid-evidence" onToggle={event => setOpen(event.currentTarget.open)}>
+    <summary>Detailed grid evidence</summary>
+    {open && <LiveGridReadings eia={eia} caiso={market} now={now} />}
+  </details>;
+}
 /** Inspection only: subscriptions, refreshes and run capture belong to the caller. */
 export function SourceSignals({ weather, market, eia, capture, now, onRefresh }: SourceSignalsProps) {
   const [selected, setSelected] = useState<SourceId | null>(null);
@@ -151,6 +159,7 @@ export function SourceSignals({ weather, market, eia, capture, now, onRefresh }:
       {active.feed.error && <p className="source-signals-error">{active.feed.error}</p>}
       <footer><a href={active.url} aria-label={`${active.name} source`} target="_blank" rel="noreferrer" title={active.url}>{active.url}</a>
         <button type="button" onClick={onRefresh}>Refresh inputs</button></footer>
+      {active.id !== 'weather' && <DetailedGridEvidence key={active.id} eia={eia} market={market} now={now} />}
       <details className="source-signals-evidence"><summary>Full snapshot evidence</summary>
         <pre>{JSON.stringify({ role: active.role, sourceUrl: active.url,
           ...(active.pinned ? { usedByThisRun: { capturedAt: capture?.capturedAt, status: active.pinned.status, revision: active.pinned.revision, snapshot: active.pinned.snapshot } } : {}),

@@ -4,6 +4,10 @@ import { createSiteEnergyLedger } from "../../energy/site/createSiteEnergyLedger
 import type { Job } from "../../jobs/Job.type.js";
 import { summarizeExecution } from "../../reporting/impact/summarizeExecution.js";
 import type { ExecutionRun } from "../../reporting/ExecutionEvidence.type.js";
+import { planHourlyCapacity } from "../../energy/planning/planHourlyCapacity.js";
+import { plannedEnergyMap } from "../../energy/planning/plannedEnergyMap.js";
+import type { HourlyCapacityPlan, PlanningReadiness, PlanningSite } from "../../energy/planning/CapacityPlan.types.js";
+import { prepareTransfer } from "../runner/prepareTransfer.js";
 import { routeReplayJob } from "./routeReplayJob.js";
 import { quoteSiteEnergy } from "../../scheduling/quoteSiteEnergy.js";
 import { routeAndAcceptJobs } from "../../scheduling/routeAndAcceptJobs.js";
@@ -19,19 +23,31 @@ import type { InputEvent } from "../simulation/clock.js";
 export function createReplayArmSession(scenario: ReplayScenario, arm: "baseline" | "selected") {
     const fleet = arm === "selected" && scenario.routing?.policy === "fleet";
     const horizon = { startAt: scenario.startAt, endAt: hourStart(scenario.startAt, scenario.hours) };
+    const preferences = new Map<string, PlanningSite["preferences"][number]>();
+    const plans: HourlyCapacityPlan[] = [];
+    let currentPlan: HourlyCapacityPlan | undefined;
+    let observedError = 0, observedErrorSamples = 0;
     const sites = scenario.sites.map(site => {
         const configuration = site.configuration;
         return {
             locationId: configuration.locationId, computeProfile: site.computeProfile,
             kWhPerGpuHour: configuration.compute.kWPerGpu, accountingBasis: configuration.accountingBasis,
-            ledger: createSiteEnergyLedger(configuration, site.forecast, offer => quoteSiteEnergy(offer, {
-                kWhPerGpuHour: configuration.compute.kWPerGpu,
-                carbonPriceUsdPerTonne: scenario.carbonPriceUsdPerTonne,
-                accountingBasis: configuration.accountingBasis,
-            })),
+            ledger: createSiteEnergyLedger(configuration, site.forecast, offer => {
+                const energy = offer.supply.solarKWh + offer.supply.gridKWh + offer.supply.batteryKWh;
+                if (offer.supply.carbonKg !== undefined && energy > 0) preferences.set(
+                    configuration.locationId + "/" + Date.parse(offer.window.startAt),
+                    { window: { ...offer.window }, version: offer.version,
+                        carbonGPerKWh: offer.supply.carbonKg / energy * 1000,
+                        source: "Modeled consumption carbon from the ledger-assessed capacity offer" });
+                return quoteSiteEnergy(offer, {
+                    kWhPerGpuHour: configuration.compute.kWPerGpu,
+                    carbonPriceUsdPerTonne: scenario.carbonPriceUsdPerTonne,
+                    accountingBasis: configuration.accountingBasis,
+                });
+            }),
         };
     });
-    const energy = createEnergyMap({
+    const physicalEnergy = createEnergyMap({
         window: horizon,
         sites: sites.map((site, index) => ({ locationId: site.locationId, computeProfile: site.computeProfile,
             regionId: scenario.sites[index].regionId ?? "declared-scenario" })),
@@ -48,6 +64,8 @@ export function createReplayArmSession(scenario: ReplayScenario, arm: "baseline"
         // Local forecast supply is explicitly in the scenario. No regional forecast is invented.
         regionalGrid: { read: () => ({ observations: [], forecast: {} }) },
     });
+    const planning = arm === "selected" ? scenario.planning : undefined;
+    const energy = planning ? plannedEnergyMap(physicalEnergy, () => currentPlan) : physicalEnergy;
     const executor = createExecutor({ jobs: scenario.jobs, sites, maximumAgeMinutes: scenario.maximumAgeMinutes,
         transferTerms: () => fleet ? scenario.routing?.transfer : undefined });
     const run: ExecutionRun = {
@@ -77,10 +95,57 @@ export function createReplayArmSession(scenario: ReplayScenario, arm: "baseline"
         observe(context) {
             scenario.sites.forEach((site, index) => {
                 const observed = applyReplayEvents(site.observations[context.hour], site.configuration.locationId, context.events);
-                if (Date.parse(observed.evidence.observedAt) <= Date.parse(context.asOf))
+                if (Date.parse(observed.evidence.observedAt) <= Date.parse(context.asOf)) {
                     sites[index].ledger.update(observed);
+                    const forecast = site.forecast[context.hour];
+                    if (planning && observed.evidence.status === "current" && observed.supply && forecast.supply) {
+                        observedError += Math.abs(observed.supply.solarKW - forecast.supply.solarKW) /
+                            Math.max(forecast.supply.solarKW, site.configuration.compute.kWPerGpu);
+                        observedErrorSamples += 1;
+                    }
+                }
             });
             // Retain the offers that informed this tick; dispatch removes settled slots.
+            publication = projection(context.asOf);
+        },
+        async plan(context) {
+            if (!planning) return;
+            const jobs = scenario.jobs.map(job => executor.job(job.id)!)
+                .filter(job => job.state !== "done" && job.state !== "missed");
+            const readiness: PlanningReadiness[] = [];
+            if (fleet) for (const job of jobs) {
+                if (job.state === "moving" || Date.parse(job.readyAt) > Date.parse(context.asOf)) continue;
+                const approvedMove = scenario.routing?.movePolicy === "carbon-benefit"
+                    ? await routeReplayJob(job, physicalEnergy, scenario, sites, context.asOf, true, physicalEnergy) : undefined;
+                for (const destination of sites) {
+                    if (destination.locationId === job.currentLocation || !job.allowedLocations.includes(destination.locationId) ||
+                        destination.computeProfile !== job.computeProfile) continue;
+                    if (scenario.routing?.movePolicy === "carbon-benefit") {
+                        // Only a move the existing chooser can start from this publication is eligible.
+                        if (approvedMove && !approvedMove.selected && approvedMove.transfer?.destination === destination.locationId)
+                            readiness.push({ jobId: job.id, locationId: destination.locationId, readyAt: approvedMove.transfer.readyAt });
+                    } else {
+                        const transfer = prepareTransfer(job, destination, context.asOf, scenario.routing!.transfer,
+                            { origin: Date.parse(scenario.startAt), duration: 3_600_000 }, scenario.maximumAgeMinutes);
+                        if (transfer.started) readiness.push({ jobId: job.id, locationId: destination.locationId, readyAt: transfer.readyAt });
+                    }
+                }
+            }
+            const window = { startAt: context.asOf, endAt: horizon.endAt };
+            currentPlan = planHourlyCapacity({
+                asOf: context.asOf, horizon: window, jobs: fleet ? jobs : jobs.map(job => ({ ...job, allowedLocations: [job.homeLocation] })),
+                sites: sites.map(site => {
+                    const snapshots = site.ledger.slots(site.locationId, window);
+                    return { locationId: site.locationId, computeProfile: site.computeProfile, kWhPerGpuHour: site.kWhPerGpuHour,
+                        snapshots, preferences: snapshots.flatMap(snapshot => {
+                            const preference = preferences.get(site.locationId + "/" + Date.parse(snapshot.slot?.window.startAt ?? ""));
+                            return preference ? [preference] : [];
+                        }) };
+                }),
+                readiness, maximumAgeMinutes: scenario.maximumAgeMinutes, policy: planning,
+                forecastErrorFraction: observedErrorSamples ? observedError / observedErrorSamples : 0, previous: currentPlan,
+            });
+            plans.push(currentPlan);
             publication = projection(context.asOf);
         },
         async shop(context) {
@@ -88,7 +153,7 @@ export function createReplayArmSession(scenario: ReplayScenario, arm: "baseline"
             const jobs = context.jobs.map(job => executor.job(job.id)!)
                 .filter(job => job.state === "queued" || job.state === "running");
             const route = (job: Job) => routeReplayJob(job, policyView(context, arm),
-                scenario, sites, context.asOf, fleet);
+                scenario, sites, context.asOf, fleet, physicalEnergy);
             if (arm === "selected") {
                 decisions.push({ hour: context.hour, results: await routeAndAcceptJobs(jobs, { route }, executor) });
             } else {
@@ -117,6 +182,7 @@ export function createReplayArmSession(scenario: ReplayScenario, arm: "baseline"
         policy: arm === "baseline" ? "home-fifo-immediate-v1" : fleet ? "fleet-edf-priced-transfer-v1" : "home-edf-priced-wait-v1",
         run: { ...run, ticks, transfers }, impact: summarizeExecution({ ...run, ticks, transfers }), decisions, log: simulation.log(),
         finalJobs: scenario.jobs.map(job => executor.job(job.id)!),
+        ...(planning ? { plans } : {}),
     });
     return {
         get hour() { return simulation.hour; },
