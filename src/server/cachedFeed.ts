@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { snapshotRevision } from './snapshotRevision.ts';
 import type { FeedState } from '../data/FeedState.type.ts';
 export type { FeedState } from '../data/FeedState.type.ts';
 
@@ -24,7 +24,7 @@ export function createCachedFeed<T>(
   const publication = (value: T) => {
     const snapshot = structuredClone(value);
     if (snapshot == null) throw new Error('Collector returned no snapshot');
-    return { snapshot, revision: createHash('sha256').update(JSON.stringify(snapshot)).digest('hex') };
+    return { snapshot, revision: snapshotRevision(snapshot) };
   };
   const initialize = () => initialization ??= (async () => {
     try {

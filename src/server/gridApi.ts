@@ -1,30 +1,43 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { resolve } from 'node:path';
 import { createCachedFeed, FeedError } from './cachedFeed.ts';
 import { collectEiaPublication } from './eia.ts';
 import { collectCaisoPublication } from './caiso.ts';
-import { createSnapshotArchive, type SourceEvidence } from './snapshotArchive.ts';
+import type { SnapshotStore, SourceEvidence } from './SnapshotStore.type.ts';
+import type { EiaApiSnapshot } from '../core/energy/data/eiaApi.ts';
+import type { CaisoSnapshot } from './caiso.ts';
+import { snapshotRevision } from './snapshotRevision.ts';
+
+export type GridSnapshotStores = {
+  eia: SnapshotStore<EiaApiSnapshot>;
+  caiso: SnapshotStore<CaisoSnapshot>;
+};
 
 /** Server-only credentials and archives. Browsers receive normalized facts only. */
-export function createGridApi(apiKey: string, offline = false, options: {
-  archiveDirectory?: string; fetcher?: typeof fetch; now?: () => number;
+export function createGridApi(apiKey: string, stores: GridSnapshotStores, options: {
+  offline?: boolean; fetcher?: typeof fetch; now?: () => number;
 } = {}) {
   const fetcher = options.fetcher ?? fetch;
   const now = options.now ?? Date.now;
-  const directory = resolve(options.archiveDirectory ?? process.env.GRID_SNAPSHOT_DIR ?? '.cache/grid');
-  function savedFeed<T>(name: string, source: () => Promise<{ snapshot: T; evidence: SourceEvidence }>, refreshMs: number) {
-    const archive = createSnapshotArchive<T>(directory, name);
+  const offline = options.offline ?? false;
+  function savedFeed<T>(archive: SnapshotStore<T>, source: () => Promise<{ snapshot: T; evidence: SourceEvidence }>, refreshMs: number) {
     const cache = createCachedFeed(async () => {
       if (offline) throw new FeedError('External feeds are disabled in this test server.');
       const collected = await source();
-      try { await archive.save(collected.snapshot, collected.evidence); }
+      try {
+        const saved = await archive.save(collected.snapshot, collected.evidence);
+        if (saved !== snapshotRevision(collected.snapshot)) throw new Error('Store returned a different revision');
+      }
       catch { throw new FeedError('The collected snapshot could not be saved; no new revision was published.'); }
       return collected.snapshot;
-    }, refreshMs, now, offline ? undefined : async () => (await archive.latest())?.snapshot ?? null);
+    }, refreshMs, now, offline ? undefined : async () => {
+      const record = await archive.latest();
+      if (record && record.revision !== snapshotRevision(record.snapshot)) throw new Error('Store returned an invalid revision');
+      return record?.snapshot ?? null;
+    });
     return { cache, archive };
   }
-  const eia = savedFeed('eia', () => collectEiaPublication(apiKey, fetcher, now), 15 * 60_000);
-  const caiso = savedFeed('caiso', () => collectCaisoPublication(fetcher, now), 5 * 60_000);
+  const eia = savedFeed(stores.eia, () => collectEiaPublication(apiKey, fetcher, now), 15 * 60_000);
+  const caiso = savedFeed(stores.caiso, () => collectCaisoPublication(fetcher, now), 5 * 60_000);
   return (request: IncomingMessage, response: ServerResponse, next: () => void) => {
     let url: URL;
     try { url = new URL(request.url ?? '/', 'http://localhost'); }
@@ -42,6 +55,7 @@ export function createGridApi(apiKey: string, offline = false, options: {
       if (offline) { send(response, 503, { error: 'Archives are disabled in this test server.' }); return; }
       void feed.archive.read(revisions[0]).then(record => {
         if (!record) { send(response, 404, { error: 'Saved revision not found.' }); return; }
+        if (record.revision !== revisions[0] || record.revision !== snapshotRevision(record.snapshot)) throw new Error('Store returned a different revision');
         send(response, 200, { archived: true, revision: record.revision, snapshot: record.snapshot });
       }).catch(() => send(response, 503, { error: 'Saved revision could not be read or verified.' }));
       return;

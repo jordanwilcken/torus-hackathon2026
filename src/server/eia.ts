@@ -1,6 +1,6 @@
 import { parseEiaApiResponse } from '../core/energy/data/eiaApi.ts';
 import type { EiaApiSnapshot } from '../core/energy/data/eiaApi.ts';
-import type { SourceEvidence } from './snapshotArchive.ts';
+import type { SourceEvidence } from './SnapshotStore.type.ts';
 import { FeedError } from './cachedFeed.ts';
 
 export async function collectEiaSnapshot(apiKey: string, fetcher: typeof fetch = fetch, now: () => number = Date.now): Promise<EiaApiSnapshot> {

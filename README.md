@@ -173,3 +173,24 @@ const recordedGrid = new ApiRegionalGrid(snapshot);
 The same endpoint is available for `/api/grid/caiso`. Replay never calls an upstream service or substitutes the latest data. It returns 404 for an absent revision, 400 for an invalid or repeated revision parameter, and 503 for unreadable or corrupt evidence. Responses contain normalized snapshots, not the server's source archive. `GRID_FEEDS_OFFLINE=1` disables both upstream collection and archive access for the owned CI server.
 
 There is no automatic archive pruning yet. Keep the archive directory on the same persistent volume across restarts and retain revisions referenced by recorded decisions. Wiring that revision through the application map, scheduler, and worker receipt remains a separate integration task.
+
+### Replace the storage backend
+
+The backend-independent `SnapshotStore<T>` contract is in `src/server/SnapshotStore.type.ts`. It supplies `save(snapshot, evidence)`, `latest()`, and `read(revision)`. Each instance owns one feed; consumers receive only its revision, normalized snapshot, and source evidence. File paths, disk schema, checksums, database connections, and remote credentials belong to the implementation.
+
+Choose stores once in server assembly (`vite.config.ts`), then inject them:
+
+```ts
+const stores = {
+  eia: createSnapshotArchive<EiaApiSnapshot>('/data/grid', 'eia'),
+  caiso: createSnapshotArchive<CaisoSnapshot>('/another-volume/market', 'caiso'),
+};
+const api = createGridApi(apiKey, stores);
+// Either value can instead be another implementation of SnapshotStore<T>.
+```
+
+The collector, cache, replay endpoint, and browser client do not select a storage location. The shipped implementation is the filesystem archive; database and remote-store adapters can implement the same contract without changing those consumers. Changing a binding selects that location's history; it does not copy records from the old location.
+
+Replacement stores must preserve immutable snapshot/evidence pairs, the shared `snapshotRevision` identity, original timestamps, and missing-versus-corrupt behavior. `save` resolves only after durable publication and must leave the previous latest value intact on failure. Preserve the normalized JSON serialization used for the revision hash, including object-key order, rather than allowing a backend to silently rewrite it. Exact replay must return the requested revision. HTTP tests verify substitution through a test-only store; separate real-filesystem tests verify the concrete backend's persistence.
+
+New collections update the current publication by saving a new immutable revision. History search and retention/deletion operations are not part of this initial contract; they can be added around concrete consumer needs without exposing arbitrary filesystem or database operations to the browser.

@@ -1,14 +1,13 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { link, lstat, mkdir, open, rename, unlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
+import { snapshotRevision } from './snapshotRevision.ts';
+import type { SnapshotStore, SourceEvidence, StoredSnapshot } from './SnapshotStore.type.ts';
+export type { SourceEvidence } from './SnapshotStore.type.ts';
 
-export type SourceEvidence = { format: string; body: unknown };
-export type ArchivedSnapshot<T> = {
+type ArchiveRecord<T> = StoredSnapshot<T> & {
   schemaVersion: 1;
   feed: string;
-  revision: string;
-  snapshot: T;
-  evidence: SourceEvidence;
   evidenceSha256: string;
 };
 
@@ -81,7 +80,7 @@ async function writeTemporary(directory: string, kind: string, content: string):
 }
 
 /** Stores complete normalized publications and sanitized source evidence supplied by the collector. */
-export function createSnapshotArchive<T>(directory: string, feed: string) {
+export function createSnapshotArchive<T>(directory: string, feed: string): SnapshotStore<T> {
   if (typeof directory !== 'string' || !directory.trim()) throw new Error('Invalid archive directory');
   if (typeof feed !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(feed) || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(feed)) throw new Error('Invalid archive feed');
   const root = resolve(directory);
@@ -104,24 +103,24 @@ export function createSnapshotArchive<T>(directory: string, feed: string) {
     }
   }
 
-  function verifiedRecord(value: unknown, revision: string): ArchivedSnapshot<T> {
+  function verifiedRecord(value: unknown, revision: string): StoredSnapshot<T> {
     const record = object(value);
     if (record.schemaVersion !== 1 || record.feed !== feed || record.revision !== revision || record.snapshot == null) throw new Error('Invalid archive record identity');
-    if (digest(json(record.snapshot)) !== revision) throw new Error('Archive snapshot checksum mismatch');
+    if (snapshotRevision(record.snapshot) !== revision) throw new Error('Archive snapshot checksum mismatch');
     const evidence = sourceEvidence(record.evidence);
     revisionId(record.evidenceSha256);
     if (digest(json(evidence)) !== record.evidenceSha256) throw new Error('Archive source evidence checksum mismatch');
-    return { schemaVersion: 1, feed, revision, snapshot: record.snapshot as T, evidence, evidenceSha256: record.evidenceSha256 };
+    return { revision, snapshot: record.snapshot as T, evidence };
   }
 
-  async function read(revision: string): Promise<ArchivedSnapshot<T> | null> {
+  async function read(revision: string): Promise<StoredSnapshot<T> | null> {
     revisionId(revision);
     if (!await feedDirectoryExists()) return null;
     const record = await readJson(recordPath(revision), maxRecordBytes);
     return record === undefined ? null : verifiedRecord(record, revision);
   }
 
-  async function latest(): Promise<ArchivedSnapshot<T> | null> {
+  async function latest(): Promise<StoredSnapshot<T> | null> {
     if (!await feedDirectoryExists()) return null;
     const value = await readJson(latestPath, maxPointerBytes);
     if (value === undefined) return null;
@@ -147,16 +146,17 @@ export function createSnapshotArchive<T>(directory: string, feed: string) {
   async function save(snapshot: T, evidence: SourceEvidence): Promise<string> {
     if (snapshot == null) throw new Error('Cannot archive an empty snapshot');
     const snapshotJson = json(snapshot);
+    const normalizedSnapshot = parseJson(snapshotJson) as T;
     const evidenceJson = json(sourceEvidence(evidence));
-    const revision = digest(snapshotJson);
-    const record: ArchivedSnapshot<T> = {
-      schemaVersion: 1, feed, revision, snapshot: parseJson(snapshotJson) as T,
+    const revision = snapshotRevision(normalizedSnapshot);
+    const record: ArchiveRecord<T> = {
+      schemaVersion: 1, feed, revision, snapshot: normalizedSnapshot,
       evidence: sourceEvidence(parseJson(evidenceJson)), evidenceSha256: digest(evidenceJson),
     };
     const serialized = json(record);
     if (Buffer.byteLength(serialized, 'utf8') > maxRecordBytes) throw new Error('Archive record exceeds size limit');
     await feedDirectoryExists(true);
-    const assertIdentical = (existing: ArchivedSnapshot<T>) => {
+    const assertIdentical = (existing: StoredSnapshot<T>) => {
       if (json(existing.snapshot) !== snapshotJson || json(existing.evidence) !== evidenceJson) throw new Error('Archive revision already exists with different content');
     };
     const existing = await read(revision);

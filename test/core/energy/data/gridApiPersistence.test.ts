@@ -5,6 +5,9 @@ import { tmpdir } from 'node:os';
 import { join, dirname, basename } from 'node:path';
 import { strToU8, zipSync } from 'fflate';
 import { createGridApi } from '../../../../src/server/gridApi';
+import { createSnapshotArchive } from '../../../../src/server/snapshotArchive';
+import type { EiaApiSnapshot } from '../../../../src/core/energy/data/eiaApi';
+import type { CaisoSnapshot } from '../../../../src/server/caiso';
 
 let directory: string;
 let servers: Server[];
@@ -36,7 +39,10 @@ afterEach(async () => {
   await rm(directory, { recursive: true, force: true });
 });
 async function application(offline = false) {
-  const api = createGridApi('secret-fixture', offline, { archiveDirectory: directory, fetcher, now: () => at });
+  const api = createGridApi('secret-fixture', {
+    eia: createSnapshotArchive<EiaApiSnapshot>(directory, 'eia'),
+    caiso: createSnapshotArchive<CaisoSnapshot>(directory, 'caiso'),
+  }, { offline, fetcher, now: () => at });
   const server = createServer((request, response) => api(request, response, () => { response.writeHead(404); response.end(); }));
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   servers.push(server);

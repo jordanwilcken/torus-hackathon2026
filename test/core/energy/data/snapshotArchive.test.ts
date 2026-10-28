@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, open, readFile, readdir, rm, symlink, unlink, writeFile
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { createSnapshotArchive } from '../../../../src/server/snapshotArchive';
-import type { SourceEvidence } from '../../../../src/server/snapshotArchive';
+import type { SourceEvidence } from '../../../../src/server/SnapshotStore.type';
 
 type Reading = { retrievedAt: string; value: number };
 const first: Reading = { retrievedAt: '2026-10-28T08:00:00Z', value: 5429 };
@@ -34,12 +34,13 @@ test('a genuinely missing archive returns no latest publication or requested rev
 test('persists exact normalized and source evidence with independent checksums across restart', async () => {
   const archive = createSnapshotArchive<Reading>(directory, 'eia');
   expect(await archive.save(first, evidence)).toBe(firstRevision);
-  expect(await archive.latest()).toEqual({ schemaVersion: 1, feed: 'eia', revision: firstRevision, snapshot: first, evidence, evidenceSha256 });
+  expect(await archive.latest()).toEqual({ revision: firstRevision, snapshot: first, evidence });
+  expect(JSON.parse(await readFile(recordPath(firstRevision), 'utf8'))).toEqual({ schemaVersion: 1, feed: 'eia', revision: firstRevision, snapshot: first, evidence, evidenceSha256 });
   expect(await archive.save(second, { format: 'text/csv', body: 'value\n5500\n' })).toBe(secondRevision);
 
   const restarted = createSnapshotArchive<Reading>(directory, 'eia');
-  expect(await restarted.read(firstRevision)).toMatchObject({ revision: firstRevision, snapshot: first, evidence });
-  expect(await restarted.latest()).toMatchObject({ revision: secondRevision, snapshot: second, evidence: { format: 'text/csv', body: 'value\n5500\n' } });
+  expect(await restarted.read(firstRevision)).toEqual({ revision: firstRevision, snapshot: first, evidence });
+  expect(await restarted.latest()).toEqual({ revision: secondRevision, snapshot: second, evidence: { format: 'text/csv', body: 'value\n5500\n' } });
 });
 
 test('re-saving identical evidence is idempotent but conflicting evidence cannot overwrite the revision', async () => {

@@ -1,6 +1,6 @@
 import { strFromU8, unzipSync } from 'fflate';
 import { FeedError } from './cachedFeed.ts';
-import type { SourceEvidence } from './snapshotArchive.ts';
+import type { SourceEvidence } from './SnapshotStore.type.ts';
 
 export type CaisoSnapshot = {
   source: string;
