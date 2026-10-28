@@ -115,6 +115,30 @@ test('full rubric points do not hide a failing unscored test', async () => {
   assert.doesNotMatch(result.outputs, /all tests green/);
 });
 
+test('the commit summary shows an unfinished business requirement separately from rubric points', async () => {
+  const result = await publish({ ...report(100, false), nonScoredRequirements: [{
+    id: 'LIVE-01', title: 'runs a real job from current public inputs', classification: 'unimplemented',
+    description: 'The separate Torus comparison is modeled and declares assumptions.',
+  }] });
+  assert.equal(result.conclusionExit, 0);
+  assert.match(result.text, /100\/100/);
+  assert.match(result.text, /LIVE-01.*unimplemented/);
+  assert.match(result.text, /Torus comparison is modeled/);
+  assert.doesNotMatch(result.outputs, /all tests green/);
+});
+
+test('a forged green or malformed business requirement makes score evidence unavailable', async () => {
+  for (const value of [
+    { ...report(100, true), nonScoredRequirements: [{ id: 'LIVE-01', title: 'real work', classification: 'unimplemented' }] },
+    { ...report(), nonScoredRequirements: [{ id: 'LIVE-01', title: 'real work', classification: 'unknown' }] },
+    { ...report(), nonScoredRequirements: {} },
+  ]) {
+    const result = await publish(value);
+    assert.equal(result.conclusionExit, 1);
+    assert.match(result.text, /Score unavailable/);
+  }
+});
+
 test('the scorecard shows total and area progress without rounding up points', () => {
   const text = renderMarkdown(report());
   assert.match(text, /35\/100/);

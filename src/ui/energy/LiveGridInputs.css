@@ -1,0 +1,45 @@
+.live-grid-inputs { margin-bottom: 1rem; border: 1px solid #dce4dd; border-radius: 12px; background: #fff; overflow: hidden; }
+.live-grid-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; padding: 1.2rem 1.4rem; }
+.live-grid-heading > p { margin: 0; font-size: .78rem; color: #63746d; }
+.live-grid-cards { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr); border-top: 1px solid #e1e7e0; }
+.live-grid-card { padding: 1.15rem 1.4rem; min-width: 0; }
+.live-grid-card + .live-grid-card { border-left: 1px solid #e1e7e0; }
+.live-grid-card h3 { margin: 0 0 .5rem; font-size: .9rem; }
+.live-feed-status { display: inline-block; margin: 0; padding: .3rem .5rem; border-radius: 4px; background: #f2f3ee; color: #677264; font-size: .7rem; }
+.live-feed-status[data-status="ready"] { background: #eaf4ef; color: #32674d; }
+.live-feed-status[data-status="stale"], .live-feed-status[data-status="unavailable"] { background: #f8f0df; color: #866322; }
+.live-feed-error { margin: .5rem 0 0; font-size: .72rem; color: #866322; }
+.live-grid-card table { margin-top: .8rem; font-size: .73rem; }
+.live-grid-card th, .live-grid-card td { padding: .6rem .5rem; vertical-align: top; }
+.live-grid-card thead th { font-size: .64rem; color: #68796e; font-weight: 600; }
+.live-grid-card tbody th { font-weight: 500; }
+.live-grid-number { white-space: nowrap; font-weight: 650; }
+.live-grid-note { color: #6b7c6e; font-size: .68rem; line-height: 1.55; margin: .8rem 0; }
+.live-grid-forecast { display: grid; grid-template-columns: 1fr auto; align-items: start; gap: .4rem .75rem; padding: .8rem; margin-top: 1rem; border: 1px dashed #b4c7dd; border-radius: 6px; background: #f4f7fb; }
+.live-grid-forecast h4 { margin: 0; font-size: .76rem; font-weight: 650; color: #4a6686; }
+.live-grid-forecast p { margin: .25rem 0 0; font-size: .67rem; color: #687d94; }
+.live-grid-forecast > p { grid-column: 1 / -1; }
+.live-grid-forecast strong { font-size: .85rem; white-space: nowrap; color: #3e5c7a; }
+.live-grid-unknown { margin: 1rem 0 .7rem; font-size: .73rem; color: #687264; }
+.live-grid-provenance { display: flex; flex-wrap: wrap; gap: .4rem .8rem; justify-content: space-between; border-top: 1px solid #e7ece5; padding-top: .7rem; margin-top: .8rem; font-size: .67rem; color: #6b7c6e; }
+.live-grid-provenance p { margin: 0; }
+.live-grid-provenance a { color: #3e6f56; }
+.live-grid-provenance time { white-space: nowrap; }
+.live-grid-node { font-size: .7rem; color: #6b7c6e; letter-spacing: .03em; margin: 1.25rem 0 .35rem; }
+.live-grid-price { margin: 0; font-size: 2rem; letter-spacing: -.05em; font-weight: 650; }
+.live-grid-price span { font-size: .75rem; font-weight: 400; letter-spacing: 0; color: #6b7c6e; }
+.live-grid-price-label { margin: .3rem 0 1rem; font-size: .76rem; color: #516c5c; }
+.live-grid-price-period, .live-grid-price-age { font-size: .76rem; margin: .35rem 0; }
+.live-grid-price-age { color: #687264; }
+.live-grid-scope { padding: .8rem 1.4rem; margin: 0; border-top: 1px solid #e1e7e0; background: #f8faf7; color: #68796e; font-size: .71rem; }
+@media (max-width: 1000px) {
+  .live-grid-cards { grid-template-columns: 1fr; }
+  .live-grid-card + .live-grid-card { border-left: 0; border-top: 1px solid #e1e7e0; }
+}
+@media (max-width: 680px) {
+  .live-grid-heading, .live-grid-card { padding: 1rem; }
+  .live-grid-card table { min-width: 540px; }
+  .live-grid-forecast { grid-template-columns: 1fr; }
+  .live-grid-forecast > p { grid-column: auto; }
+  .live-grid-scope { padding: .8rem 1rem; }
+}

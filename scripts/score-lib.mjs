@@ -25,6 +25,18 @@ export function validateRubric(rubric) {
   if (rubric.cases.reduce((sum, item) => sum + item.points, 0) !== 100) {
     throw new Error('The internal rubric denominator must remain 100.');
   }
+  if (rubric.nonScoredRequirements !== undefined && !Array.isArray(rubric.nonScoredRequirements)) {
+    throw new Error('Non-scored requirements must be an array.');
+  }
+  for (const item of rubric.nonScoredRequirements ?? []) {
+    if (!item.id || !['vitest', 'playwright'].includes(item.runner)
+      || !item.file || typeof item.project !== 'string' || !item.title
+      || 'points' in item || ids.has(item.id) || matches.has(key(item))) {
+      throw new Error(`Invalid or duplicate non-scored requirement: ${item.id ?? '(missing ID)'}`);
+    }
+    ids.add(item.id);
+    matches.add(key(item));
+  }
 }
 
 function relativeFile(file, base, root) {
@@ -130,15 +142,20 @@ export function scoreReports(rubric, inputs, metadata, verificationErrors = []) 
       errors.push(`${runner}: ${error.message}`);
     }
   }
-  const cases = rubric.cases.map(item => {
+  const resultFor = item => {
     const matches = records.filter(record => key(record) === key(item));
     const classification = runnerErrors[item.runner] ? 'harness-error'
       : matches.length > 1 ? 'harness-error' : matches[0]?.classification ?? 'not-run';
-    return { ...item, classification, earned: classification === 'passed' ? item.points : 0,
+    return { ...item, classification,
       detail: runnerErrors[item.runner] ?? (matches.length > 1 ? 'Duplicate exact test identity.' : !matches.length ? 'Expected test result missing.' : ''),
       raw: matches.map(record => record.raw) };
+  };
+  const cases = rubric.cases.map(item => {
+    const result = resultFor(item);
+    return { ...result, earned: result.classification === 'passed' ? item.points : 0 };
   });
-  for (const item of cases) {
+  const nonScoredRequirements = (rubric.nonScoredRequirements ?? []).map(resultFor);
+  for (const item of [...cases, ...nonScoredRequirements]) {
     if (item.classification === 'harness-error' && !runnerErrors[item.runner]) {
       item.detail ||= 'Missing audit, retries, repeats or malformed results cannot establish one genuine pass.';
       errors.push(`${item.id}: ${item.detail}`);
@@ -154,10 +171,11 @@ export function scoreReports(rubric, inputs, metadata, verificationErrors = []) 
     inputHash: metadata.inputHash, validRun: errors.length === 0,
     earned: cases.reduce((sum, item) => sum + item.earned, 0), maximum: 100,
     allGreen: errors.length === 0 && cases.every(item => item.classification === 'passed')
+      && nonScoredRequirements.every(item => item.classification === 'passed')
       && records.every(item => item.classification === 'passed')
       && ['vitest', 'playwright'].every(runner => inputs[runner]?.exitCode === 0)
       && inputs.vitest.report.success === true && inputs.playwright.report.stats.unexpected === 0,
-    groups, cases, errors, runners: metadata.runners,
+    groups, cases, nonScoredRequirements, errors, runners: metadata.runners,
     note: rubric.description, humanReview: rubric.humanReview,
   };
 }
@@ -223,6 +241,13 @@ export function renderMarkdown(report) {
     'Missing, skipped, unimplemented, failed and harness-error results earn zero; their weights stay in the denominator. Smoke/build checks earn no rubric points.', '',
     `Unscored human review: ${(report.humanReview ?? []).join('; ')}.`,
   ];
+  if (report.nonScoredRequirements?.length) lines.push(
+    '', '## Business requirements (not scored)', '',
+    'These requirements must pass before all tests are green. They do not change the 100-point rubric.', '',
+    '| Requirement | Result |', '|---|---|',
+    ...report.nonScoredRequirements.map(item => `| ${item.id}: ${item.title.replaceAll('|', '\\|')} | ${item.classification} |`),
+    '', ...report.nonScoredRequirements.filter(item => item.description).map(item => `${item.id}: ${item.description}`),
+  );
   if (report.errors.length) lines.push('', '## Harness findings', '', ...report.errors.map(error => `- ${error}`));
   return lines.join('\n') + '\n';
 }

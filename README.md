@@ -111,3 +111,43 @@ Tests use `.test.ts`; interface-only files use `.interface.ts`; type aliases use
 Design context: [design.md](design.md). Test harness references:
 [Playwright web server](https://playwright.dev/docs/test-webserver) and
 [Vitest test inclusion](https://vitest.dev/config/include.html).
+
+## Live regional inputs
+
+With the pinned Node/npm versions, copy `.env.example` to `.env.local` and set `EIA_API_KEY` there. This server-only file is ignored by Git; never give the variable a `VITE_` prefix. Run `npm run dev`, or `npm run build` followed by `npm run preview`. Both commands serve the same live API routes:
+
+- `/api/grid/eia`: EIA-930 PACE demand, generation, signed interchange, and separately labeled day-ahead demand forecasts. The server requests a bounded 72-hour history plus 24-hour forecast horizon and caches successful snapshots for 15 minutes.
+- `/api/grid/caiso`: anonymous CAISO OASIS five-minute PACE wholesale dispatch prices, cached for five minutes. Negative prices remain valid. These prices do not establish a site's retail bill or available compute.
+
+The page polls these independent server caches each minute. Failed refreshes preserve the original reading and retrieval timestamps, expose the failure, and back off (including Retry-After). No Fake values replace an unavailable live feed. Cache data is in memory; restarting the server starts a new collection. Public source values and UTC validity intervals stay distinct from retrieval time. EIA demand is delayed; generation/interchange generally arrive later. This API connection has no carbon series: the existing workbook adapter remains the separate source for delayed carbon history.
+
+`ApiRegionalGrid` implements the existing synchronous `RegionalGrid.read` contract over a normalized EIA snapshot. The visible live-input panel consumes that provider. The existing illustrative map/job preview remains explicitly simulated; wiring real worker execution is a separate tracked requirement. A static `dist/` upload alone cannot serve the APIs: deployment must retain the server routes and server environment secret.
+
+Browser CI uses `GRID_FEEDS_OFFLINE=1` on its owned test server and controlled endpoint fixtures; parser/collector tests cover raw provider payloads, normalization, caching and failures without credentials. Live connectivity is verified separately. Business requirement LIVE-01 is reported outside the unchanged 100-point readiness rubric and remains unimplemented until a real application worker returns actual output with linked input/decision evidence and a separately labeled Torus model comparison.
+
+### Consume the live feeds
+
+Create one client in application assembly and pass it to each standalone view. `src/main.tsx` does this already. The exported React hook subscribes to that shared client; the first subscriber starts polling, and the last unsubscribe stops polling and cancels owned requests. Outside React, use `subscribe` / `getSnapshot`, or `await refresh()` for a one-shot read. Refresh failures resolve with stale/unavailable state; cancellation does not publish obsolete results.
+
+```tsx
+import { createPublicGridClient } from './src/data/createPublicGridClient';
+import { useFeed } from './src/ui/data/useFeed';
+import type { PublicGridClient } from './src/data/createPublicGridClient';
+
+const feeds = createPublicGridClient(); // once per application/session
+
+function Demand({ feeds }: { feeds: PublicGridClient }) {
+  const input = useFeed(feeds.eia);
+  // The snapshot is immutable. Show input.status and the original source intervals.
+  return <p>{input.status} · {input.snapshot?.observations.length ?? 0} observations</p>;
+}
+// <Demand feeds={feeds} /> can be mounted alongside other independent consumers.
+```
+
+`feeds.eia` and `feeds.caiso` each expose `status`, `snapshot`, `revision`, request times and failure information. Revisions identify the complete normalized publication, including retrieval provenance. Identical cached content keeps its revision; a failed refresh keeps the last successful revision and evidence timestamps. Each source advances independently. The server still keeps its cache in memory; durable sanitized source archives remain part of the collector task.
+
+`feeds.regionalGrid` is a stable synchronous `RegionalGrid` view of the latest EIA snapshot. It can be supplied to `createEnergyMap(scope, { siteEnergy, regionalGrid: feeds.regionalGrid })` alongside the application's existing site-energy provider. Observe `feeds.eia` to redraw consumers when its state changes. This does not create site capacity, prices or carbon evidence, resample hourly periods into partial slots, or wire the application's existing map/scheduler automatically.
+
+For a decision that spans asynchronous work, capture `feeds.eia.getSnapshot()` once, check its status and source age, and use `new ApiRegionalGrid(input.snapshot)` with that captured revision. A live provider may advance between separate reads; a pinned provider keeps the decision's input fixed. CAISO prices remain five-minute wholesale context until an explicit interval and signed-price policy adapts them to the site's accounting/pricing contract.
+
+The executable example at `test/userflows/data/fixture.html` mounts two independent consumers: one reads the snapshot, the other uses the synchronous regional provider. Its browser test verifies shared revisions through refresh and failure. The application's live panel uses the same exported client/hook.

@@ -11,8 +11,11 @@ import recordedInputs from './core/reporting/fakes/execution.json';
 import type { Job } from './core/jobs/Job.type';
 import type { ExecutionRun } from './core/reporting/ExecutionEvidence.type';
 import { summarizeExecution } from './core/reporting/impact/summarizeExecution';
+import { LiveGridInputs } from './ui/energy/LiveGridInputs';
+import { createPublicGridClient } from './data/createPublicGridClient';
 import './style.css';
 
+const publicGrid = createPublicGridClient();
 const stream = new JobStream(routeFakeJob);
 const scenario = new URLSearchParams(location.search).get('scenario');
 const recorded = scenario === 'recorded-comparison';
@@ -43,6 +46,7 @@ createRoot(root).render(
     <main>
       <h1>Sunchaser</h1>
       <p>Compute coordinated with Torus energy.</p>
+      <LiveGridInputs feeds={publicGrid} />
       <StarterFlow stream={stream} jobSource={jobSource} queryEnergy={queryEnergy}
         previewLabel={recorded ? 'Supplied simulation records — this application has not executed the work.' : undefined}
         reportSource={{ fake: true, label: recorded ? recordedInputs.label : 'Observed Fake job flow — no work has executed.' }} />

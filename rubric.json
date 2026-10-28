@@ -126,7 +126,18 @@
       "title": "[FLOW-03] distinguishes stale site evidence from a current recommendation"
     }
   ],
+  "nonScoredRequirements": [
+    {
+      "id": "LIVE-01",
+      "runner": "playwright",
+      "file": "test/userflows/execution/liveExecution.test.ts",
+      "project": "chromium",
+      "title": "[LIVE-01] current public inputs drive a scheduler decision and an actual job result",
+      "description": "Current public grid/market inputs retain source, retrieval time, validity and freshness; the genuine scheduler retains its input evidence and decision; an actual worker runs the submitted job and produces its output. A separate Torus comparison is labeled modeled and declares energy, storage, carbon and market assumptions. This requirement remains unimplemented until the full application path exists; collecting EIA data alone does not satisfy it."
+    }
+  ],
   "changes": [
+    "Registers LIVE-01 as a separate non-scored business requirement. The scoring version, 13 weighted cases and 100-point denominator remain unchanged; this registration is not an implementation gain.",
     "Keeps the literal bounty capabilities and 100 total points: A job router that shows carbon saved 40; Agents that bid for the cleanest slots 40; A live map of where to train right now 20.",
     "Retains the bounty capability Agents that bid for the cleanest slots. Its implementation uses posted-price choice with forecast evidence; it does not require an auction or Bid abstraction.",
     "Retires the unaffordable-bid check because jobs no longer have auction budgets; adds direct cleaner-slot selection, remaining-capacity, utility-commitment and transfer-deadline requirements.",

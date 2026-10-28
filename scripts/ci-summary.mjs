@@ -27,6 +27,14 @@ try {
   if (process.env.GITHUB_SHA && candidate.commitSha !== process.env.GITHUB_SHA) {
     throw new Error('The score belongs to a different commit.');
   }
+  const business = candidate.nonScoredRequirements ?? [];
+  if (!Array.isArray(business) || business.some(item => !item || typeof item.id !== 'string'
+    || !item.id || typeof item.title !== 'string' || !item.title || 'points' in item
+    || !['passed', 'failed', 'unimplemented', 'skipped', 'not-run'].includes(item.classification)
+    || (item.description !== undefined && typeof item.description !== 'string'))
+    || (candidate.allGreen && business.some(item => item.classification !== 'passed'))) {
+    throw new Error('The non-scored business requirement evidence is incomplete or invalid.');
+  }
   score = renderMarkdown(candidate);
   report = candidate;
 } catch (error) {

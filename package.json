@@ -10,6 +10,7 @@
   "scripts": {
     "data:eia930": "node scripts/fetch-eia930-snapshot.ts",
     "dev": "vite",
+    "preview": "vite preview",
     "prebuild": "npm run generate:scheduling-math",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
@@ -24,6 +25,7 @@
   },
   "dependencies": {
     "@cortex-js/compute-engine": "0.171.0",
+    "fflate": "0.8.3",
     "leaflet": "1.9.4",
     "react": "19.3.0",
     "react-dom": "19.3.0"

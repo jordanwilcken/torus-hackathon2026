@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { fingerprintInputs, scoreReports, validateRubric, verifyRecordedRun } from '../../scripts/score-lib.mjs';
+import { fingerprintInputs, renderMarkdown, scoreReports, validateRubric, verifyRecordedRun } from '../../scripts/score-lib.mjs';
 import ScoreVitestReporter from '../../scripts/score-vitest-reporter.mjs';
 
 const root = path.resolve('/score-project');
@@ -155,6 +155,72 @@ test('known unimplemented drivers stay RED with their raw failure preserved', ()
   assert.equal(report.cases[0].classification, 'unimplemented');
   assert.equal(report.earned, 0);
   assert.match(report.cases[0].raw[0].messages[0], /Not implemented/);
+});
+
+const liveRequirement = {
+  id: 'LIVE-01', runner: 'playwright', file: 'test/userflows/scheduling/scheduling.test.ts',
+  project: 'chromium', title: 'does useful work',
+  description: 'Current public inputs drive a real worker; the Torus comparison remains modeled.',
+};
+
+test('an unfinished business requirement is individually visible without changing the 100-point score', () => {
+  const publicInputRun = playwrightReport('passed', [{ status: 'failed', retry: 0 }]);
+  Object.assign(publicInputRun.suites[0].specs[0].tests[0].results[0], {
+    error: { message: 'Unimplemented: bind the real worker output to this acceptance driver.' },
+  });
+  const actual = inputs(vitestReport([assertion()]), publicInputRun);
+  actual.playwright.exitCode = 1;
+  const report = scoreReports({ ...rubric(), nonScoredRequirements: [liveRequirement] }, actual, metadata);
+
+  assert.equal(report.earned, 100);
+  assert.equal(report.maximum, 100);
+  assert.equal(report.cases.length, 1);
+  assert.equal(report.nonScoredRequirements[0].classification, 'unimplemented');
+  assert.match(report.nonScoredRequirements[0].raw[0].messages[0], /real worker/);
+  assert.equal(report.allGreen, false);
+  assert.equal(report.validRun, true);
+  assert.match(renderMarkdown(report), /Business requirements \(not scored\)/);
+  assert.match(renderMarkdown(report), /LIVE-01.*unimplemented/);
+  assert.match(renderMarkdown(report), /100\/100/);
+});
+
+test('missing or skipped business requirements cannot become all tests green', () => {
+  const missing = scoreReports({ ...rubric(), nonScoredRequirements: [{ ...liveRequirement, title: 'missing result' }] },
+    inputs(vitestReport([assertion()])), metadata);
+  assert.equal(missing.nonScoredRequirements[0].classification, 'not-run');
+  assert.equal(missing.allGreen, false);
+  assert.equal(missing.maximum, 100);
+
+  const skipped = scoreReports({ ...rubric(), nonScoredRequirements: [liveRequirement] },
+    inputs(vitestReport([assertion()]), playwrightReport('skipped', [{ status: 'skipped', retry: 0 }])), metadata);
+  assert.equal(skipped.nonScoredRequirements[0].classification, 'skipped');
+  assert.equal(skipped.allGreen, false);
+});
+
+test('a genuine business requirement pass contributes no points and allows all tests green', () => {
+  const report = scoreReports({ ...rubric(), nonScoredRequirements: [liveRequirement] },
+    inputs(vitestReport([assertion()])), metadata);
+  assert.equal(report.nonScoredRequirements[0].classification, 'passed');
+  assert.equal(report.earned, 100);
+  assert.equal(report.maximum, 100);
+  assert.equal(report.allGreen, true);
+});
+
+test('duplicate business results invalidate the run instead of being hidden outside the points', () => {
+  const browser = playwrightReport();
+  browser.suites[0].specs.push(structuredClone(browser.suites[0].specs[0]));
+  const report = scoreReports({ ...rubric(), nonScoredRequirements: [liveRequirement] },
+    inputs(vitestReport([assertion()]), browser), metadata);
+  assert.equal(report.nonScoredRequirements[0].classification, 'harness-error');
+  assert.equal(report.validRun, false);
+  assert.equal(report.allGreen, false);
+  assert.ok(report.errors.some(error => error.includes('LIVE-01')));
+});
+
+test('non-scored requirements cannot add weights or reuse a scored identity', () => {
+  assert.throws(() => validateRubric({ ...rubric(), nonScoredRequirements: [{ ...liveRequirement, points: 5 }] }), /non-scored|Invalid/i);
+  assert.throws(() => validateRubric({ ...rubric(), nonScoredRequirements: [{ ...liveRequirement, id: 'A' }] }), /duplicate/i);
+  assert.throws(() => validateRubric({ ...rubric('playwright'), nonScoredRequirements: [liveRequirement] }), /duplicate/i);
 });
 
 test('skipped work earns no points', () => {
