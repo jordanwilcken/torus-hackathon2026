@@ -98,3 +98,17 @@ cheap solar GPU-hour must not price a larger grid-powered quantity.
 $$
 \frac{\mathrm{electricityUsd}+\mathrm{carbonChargeUsd}}{\mathrm{remainingGpuHours}}
 $$
+
+## gpuHoursForEnergy
+
+The ledger assesses the whole remaining energy quantity using the site's compute
+profile. Its quoted work uses that same kWh/GPU-hour profile, including a partial
+final interval; active power and physical availability remain with the ledger.
+
+```json
+{"result":"real"}
+```
+
+$$
+\frac{\mathrm{availableEnergyKWh}}{\mathrm{kWhPerGpuHour}}
+$$

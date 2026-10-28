@@ -19,6 +19,12 @@ export type SitePriceInput = {
   carbonPriceUsdPerTonne: number;
 };
 
+/** Full-quantity burdens already assessed by the ledger, including storage acquisition/losses. */
+export type AssessedUsagePriceInput = Pick<SitePriceInput, "remainingGpuHours" | "carbonPriceUsdPerTonne"> & {
+  electricityUsd?: number;
+  carbonKg?: number;
+};
+
 export type SitePriceResult = {
   status: "posted";
   postedUsdPerGpuHour: number;

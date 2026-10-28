@@ -136,3 +136,21 @@ export const postedUsdPerGpuHour = runtime.load({
   "runtimeVersion": "0.171.0"
 } satisfies StoredJavaScript) as
   (input: { "carbonChargeUsd": number; "electricityUsd": number; "remainingGpuHours": number }) => number;
+
+export const gpuHoursForEnergy = runtime.load({
+  "code": "_.availableEnergyKWh / _.kWhPerGpuHour",
+  "calling": "expression",
+  "reconstructionDigits": 17,
+  "entryPlan": {
+    "kind": "vars",
+    "real": [
+      "availableEnergyKWh",
+      "kWhPerGpuHour"
+    ],
+    "complex": [],
+    "lists": [],
+    "strings": []
+  },
+  "runtimeVersion": "0.171.0"
+} satisfies StoredJavaScript) as
+  (input: { "availableEnergyKWh": number; "kWhPerGpuHour": number }) => number;

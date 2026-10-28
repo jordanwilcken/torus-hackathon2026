@@ -1,5 +1,6 @@
 import type { SitePriceInput, SitePriceResult } from "./SitePrice.type.js";
 import * as math from "./math/postSitePrice.generated.js";
+import { priceAssessedUsage } from "./priceAssessedUsage.js";
 
 /** Price an assessed quantity without reserving energy or publishing a slot. */
 export function postSitePrice({ remainingGpuHours, requiredEnergyKWh, sources, carbonPriceUsdPerTonne }: SitePriceInput): SitePriceResult {
@@ -19,12 +20,9 @@ export function postSitePrice({ remainingGpuHours, requiredEnergyKWh, sources, c
     charges.push(math.sourceCharges({ supplyKWh: source.supplyKWh, usdPerMWh: rate, gramsCO2PerKWh }));
   }
 
-  const electricityUsd = math.sourceTotal({ values: charges.map(([electricity]) => electricity) });
-  const carbonKg = math.sourceTotal({ values: charges.map(([, carbon]) => carbon) });
-  const carbonChargeUsd = math.modeledCarbonCharge({ carbonKg, carbonPriceUsdPerTonne });
-  const postedUsdPerGpuHour = math.postedUsdPerGpuHour({ electricityUsd, carbonChargeUsd, remainingGpuHours });
-  const price = { postedUsdPerGpuHour, electricityUsd, carbonKg, carbonChargeUsd };
-  if (Object.values(price).some(value => !Number.isFinite(value)))
-    return { status: "unavailable", reason: "The modeled price exceeds the supported numeric range." };
-  return { status: "posted", ...price };
+  return priceAssessedUsage({
+    remainingGpuHours, carbonPriceUsdPerTonne,
+    electricityUsd: math.sourceTotal({ values: charges.map(([electricity]) => electricity) }),
+    carbonKg: math.sourceTotal({ values: charges.map(([, carbon]) => carbon) }),
+  });
 }
