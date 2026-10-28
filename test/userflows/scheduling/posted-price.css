@@ -8,9 +8,13 @@
 .price-map-layout { display: grid; grid-template-columns: minmax(0, 1fr) 290px; grid-template-areas: 'map job' 'timeline job' 'forecast job'; gap: 16px; align-items: start; }
 .price-map-shell { grid-area: map; min-width: 0; border: 1px solid #d4dfd0; border-radius: 15px; overflow: hidden; background: #e8eee6; }
 .price-map-shell .map-canvas { height: clamp(340px, 56dvh, 500px); }
-.price-map-shell .map-hover-card { width: min(315px, calc(100% - 24px)); padding: 0; border-radius: 12px; }
-.price-map-shell .map-hover-card .price-details { padding: 17px; border: 0; border-radius: 0; }
-.price-map-shell .map-hover-card .price-details > header { padding-right: 15px; }
+.price-map-shell .map-inspection-card .price-details { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 20px; padding: 0; border: 0; border-radius: 0; }
+.price-map-shell .map-inspection-card .price-details > header { grid-row: span 2; justify-content: flex-start; align-items: center; }
+.price-map-shell .map-inspection-card .price-exact { margin: 0; font-size: 20px; }
+.price-map-shell .map-inspection-card .price-capacity { margin: 0; font-size: 9px; }
+.price-map-shell .map-inspection-card .price-condition,
+.price-map-shell .map-inspection-card .price-disclosure { grid-column: 1 / -1; }
+.price-map-shell .map-inspection-card .price-disclosure { margin-top: 6px; padding-top: 6px; }
 .price-map-shell .close-details { z-index: 2; }
 .price-map-shell .map-replay { position: absolute; z-index: 610; bottom: 27px; right: 12px; padding: 7px 10px; border: 1px solid #d5e1d5; border-radius: 6px; background: #ffffffeb; color: #69825d; font-size: 10px; box-shadow: 0 2px 8px #35553410; }
 .price-map-job { grid-area: job; min-width: 0; }
@@ -29,8 +33,8 @@
 .price-map-legend i { width: 13px; height: 5px; background: #709c70; border-radius: 2px; }
 .price-map-legend span:nth-child(2) i { background: #b39065; }
 .price-map-legend span:nth-child(3) i { background: repeating-linear-gradient(120deg, #d9ded4 0 2px, #a6b19e 2px 3px); }
-.price-region-context { padding: 20px; font-size: 12px; }
-.price-region-context h3 { margin: 0 0 12px; }
+.price-region-context { padding: 0; font-size: 11px; }
+.price-region-context h3 { margin: 0 0 5px; font-size: 12px; }
 .price-region-context p { color: #617658; }
 .price-region-context small { color: #88957b; font-size: 10px; }
 .price-map-footer { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding-top: 18px; margin-top: 22px; border-top: 1px solid #dce4d5; color: #7b8d6e; font-size: 10px; }
@@ -45,6 +49,8 @@
   .price-map-strips { grid-template-columns: minmax(0, 1fr); gap: 0; }
 }
 @media (max-width: 760px) {
+  .price-map-shell .map-inspection-card .price-details { grid-template-columns: minmax(0, 1fr); }
+  .price-map-shell .map-inspection-card .price-details > header { grid-row: auto; justify-content: space-between; }
   .price-map-preview { padding: 16px 12px; }
   .price-map-heading { align-items: flex-start; gap: 12px; margin-bottom: 16px; }
   .price-map-heading a { font-size: 23px; }

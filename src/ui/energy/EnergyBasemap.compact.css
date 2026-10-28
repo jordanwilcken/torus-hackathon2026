@@ -1,3 +1,8 @@
+.compact-energy-map .map-viewport { position: relative; }
+.compact-energy-map .map-inspection-card {
+  position: relative; padding: 14px 36px 14px 16px; border-top: 1px solid #d5e1d5;
+  background: #f9fbf5; color: #365a45; font-size: 11px;
+}
 .compact-energy-map .map-pin {
   display: grid; place-items: center; width: 36px; height: 36px; padding: 0;
   transform: translate(-50%, -50%); border: 0; border-radius: 50%;

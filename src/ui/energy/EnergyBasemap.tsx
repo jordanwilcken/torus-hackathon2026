@@ -47,11 +47,13 @@ export function EnergyBasemap({ sites, placement, inspection, detailCard, childr
   const { job, outcome, routeAttempt, transfers, executionObserved } = placement;
   const { inspectedSlot, focusSlot, onInspect, onPreview, onRegion, onDismiss } = inspection;
   const { content: details, location: detailLocation } = detailCard;
+  const root = useRef<HTMLDivElement>(null);
   const container = useRef<HTMLDivElement>(null);
   const card = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const focusedMarker = useRef<string | null>(null);
   const restoringFocus = useRef(false);
+  const pointerInteraction = useRef(false);
   const detailTrigger = useRef<string | null>(null);
   const animatedAttempt = useRef(0);
   const compactActivities = useRef(new Set<string>());
@@ -175,6 +177,7 @@ export function EnergyBasemap({ sites, placement, inspection, detailCard, childr
     let active = true;
     if (document.activeElement?.tagName === 'BUTTON' && document.activeElement.hasAttribute('aria-label') && !element.contains(document.activeElement))
       detailTrigger.current = document.activeElement.getAttribute('aria-label');
+    if (appearance === 'compact') return;
     const positionCard = () => {
       if (!active || !element.isConnected) return;
       const size = view.getSize();
@@ -188,7 +191,22 @@ export function EnergyBasemap({ sites, placement, inspection, detailCard, childr
     const resize = new ResizeObserver(positionCard);
     resize.observe(element);
     return () => { active = false; view.off('move zoom resize', positionCard); resize.disconnect(); };
-  }, [details, detailLocation]);
+  }, [details, detailLocation, appearance]);
+
+  useEffect(() => {
+    if (appearance !== 'compact' || !details) return;
+    const dismissOutside = (event: MouseEvent) => {
+      if (!root.current?.contains(event.target as Node)) onDismiss();
+    };
+    const beginPointer = () => { pointerInteraction.current = true; };
+    document.addEventListener('pointerdown', beginPointer, true);
+    document.addEventListener('click', dismissOutside, true);
+    return () => {
+      pointerInteraction.current = false;
+      document.removeEventListener('pointerdown', beginPointer, true);
+      document.removeEventListener('click', dismissOutside, true);
+    };
+  }, [appearance, details, onDismiss]);
 
   useEffect(() => {
     if (outcome) container.current?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
@@ -203,7 +221,7 @@ export function EnergyBasemap({ sites, placement, inspection, detailCard, childr
       const selected = reference?.locationId === selectedSlot?.locationId && reference !== undefined;
       const viewing = reference?.locationId === inspectedSlot?.locationId && reference !== undefined;
       button.type = 'button'; button.className = 'map-pin ' + className;
-      button.title = title;
+      if (appearance !== 'compact') button.title = title;
       button.setAttribute('aria-label', label); button.setAttribute('aria-pressed', String(viewing));
       button.dataset.selected = String(selected); button.dataset.origin = String(isOrigin);
       if (reference) button.dataset.locationId = reference.locationId;
@@ -222,8 +240,10 @@ export function EnergyBasemap({ sites, placement, inspection, detailCard, childr
       }
       if (viewing) { const badge = document.createElement('small'); badge.textContent = 'Viewing'; button.append(badge); }
       const showPreview = () => { detailTrigger.current = label; preview(); };
-      button.onmousemove = showPreview;
-      button.onfocus = () => { if (!restoringFocus.current) showPreview(); };
+      if (appearance !== 'compact') {
+        button.onmousemove = showPreview;
+        button.onfocus = () => { if (!restoringFocus.current) showPreview(); };
+      }
       button.onclick = () => { detailTrigger.current = label; action(); };
       L.DomEvent.disableClickPropagation(button);
       L.marker([latitude, longitude], { icon: L.divIcon({ html: button, className: 'map-pin-anchor', iconSize: [0, 0] }),
@@ -253,13 +273,21 @@ export function EnergyBasemap({ sites, placement, inspection, detailCard, childr
       restoringFocus.current = true;
       markers.remove();
     };
-  }, [sites, job, inspectedSlot, selectedSlot, localView, onInspect, onPreview, onRegion]);
+  }, [sites, job, inspectedSlot, selectedSlot, localView, onInspect, onPreview, onRegion, appearance]);
 
-  return <div className={'basemap' + (appearance === 'compact' ? ' compact-energy-map' : '')} role="region" aria-label="US energy map"
-    onPointerLeave={event => { if (!event.currentTarget.contains(document.activeElement)) onDismiss(); }}
-    onBlur={event => { if (!restoringFocus.current && !event.currentTarget.contains(event.relatedTarget as Node | null)) onDismiss(); }}
+  return <div ref={root} className={'basemap' + (appearance === 'compact' ? ' compact-energy-map' : '')} role="region" aria-label="US energy map"
+    onPointerLeave={event => {
+      const reading = appearance === 'compact' ? card.current : event.currentTarget;
+      if (!reading?.contains(document.activeElement)) onDismiss();
+    }}
+    onBlur={event => {
+      // Let an outside pointer click reach its target before collapsing the inline panel.
+      if (appearance === 'compact' && pointerInteraction.current) return;
+      if (!restoringFocus.current && !event.currentTarget.contains(event.relatedTarget as Node | null)) onDismiss();
+    }}
+    onKeyDownCapture={() => { pointerInteraction.current = false; }}
     onKeyDown={event => { if (event.key === 'Escape') closeDetails(); }}>
-    <div className="map-toolbar"><div className="map-switch">
+    <div className="map-viewport"><div className="map-toolbar"><div className="map-switch">
       <button type="button" aria-pressed={!localView} onClick={() => {
         map.current?.fitBounds([[25, -126], [49.5, -66]], { padding: [35, 35], animate: false }); onDismiss();
       }}>Show US</button>
@@ -270,10 +298,10 @@ export function EnergyBasemap({ sites, placement, inspection, detailCard, childr
     <div ref={container} className="map-canvas" onClick={event => {
       if (!(event.target as Element).closest('.map-pin, .leaflet-control')) onDismiss();
     }} />
-    {details && <div ref={card} className="map-hover-card">
+    {children}</div>
+    {details && <div ref={card} className={appearance === 'compact' ? 'map-inspection-card' : 'map-hover-card'}>
       <button className="close-details" aria-label="Close details" onClick={closeDetails}>×</button>{details}
     </div>}
-    {children}
     {!originLocated && <p className="map-error">Job origin coordinates are unavailable.</p>}
     {tileError && <p className="map-error">Map tiles could not load. Site data and inspection are still available below.</p>}
   </div>;
