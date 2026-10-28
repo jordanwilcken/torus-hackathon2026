@@ -1,0 +1,40 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: #f4f6f0; color: #223d31; font: 14px/1.5 'Segoe UI', system-ui, sans-serif; }
+.price-preview { max-width: 1060px; margin: 0 auto; padding: 24px 40px; }
+.price-preview-brand { display: flex; align-items: center; justify-content: space-between; padding-bottom: 25px; border-bottom: 1px solid #dce3d8; }
+.price-preview-brand a { color: #254534; text-decoration: none; font-size: 24px; font-weight: 650; letter-spacing: -.06em; }
+.price-preview-brand a span { display: inline-block; padding-left: 6px; color: #719951; font-size: 27px; }
+.price-preview-brand > span { color: #7f907f; font-size: 9px; letter-spacing: .14em; }
+.price-preview-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin: 27px 0 25px; }
+.price-preview-kicker { margin: 0 0 10px; color: #78906f; font-size: 10px; letter-spacing: .15em; font-weight: 650; }
+.price-preview h1 { margin: 0; color: #264233; font-size: clamp(28px, 4vw, 40px); line-height: 1.15; letter-spacing: -.055em; font-weight: 550; }
+.price-preview-intro > div > p:last-child { margin: 12px 0 0; color: #7a8779; font-size: 13px; }
+.price-preview-context { margin: 0; color: #81907e; font-size: 10px; text-align: right; line-height: 1.8; }
+.price-preview-context time { color: #5b715a; }
+.price-preview-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: start; gap: 22px; }
+.price-preview-prices { min-width: 0; }
+.price-preview-prices > header { display: flex; align-items: center; justify-content: space-between; margin: 0 0 15px; }
+.price-preview-prices h2 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -.02em; }
+.price-preview-prices > header > span { color: #85907e; font-size: 9px; }
+.price-preview-legend { display: flex; flex-wrap: wrap; gap: 11px; margin: 14px 0 24px; color: #7f8b79; font-size: 9px; }
+.price-preview-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.price-preview-legend span:last-child { margin-left: auto; }
+.price-preview-legend i { width: 12px; height: 5px; border-radius: 2px; background: #6b9d73; }
+.price-preview-legend span:nth-child(2) i { background: #b39065; }
+.price-preview-legend span:nth-child(3) i { background: repeating-linear-gradient(120deg, #d9ded4 0 2px, #a6b19e 2px 3px); }
+.price-preview-footer { display: flex; align-items: center; gap: 15px; margin: 40px 0 0; padding: 20px 0 0; border-top: 1px solid #dce3d8; }
+.price-preview-footer p { margin: 0; color: #8a9684; font-size: 9px; white-space: nowrap; }
+.price-preview-footer nav { display: flex; flex-wrap: wrap; gap: 5px; }
+.price-preview-footer button { padding: 5px 9px; border: 1px solid transparent; border-radius: 5px; color: #7c8b73; background: transparent; font: inherit; font-size: 10px; text-transform: capitalize; cursor: pointer; }
+.price-preview-footer button[aria-pressed='true'] { color: #325a3d; background: #e3ebdd; border-color: #d4dfcb; }
+.price-preview-footer button:focus-visible { outline: 2px solid #527a53; outline-offset: 2px; }
+@media (max-width: 700px) {
+  .price-preview { padding: 23px 20px; }
+  .price-preview-brand { padding-bottom: 20px; }
+  .price-preview-brand > span { font-size: 7px; letter-spacing: .07em; }
+  .price-preview-intro { display: block; margin-top: 32px; }
+  .price-preview-context { margin-top: 17px; text-align: left; }
+  .price-preview-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .price-preview-legend span:last-child { margin-left: 0; }
+  .price-preview-footer { align-items: flex-start; gap: 10px; margin-top: 27px; }
+}

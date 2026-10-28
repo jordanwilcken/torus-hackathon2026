@@ -1,86 +1,45 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import type { EnergyMap } from '../../../src/core/energy/EnergyMap.interface';
+import { getEnergyMap } from '../../../src/core/energy/getEnergyMap';
+import type { SlotReference } from '../../../src/core/energy/SlotReference.type';
+import type { Job } from '../../../src/core/jobs/Job.type';
+import { EnergyBasemap } from '../../../src/ui/energy/EnergyBasemap';
 import { JobPriceChoice, PriceDetails, PriceStrip } from '../../../src/ui/scheduling/PostedPrices';
 import type { PriceHour } from '../../../src/ui/scheduling/PostedPrices.type';
-import type { JobOutcome } from '../../../src/core/scheduling/JobOutcome.type';
+import { at, history, scenario, siteNames, type Scene } from './price-preview-data';
+import '../../../src/style.css';
 import './posted-price.css';
 
-type Scene = 'selected' | 'waiting' | 'stale' | 'unknown' | 'revised' | 'empty' | 'no-estimate' | 'zero' | 'tiny' | 'overnight';
-const at = '2026-10-28T12:00:00Z';
-const siteNames = { lehi: 'Lehi', provo: 'Provo' };
-function hour(site: string, start: number, rate: number, projected = false): PriceHour {
-  const window = { startAt: `2026-10-28T${start}:00:00Z`, endAt: `2026-10-28T${start + 1}:00:00Z` };
-  const reference = { locationId: site, slotId: `${site}-${start}` };
-  return {
-    reference, window,
-    snapshot: {
-      status: 'current', source: 'illustrative-site-ledger', version: `${site}-v1`, observedAt: at,
-      projected, simulated: true,
-      slot: { id: reference.slotId, locationId: site, window, capGpus: 4, usedGpus: 0,
-        availablePowerKW: 4, availableEnergyKWh: 4, postedUsdPerGpuHour: rate,
-        priceBasis: 'Modeled electricity + operational CO2 at $100/tonne; full available mix' },
-    },
-    forecast: { carbon: {
-      source: 'illustrative-carbon-model', scope: 'PACE', basis: 'Operational CO2', unit: 'gCO2/kWh',
-      issuedAt: '2026-10-28T11:00:00Z', retrievedAt: '2026-10-28T11:05:00Z', simulated: true,
-      points: [{ window, value: projected ? 200 : 300 }],
-    } },
-  };
-}
-const lehi = [hour('lehi', 12, .075), hour('lehi', 13, .045, true), hour('lehi', 14, .095, true), hour('lehi', 15, .08, true)];
-lehi[0].breakdown = { electricityUsdPerGpuHour: .045, carbonUsdPerGpuHour: .03 };
-lehi[2].snapshot.slot!.usedGpus = 4;
-lehi[2].snapshot.slot!.availableEnergyKWh = 0;
-lehi[2].snapshot.slot!.availablePowerKW = 0;
-lehi[3].snapshot = { status: 'unavailable', source: 'illustrative-site-ledger', projected: true, simulated: true };
-const provo = [hour('provo', 12, .09), hour('provo', 13, .065, true), hour('provo', 14, .085, true), hour('provo', 15, .11, true)];
-const selected: JobOutcome = {
-  selected: true,
-  allocation: { jobId: 'training-batch', slot: lehi[0].reference, slotVersion: 'lehi-v1', allocatedGpus: 1,
-    kWhPerGpuHour: 1, requiredPowerKW: 1,
-    energy: [{ window: { startAt: at, endAt: '2026-10-28T12:15:00Z' }, estimatedKWh: .25 }],
-    forecast: lehi[0].forecast!, postedUsdPerGpuHour: .075, priceBasis: lehi[0].snapshot.slot!.priceBasis },
-  explanation: 'Lehi has the lower eligible current price and enough capacity before the deadline.',
+const locations = {
+  lehi: { name: 'Lehi', latitude: 40.3916, longitude: -111.8508, regionId: 'PACE' },
+  provo: { name: 'Provo', latitude: 40.2338, longitude: -111.6585, regionId: 'PACE' },
 };
-const waiting: JobOutcome = { selected: false, explanation: 'Waiting for the eligible 13:00 window; no current allocation selected.' };
-const history = [
-  { at: '2026-10-28T11:00:00Z', reason: 'Waited for Lehi capacity to become available.' },
-  { at, reason: selected.explanation },
-];
-function scenario(scene: Scene) {
-  const sites = structuredClone([{ id: 'lehi', name: 'Lehi', hours: lehi }, { id: 'provo', name: 'Provo', hours: provo }]);
-  let outcome: JobOutcome | undefined = structuredClone(selected);
-  if (scene === 'waiting') outcome = waiting;
-  if (scene === 'stale' || scene === 'unknown') {
-    for (const site of sites) for (const hour of site.hours) {
-      if (scene === 'stale') hour.snapshot.status = 'stale';
-      else {
-        hour.snapshot = { status: 'unavailable', source: 'not-supplied', projected: hour.snapshot.projected, simulated: true };
-        hour.breakdown = undefined;
-      }
-    }
-    outcome = { selected: false, explanation: scene === 'stale' ? 'Current site evidence is stale. Waiting for a refreshed offer.' : 'No usable site readings were supplied.' };
-  }
-  if (scene === 'revised') sites[0].hours[0].snapshot.version = 'lehi-v2';
-  if (scene === 'no-estimate' && outcome.selected) outcome.allocation.energy = [];
-  if ((scene === 'zero' || scene === 'tiny') && outcome.selected) {
-    const rate = scene === 'zero' ? 0 : .0000001;
-    sites[0].hours[0].snapshot.slot!.postedUsdPerGpuHour = rate;
-    sites[0].hours[0].breakdown = { electricityUsdPerGpuHour: rate, carbonUsdPerGpuHour: 0 };
-    outcome.allocation.postedUsdPerGpuHour = rate;
-  }
-  if (scene === 'overnight') {
-    const tomorrow = sites[0].hours[1];
-    tomorrow.reference.slotId = 'lehi-next-12';
-    tomorrow.window = { startAt: '2026-10-29T12:00:00Z', endAt: '2026-10-29T13:00:00Z' };
-    tomorrow.snapshot.slot!.id = tomorrow.reference.slotId;
-    tomorrow.snapshot.slot!.window = tomorrow.window;
-    tomorrow.forecast!.carbon!.points[0].window = tomorrow.window;
-    sites[0].hours = [sites[0].hours[0], tomorrow];
-  }
-  if (scene === 'empty') { sites.forEach(site => { site.hours = []; }); outcome = undefined; }
-  return { sites, outcome };
+const job: Job = {
+  id: 'training-batch', workloadRef: 'Training batch', computeProfile: 'illustrative-gpu',
+  window: { startAt: at, endAt: '2026-10-28T13:00:00Z' }, readyAt: at,
+  allowedLocations: ['lehi', 'provo'], homeLocation: 'provo', currentLocation: 'provo',
+  workGpuH: .25, remainingGpuH: .25, maxGpus: 1, dataGB: 0, state: 'queued',
+};
+const sameSlot = (a: SlotReference, b: SlotReference) => a.locationId === b.locationId && a.slotId === b.slotId;
+const ignoreHover = () => {};
+
+/** The map and price pieces read the same supplied examples; this is not the live application composition. */
+function project(data: ReturnType<typeof scenario>) {
+  const hours = data.sites.flatMap(site => site.hours);
+  const lookup = (reference: SlotReference) => hours.find(hour => sameSlot(hour.reference, reference));
+  const source: EnergyMap = {
+    findSlots: () => hours.map(hour => hour.reference),
+    readSlot: reference => {
+      const hour = lookup(reference);
+      return hour ? { ...hour.snapshot, location: locations[reference.locationId as keyof typeof locations] }
+        : { status: 'unavailable', source: 'not-supplied', projected: false, simulated: true };
+    },
+    readForecast: reference => lookup(reference)?.forecast ?? {},
+  };
+  return getEnergyMap({ asOf: at, window: { startAt: at, endAt: '2026-10-29T16:00:00Z' } }, source);
 }
+
 let show = (_scene: Scene) => {};
 let read = () => scenario('selected');
 Object.assign(window, { pricePreview: { show: (scene: Scene) => show(scene), read: () => structuredClone(read()) } });
@@ -88,29 +47,56 @@ Object.assign(window, { pricePreview: { show: (scene: Scene) => show(scene), rea
 function Preview() {
   const [scene, setScene] = useState<Scene>('selected');
   const [data, setData] = useState(() => scenario('selected'));
-  const [inspected, setInspected] = useState<PriceHour | undefined>(data.sites[0].hours[0]);
+  const [inspected, setInspected] = useState<PriceHour>();
+  const [region, setRegion] = useState<string>();
+  const [focus, setFocus] = useState<SlotReference | undefined>(() => data.sites[0].hours[0]?.reference);
+  const projection = useMemo(() => project(data), [data]);
+  const dismiss = useCallback(() => { setInspected(undefined); setRegion(undefined); }, []);
+  const inspectHour = useCallback((hour: PriceHour) => {
+    setInspected(hour); setRegion(undefined); setFocus(hour.reference);
+  }, []);
+  const inspectReference = useCallback((reference: SlotReference) => {
+    const hour = data.sites.flatMap(site => site.hours).find(hour => sameSlot(hour.reference, reference));
+    if (hour) inspectHour(hour);
+  }, [data, inspectHour]);
+  const inspectRegion = useCallback((id: string) => { setRegion(id); setInspected(undefined); }, []);
   show = next => {
     const nextData = scenario(next);
-    setScene(next); setData(nextData); setInspected(nextData.sites[0].hours[0]);
+    setScene(next); setData(nextData); setFocus(nextData.sites[0].hours[0]?.reference); dismiss();
   };
   read = () => data;
-  return <main className="price-preview">
-    <header className="price-preview-brand"><a href="#" aria-label="Sunchaser">sunchaser<span aria-hidden="true">✳</span></a><span>COMPUTE, WITH THE GRID.</span></header>
-    <div className="price-preview-intro"><div><p className="price-preview-kicker">PRICE / TIMING</p><h1>A good moment to run.</h1><p>See the next window. Understand the choice.</p></div>
-      <p className="price-preview-context"><span>Simulated preview · selection only</span><br /><time dateTime={at}>28 Oct 2026 · 12:00 UTC</time></p></div>
-    <div className="price-preview-layout">
-      <section className="price-preview-prices" aria-label="Upcoming prices">
-        <header><h2>Prices ahead</h2><span>UTC · USD / GPU-hour</span></header>
-        {data.sites.map(site => <PriceStrip key={site.id} siteName={site.name} hours={site.hours}
-          selected={data.outcome?.selected ? data.outcome.allocation : undefined} inspected={inspected?.reference}
-          priceRange={{ min: .045, max: .11 }} onInspect={setInspected} />)}
-        <p className="price-preview-legend"><span><i />Lower price</span><span><i />Higher price</span><span><i />Sold out</span><span>Tap an hour for details</span></p>
-        <PriceDetails siteName={inspected ? siteNames[inspected.reference.locationId as keyof typeof siteNames] : 'Site'} hour={inspected} />
+  const location = inspected && locations[inspected.reference.locationId as keyof typeof locations];
+
+  return <main className="price-map-preview">
+    <header className="price-map-heading"><div><a href="#" aria-label="Sunchaser">sunchaser<span aria-hidden="true">✳</span></a><p>Utah compute · shared PACE grid context</p></div>
+      <div><p>Simulated preview · selection only</p><time dateTime={at}>28 Oct 2026 · 12:00 UTC</time></div></header>
+    <div className="price-map-layout">
+      <section className="price-map-shell" aria-label="Compute locations">
+        <EnergyBasemap sites={projection.sites} placement={{ job, outcome: data.outcome, routeAttempt: 1 }}
+          inspection={{ inspectedSlot: inspected?.reference, focusSlot: focus,
+            onInspect: inspectReference, onPreview: ignoreHover, onRegion: inspectRegion, onDismiss: dismiss }}
+          detailCard={{ location, content: inspected
+            ? <PriceDetails siteName={siteNames[inspected.reference.locationId as keyof typeof siteNames]} hour={inspected} />
+            : region ? <section className="price-region-context" aria-label="Regional context"><h3>{region}</h3>
+              <p>Regional grid signals are shared. Site capacity and compute prices are modeled separately.</p>
+              <small>No live regional reading is connected to this preview.</small></section> : undefined }} />
       </section>
-      <JobPriceChoice jobName="Training batch" outcome={data.outcome} siteNames={siteNames} history={scene === 'empty' ? [] : history} />
+      <aside className="price-map-job"><JobPriceChoice jobName={job.workloadRef} outcome={data.outcome} siteNames={siteNames} history={scene === 'empty' ? [] : history} />
+        <p className="price-map-execution">Execution not started · job energy not measured.</p></aside>
+      <section className="price-map-timeline" aria-label="Upcoming prices">
+        <header><div><h2>Prices ahead</h2><p>Inspect a site or an hour. Your job stays in view.</p></div><span>UTC · USD / GPU-hour</span></header>
+        <div className="price-map-strips">{data.sites.map(site => <PriceStrip key={site.id} siteName={site.name} hours={site.hours}
+          selected={data.outcome?.selected ? data.outcome.allocation : undefined} inspected={inspected?.reference}
+          priceRange={{ min: .045, max: .11 }} onInspect={inspectHour} />)}</div>
+        <p className="price-map-legend"><span><i />Lower price</span><span><i />Higher price</span><span><i />Sold out</span></p>
+      </section>
     </div>
-    <footer className="price-preview-footer"><p>Preview states</p><nav aria-label="Preview states">{(['selected', 'waiting', 'stale', 'unknown', 'revised', 'empty'] as const).map(state =>
-      <button type="button" key={state} aria-pressed={scene === state} onClick={() => show(state)}>{state === 'unknown' ? 'Unavailable' : state}</button>)}</nav></footer>
+    <footer className="price-map-footer"><details><summary>How this fits the live demo</summary>
+      <p>Public input revision → modeled site offer → job choice → actual local job and output.</p>
+      <p>This view explains the choice in place. Live input wiring and actual worker output remain on their own tasks. Missing readings stay unavailable; measured job energy stays unknown until supplied.</p></details>
+      <nav aria-label="Preview states">{(['selected', 'waiting', 'stale', 'unknown', 'revised', 'empty'] as const).map(state =>
+        <button key={state} type="button" aria-pressed={scene === state} onClick={() => show(state)}>{state === 'unknown' ? 'Unavailable' : state}</button>)}</nav>
+    </footer>
   </main>;
 }
 createRoot(document.getElementById('root')!).render(<Preview />);

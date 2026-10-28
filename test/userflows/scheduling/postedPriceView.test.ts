@@ -5,7 +5,7 @@ type PreviewControl = { show(state: PreviewState): void; read(): unknown };
 declare global { interface Window { pricePreview: PreviewControl } }
 
 async function openPrices(page: Page) {
-  await page.goto('/test/userflows/scheduling/posted-price.html');
+  await page.goto('/test/userflows/scheduling/component-prices.html');
   await expect(page.getByRole('region', { name: 'Lehi prices', exact: true })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Provo prices', exact: true })).toBeVisible();
 }
