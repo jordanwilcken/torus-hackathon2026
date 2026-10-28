@@ -1,0 +1,33 @@
+.job-playback { color: #203833; }
+.job-playback .job-route.route-reveal, .job-playback .job-stay.placement-confirm { animation-duration: var(--job-route-duration); }
+.job-playback-heading { display: flex; align-items: flex-start; gap: 24px; justify-content: space-between; margin-bottom: 20px; }
+.job-playback-heading h1 { margin: 8px 0; font-size: 1.65rem; }
+.job-playback-heading p { max-width: 650px; margin: 0; color: #52675f; }
+.job-playback-kicker { color: #34755e; font-size: .7rem; font-weight: 700; letter-spacing: .13em; }
+.job-playback-badge { padding: 8px 12px; border-radius: 30px; background: #dfebe2; font-size: .75rem; white-space: nowrap; }
+.job-playback-queue { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.job-playback-queue button { display: grid; gap: 10px; padding: 14px; text-align: left; border: 1px solid #cfdbd2; background: #fff; color: #203833; border-radius: 12px; min-width: 0; }
+.job-playback-queue button[aria-pressed=true] { border-color: #329570; box-shadow: inset 0 0 0 1px #329570; }
+.job-playback-queue button:disabled { opacity: 1; cursor: default; }
+.job-playback-queue button > span { display: flex; justify-content: space-between; gap: 8px; }
+.job-playback-queue output { font-size: .88rem; font-weight: 600; min-height: 2.5em; }
+.job-playback-queue small { color: #5c7167; font-size: .7rem; }
+.job-playback-now { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; padding: 12px 16px; background: #173c32; color: #f1fff5; border-radius: 10px; margin-bottom: 12px; font-size: .85rem; }
+.job-playback-now > span:last-child { margin-left: auto; color: #b9d9c9; font-size: .75rem; }
+.job-playback-limit { font-size: .78rem; color: #5c7167; }
+.job-playback-history { padding: 16px 20px; background: #fff; border: 1px solid #d3dfd6; border-radius: 12px; margin: 20px 0 12px; }
+.job-playback-history h2 { font-size: 1rem; margin: 0 0 12px; }
+.job-playback-history ol { padding-left: 20px; margin: 0; }
+.job-playback-history li { padding: 8px 0; }
+.job-playback-history time { font-size: .78rem; font-weight: 700; color: #357158; }
+.job-playback-history p { font-size: .88rem; margin: 5px 0; }
+.job-playback-history li > span, .job-playback-prices p { font-size: .78rem; color: #5c7167; }
+.job-playback-prices { padding: 12px; }
+.job-playback-prices th, .job-playback-prices td { padding: 10px; text-align: left; }
+@media (max-width: 640px) {
+  .job-playback-heading { flex-direction: column; gap: 10px; }
+  .job-playback-queue { grid-template-columns: 1fr; }
+  .job-playback-queue button { gap: 5px; padding: 10px 12px; }
+  .job-playback-queue output { min-height: 0; }
+  .job-playback-now > span:last-child { margin-left: 0; }
+}

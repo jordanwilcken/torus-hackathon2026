@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { JobPlayback } from './JobPlayback';
 import { PlaybackControls } from '../../../src/ui/core/controls/PlaybackControls';
 import { ChaosMonkeyControls } from '../../../src/ui/core/controls/ChaosMonkeyControls';
 import { EnergyMapView } from '../../../src/ui/energy/EnergyMapView';
@@ -193,4 +194,4 @@ style.textContent = `
   aside output { display: block; overflow-wrap: anywhere; font: 12px/1.5 monospace; }
 `;
 document.head.append(style);
-createRoot(document.getElementById('root')!).render(<Fixture />);
+createRoot(document.getElementById('root')!).render(view === null || view === 'stream' ? <JobPlayback /> : <Fixture />);

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const fixtureUrl = '/test/userflows/controls/fixture.html';
+const fixtureUrl = '/test/userflows/controls/fixture.html?view=map';
 const tileRequests = /^https:\/\/(?:[a-z]\.)?tile\.openstreetmap\.org\//;
 
 test.beforeEach(async ({ page }) => {
@@ -142,7 +142,7 @@ test('a narrow map keeps the popup in bounds and lets its scenario controls scro
 });
 
 test('a map consumer without optional controls renders no chaos trigger', async ({ page }) => {
-  await page.goto(fixtureUrl + '?view=map-only');
+  await page.goto('/test/userflows/controls/fixture.html?view=map-only');
   await expect(page.getByRole('region', { name: 'US energy map', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Chaos monkey', exact: true })).toHaveCount(0);
   await expect(page.getByRole('dialog', { name: 'Chaos monkey', exact: true })).toHaveCount(0);
