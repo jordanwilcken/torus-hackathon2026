@@ -10,7 +10,7 @@ export type PublicRunInput = {
 };
 export type LocalRunDecision = {
   scheduler: 'public-input-local-v1'; evaluatedAt: string; asOf: string;
-  action: 'run' | 'wait' | 'unavailable'; executionLocation: 'This computer';
+  action: 'run' | 'wait' | 'unavailable'; executionLocation: 'Application server' | 'This computer' | 'Cloudflare';
   explanation: string; inputs: PublicRunInput[]; policy: LocalRunPolicy;
 };
 export type StorageModel = {
@@ -32,7 +32,7 @@ export type LocalRun = {
   mode: 'live' | 'recorded'; status: 'queued' | 'running' | 'done' | 'failed' | 'blocked' | 'interrupted';
   decision: LocalRunDecision; comparison: StorageModel;
   execution: {
-    backend: 'node-child-process'; location: 'This computer'; simulated: false;
+    backend: 'node-child-process' | 'cloudflare-durable-object'; location: 'Application server' | 'This computer' | 'Cloudflare'; simulated: false;
     pid: number | null; startedAt: string | null; completedAt: string | null;
     exitCode: number | null; signal: string | null;
     events: Array<{ state: string; at: string; completed?: number; total?: number }>;

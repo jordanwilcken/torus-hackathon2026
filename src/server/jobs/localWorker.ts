@@ -1,16 +1,10 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-export type LocalWorkload =
-  | { kind: 'integer-sum'; requestId: string; values: number[] }
-  | { kind: 'grid-summary'; requestId: string; values: number[] };
-export type WorkerEvent = { state: 'running' | 'progress'; at: string; pid: number; completed?: number; total?: number };
-export type WorkerResult = {
-  exitCode: number | null; signal: string | null; startedAt: string; completedAt: string;
-  pid: number | null; outputText: string | null; error?: string;
-};
+import { assertWorkload } from './computeWorkload.mjs';
+import type { LocalWorkload, WorkerEvent, WorkerResult, WorkloadExecutor } from './WorkloadExecutor.type.ts';
+export type { LocalWorkload, WorkerEvent, WorkerResult } from './WorkloadExecutor.type.ts';
 
-const maxValues = 100_000;
 const maxOutputBytes = 64 * 1024;
 const processFile = fileURLToPath(new URL('./localWorkerProcess.mjs', import.meta.url));
 const childErrors: Record<string, string> = {
@@ -21,11 +15,7 @@ const childErrors: Record<string, string> = {
 };
 
 function inputFor(workload: LocalWorkload): string {
-  if (!workload || !['integer-sum', 'grid-summary'].includes(workload.kind)) throw new TypeError('Unsupported local workload');
-  if (typeof workload.requestId !== 'string' || !workload.requestId.trim() || workload.requestId.length > 128) throw new TypeError('Local workload requestId must contain 1 to 128 characters');
-  if (!Array.isArray(workload.values) || workload.values.length > maxValues) throw new RangeError('Local workload accepts at most 100000 values');
-  if (workload.kind === 'integer-sum' && !workload.values.every(Number.isSafeInteger)) throw new TypeError('Integer sum operands must be safe integers');
-  if (workload.kind === 'grid-summary' && !workload.values.every(Number.isFinite)) throw new TypeError('Grid summary values must be finite');
+  assertWorkload(workload);
   return JSON.stringify({ kind: workload.kind, requestId: workload.requestId, values: workload.values });
 }
 
@@ -40,7 +30,7 @@ export async function runLocalWorkload(
   const timeoutMs = options.timeoutMs ?? 10_000;
   if (!Number.isInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > 300_000) throw new RangeError('Local workload timeout must be between 1 and 300000 milliseconds');
   let startedAt = new Date().toISOString();
-  if (options.signal?.aborted) return { exitCode: null, signal: null, startedAt, completedAt: startedAt, pid: null, outputText: null, error: 'Local workload was cancelled.' };
+  if (options.signal?.aborted) return { status: 'failed', exitCode: null, signal: null, startedAt, completedAt: startedAt, pid: null, outputText: null, error: 'Local workload was cancelled.' };
 
   return new Promise<WorkerResult>(resolve => {
     // Deliberately exclude EIA credentials, GitHub tokens, NODE_OPTIONS and other inherited application configuration.
@@ -128,9 +118,13 @@ export async function runLocalWorkload(
         if (killTimer) clearTimeout(killTimer);
         options.signal?.removeEventListener('abort', abort);
         const error = failure ?? childError ?? (exitCode !== 0 || signal || outputText === null || pendingLine.length ? 'Local worker did not produce a successful result.' : undefined);
-        resolve({ exitCode, signal, startedAt, completedAt, pid: child.pid ?? null, outputText: error ? null : outputText, ...(error ? { error } : {}) });
+        resolve({ status: error ? 'failed' : 'done', exitCode, signal, startedAt, completedAt, pid: child.pid ?? null, outputText: error ? null : outputText, ...(error ? { error } : {}) });
       })();
     });
     if (options.signal?.aborted) abort();
   });
 }
+
+export const nodeWorkloadExecutor: WorkloadExecutor = {
+  backend: 'node-child-process', location: 'Application server', run: runLocalWorkload,
+};

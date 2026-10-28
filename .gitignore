@@ -8,3 +8,11 @@ playwright-report/
 .env.*
 !.env.example
 .cache/
+
+# Private deployment configuration stays outside release archives.
+runtime.env
+deploy/private/
+
+# Wrangler runtime credentials and local state
+.dev.vars*
+.wrangler/

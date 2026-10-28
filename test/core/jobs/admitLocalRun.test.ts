@@ -28,7 +28,7 @@ function inputs(demand: number | null = 5429, price = 42) {
 test('admits actual reported demand and the latest started price, preserving evidence and delayed observation age', () => {
   const supplied = inputs();
   const result = admitLocalRun(supplied, policy, context);
-  expect(result).toMatchObject({ scheduler: 'public-input-local-v1', action: 'run', executionLocation: 'This computer', asOf: context.asOf, evaluatedAt: context.evaluatedAt });
+  expect(result).toMatchObject({ scheduler: 'public-input-local-v1', action: 'run', executionLocation: 'Application server', asOf: context.asOf, evaluatedAt: context.evaluatedAt });
   expect(result.inputs).toEqual([
     { feed: 'eia', revision: supplied.eia.revision, sourceUrl: supplied.eia.snapshot.sourceUrl, retrievedAt: '2026-10-28T08:01:00.000Z', interval: { startAt: '2026-10-28T06:00:00.000Z', endAt: '2026-10-28T07:00:00.000Z' }, value: 5429, unit: 'MW', ageMinutes: 63, maximumAgeMinutes: 180, accepted: true },
     { feed: 'caiso', revision: supplied.caiso.revision, sourceUrl: supplied.caiso.snapshot.sourceUrl, retrievedAt: '2026-10-28T08:01:00.000Z', interval: { startAt: '2026-10-28T08:00:00.000Z', endAt: '2026-10-28T08:05:00.000Z' }, value: 42, unit: 'USD/MWh', ageMinutes: 0, maximumAgeMinutes: 20, accepted: true },

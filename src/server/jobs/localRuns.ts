@@ -4,12 +4,12 @@ import type { GridFeeds, GridSnapshotStores } from '../gridFeeds.ts';
 import type { JobRunStore } from './JobRunStore.type.ts';
 import { admitLocalRun } from './admitLocalRun.ts';
 import { modelStorageComparison } from './modelStorageComparison.ts';
-import { runLocalWorkload } from './localWorker.ts';
+import type { WorkloadExecutor } from './WorkloadExecutor.type.ts';
 
 export function createLocalRuns(options: {
   store: JobRunStore<LocalRun>; snapshots: GridSnapshotStores; feeds: GridFeeds;
   recordedAsOf?: string; now?: () => number;
-  worker?: typeof runLocalWorkload;
+  executor: WorkloadExecutor;
 }) {
   const { store, snapshots, feeds } = options;
   const now = options.now ?? Date.now;
@@ -47,7 +47,7 @@ export function createLocalRuns(options: {
       const workload = run.request.workload.kind === 'integer-sum'
         ? { kind: 'integer-sum' as const, requestId: run.id, values: run.request.workload.values }
         : { kind: 'grid-summary' as const, requestId: run.id, values: demandValues };
-      const outcome = await (options.worker ?? runLocalWorkload)(workload, async event => {
+      const outcome = await options.executor.run(workload, async event => {
         if (signal.aborted) return;
         await change(run.id, current => {
           if (signal.aborted || !['queued', 'running'].includes(current.status)) return false;
@@ -60,14 +60,14 @@ export function createLocalRuns(options: {
         current.execution.pid = outcome.pid; current.execution.startedAt = outcome.startedAt;
         current.execution.completedAt = outcome.completedAt; current.execution.exitCode = outcome.exitCode;
         current.execution.signal = outcome.signal;
-        if (outcome.exitCode === 0 && outcome.outputText !== null && !outcome.error) {
+        if (outcome.status === 'done' && outcome.outputText !== null && !outcome.error) {
           const output = JSON.parse(outcome.outputText);
           if (output.requestId !== run.id) throw new Error('Worker receipt mismatch');
           current.status = 'done';
           current.execution.output = { id: createHash('sha256').update(outcome.outputText).digest('hex'),
             text: outcome.outputText, contentType: 'application/json' };
         } else {
-          current.status = 'failed'; current.execution.error = outcome.error ?? 'The local process failed.';
+          current.status = 'failed'; current.execution.error = outcome.error ?? 'Workload execution failed.';
         }
         current.execution.events.push({ state: current.status, at: outcome.completedAt });
       });
@@ -98,15 +98,15 @@ export function createLocalRuns(options: {
       ]);
       if (eia && eia.revision !== request.inputRevisions.eia || caiso && caiso.revision !== request.inputRevisions.caiso) throw new Error('Input revision mismatch');
       const at = stamp();
-      const decision = admitLocalRun({ eia, caiso }, request.policy, {
+      const decision = { ...admitLocalRun({ eia, caiso }, request.policy, {
         evaluatedAt: at, asOf: options.recordedAsOf ?? at, workerAvailable: active.size === 0,
-      });
+      }), executionLocation: options.executor.location };
       const price = decision.inputs.find(input => input.feed === 'caiso')?.value ?? null;
       const run: LocalRun = {
         id: request.requestId, request: structuredClone(request), createdAt: at, updatedAt: at, mode,
         status: decision.action === 'run' ? 'queued' : 'blocked', decision,
         comparison: modelStorageComparison({ ...request.model, wholesaleUsdPerMWh: price }),
-        execution: { backend: 'node-child-process', location: 'This computer', simulated: false,
+        execution: { backend: options.executor.backend, location: options.executor.location, simulated: false,
           pid: null, startedAt: null, completedAt: null, exitCode: null, signal: null, output: null, error: null,
           events: [{ state: decision.action === 'run' ? 'queued' : 'blocked', at }] },
         measuredEnergyKWh: null, measuredCarbonKg: null, actualElectricityCostUsd: null,
@@ -133,6 +133,10 @@ export function createLocalRuns(options: {
   }
   return {
     submit, read,
+    async waitForIdle() {
+      await admission;
+      await Promise.all([...active.values()].map(job => job.completion));
+    },
     async context() {
       const [eia, caiso] = await Promise.all([feeds.eia.read(), feeds.caiso.read()]);
       return { mode, asOf: options.recordedAsOf ?? stamp(), inputs: { eia, caiso }, busy: active.size > 0 };
