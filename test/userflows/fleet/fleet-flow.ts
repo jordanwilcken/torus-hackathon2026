@@ -161,10 +161,10 @@ export class FleetFlow {
     const origin = this.panel.getByRole('region', { name: 'Data center activity', exact: true });
     await expect(origin).toBeVisible();
     await expect(origin).toHaveAttribute('data-origin-id', id);
-    await expect(origin).toContainText('SIMULATED JOB SOURCE');
-    await expect(origin).toContainText(`${submissions} simulated submissions`);
-    await expect(origin).toContainText('No facility workload or telemetry connection.');
-    await expect(origin.getByRole('link', { name: 'Operator location source', exact: true })).toHaveAttribute('href', sourceUrl);
+    await expect(origin).toContainText('SIMULATED JOB ORIGIN');
+    await expect(origin).toContainText(`${submissions} generated jobs`);
+    await expect(origin).toContainText('Location is public. Jobs are simulated. No connection to this operator.');
+    await expect(origin.getByRole('link', { name: 'Public location reference', exact: true })).toHaveAttribute('href', sourceUrl);
   }
 
   async expectAdmissionOnMap(jobId: string): Promise<void> {

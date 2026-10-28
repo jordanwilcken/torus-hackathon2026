@@ -98,3 +98,9 @@
 .fleet-disruption-target { display:grid; gap:5px; padding:10px 12px; margin:10px 0; border:1px solid #e5d8ba; border-radius:7px; background:#f7f0df; font-size:11px; color:#7a6845; }.fleet-disruption-target strong { color:#8c603b; font-size:17px; font-weight:600; }.fleet-disruption-target span { font-size:10px; }.fleet-chaos select { max-width:100%; }.fleet-chaos .fleet-drop:disabled { opacity:.5; }
 
 .fleet-source-notice { margin:0; padding:10px 16px; background:#fff8e6; color:#70551f; font-size:12px; line-height:1.5; }
+.fleet-section-label { margin:14px 0 4px; font-size:10px!important; color:#526b5b; font-weight:650; }
+.fleet-capacity-bar { margin-bottom:6px; }
+.fleet-capacity-note { margin:0 0 10px; color:#75877b; font-size:9px!important; }
+.fleet-power-heading { display:flex; justify-content:space-between; align-items:center; gap:8px; border-top:1px solid #e3eae4; padding-top:13px; margin:14px 0 12px; font-size:10px; font-weight:650; color:#526b5b; }
+.fleet-power-heading small { font-size:8px; font-weight:400; }
+.fleet-inspector .fleet-engine-plan { margin-top:14px; }

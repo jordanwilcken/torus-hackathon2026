@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import './FleetMap.css';
 import { dataCenters, originForJob } from '../../data/dataCenters';
 import { createFleetActivity } from './fleetActivity';
 import type { TransferObservation } from '../../core/execution/TransferObservation.type';
@@ -17,6 +18,19 @@ type Props = {
 };
 const color = (site: FleetSiteVisual) => site.unknown ? '#89969a' : site.availableGpus <= 0 ? '#d16f63'
   : site.availableGpus < site.capacity / 2 ? '#d7af5e' : '#53ad83';
+
+export function FleetMapKey() {
+  return <div className="fleet-map-key" role="group" aria-label="Modeled job flow">
+      <div className="fleet-map-key-flow">
+        <span><i className="fleet-map-key-origin" aria-hidden="true">JOB</i>Simulated job origins</span>
+        <b aria-hidden="true">→</b>
+        <span><i className="fleet-map-key-compute" aria-hidden="true">▦</i>Compute sites · GPUs</span>
+        <b aria-hidden="true">→</b>
+        <span><i className="fleet-map-key-done" aria-hidden="true">✓</i>Completed work</span>
+      </div>
+      <small>Synthetic jobs follow modeled energy + capacity: solar · grid · battery.</small>
+    </div>;
+}
 
 /** One persistent geographic view. Camera changes never step or reconstruct the model. */
 export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob, admissions = [], onOrigin, activityEpoch = 0 }: Props) {
@@ -62,8 +76,9 @@ export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob
         icon: L.divIcon({ html: element, className: 'fleet-marker', iconSize: [50, 50], iconAnchor: [25, 25] }) }).addTo(layer);
       const tooltip = document.createElement('div');
       const name = document.createElement('strong'); name.textContent = site.name; tooltip.append(name);
-      const line = document.createElement('div'); line.textContent = site.unknown ? 'Source unavailable · no modeled activity'
-        : `${site.availableGpus} / ${site.capacity} modeled GPUs available for a full hour · ${site.activeJobs} working`;
+      const purpose = document.createElement('div'); purpose.textContent = 'Modeled compute site · solar, grid and battery'; tooltip.append(purpose);
+      const line = document.createElement('div'); line.textContent = site.unknown ? 'GPU availability unknown · public inputs unavailable'
+        : `${site.availableGpus} / ${site.capacity} modeled GPUs open this hour · ${site.activeJobs} working`;
       tooltip.append(line);
       const power = document.createElement('small'); power.textContent = site.unknown ? 'Connect public inputs to start'
         : `${site.solarKW.toFixed(2)} kW modeled solar · ${site.storedKWh.toFixed(2)} kWh stored`;
@@ -85,14 +100,14 @@ export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob
         return [from.latitude + (to.latitude - from.latitude) * t + Math.sin(t * Math.PI) * Math.abs(to.longitude - from.longitude) * .14,
           from.longitude + (to.longitude - from.longitude) * t];
       });
-      const line = L.polyline(points, { color: '#3d9d83', weight: 2, opacity: .42, className: 'fleet-route' }).addTo(layer);
+      const line = L.polyline(points, { color: '#0d9488', weight: 2, opacity: .42, className: 'fleet-route' }).addTo(layer);
       const path = line.getElement();
       path?.setAttribute('data-job-id', transfer.jobId);
       path?.setAttribute('data-transfer-id', transfer.id);
       path?.setAttribute('role', 'button');
       path?.setAttribute('tabindex', '0');
       path?.setAttribute('aria-label', `Inspect transfer ${transfer.jobId} from ${from.name} to ${to.name}`);
-      line.bindTooltip(`${transfer.jobId} · ${from.name} → ${to.name} · modeled transfer`);
+      line.bindTooltip(`${transfer.jobId} · ${from.name} → ${to.name} · Site move · modeled transfer`);
       line.on('click', () => callbacks.current.onJob(transfer.jobId));
       path?.addEventListener('keydown', event => { if ((event as KeyboardEvent).key === 'Enter') callbacks.current.onJob(transfer.jobId); });
       if (!seen.current.has(transfer.id)) {
@@ -111,12 +126,16 @@ export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob
       const element = document.createElement('button');
       element.className = 'fleet-datacenter';
       element.setAttribute('aria-label', `Inspect data center ${source.name}`);
-      element.innerHTML = '<span aria-hidden="true">▤</span><small>DC</small>';
+      element.innerHTML = '<span aria-hidden="true">↗</span><small>JOB</small>';
       element.addEventListener('click', () => callbacks.current.onOrigin?.(source.id));
       const marker = L.marker([source.latitude, source.longitude], { keyboard: false,
         icon: L.divIcon({ html: element, className: 'fleet-marker', iconSize: [30, 30], iconAnchor: [-23, 15] }) }).addTo(layer);
       const tooltip = document.createElement('div');
-      tooltip.textContent = `${source.name} · ${admissions.filter(job => originForJob(job.jobId).id === source.id).length} simulated submissions · city reference`;
+      const title = document.createElement('strong'); title.textContent = source.name;
+      const purpose = document.createElement('div'); purpose.textContent = 'Synthetic jobs · public location reference';
+      const count = document.createElement('small'); count.textContent = admissions.filter(job => originForJob(job.jobId).id === source.id).length + ' simulated submissions · no operator workload feed';
+      const citation = document.createElement('small'); citation.textContent = 'Location source: ' + new URL(source.sourceUrl).hostname; citation.title = source.sourceUrl;
+      tooltip.append(title, purpose, count, citation);
       marker.bindTooltip(tooltip, { direction: 'top', className: 'fleet-tooltip' });
       element.addEventListener('focus', () => marker.openTooltip());
       element.addEventListener('blur', () => marker.closeTooltip());
@@ -130,10 +149,10 @@ export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob
           source.longitude + (destination.longitude - source.longitude) * t];
       });
       const identity = `admission:${admission.jobId}`;
-      const line = L.polyline(points, { color: '#6e9cbb', weight: 1.5, opacity: .3, dashArray: '3 6', className: 'fleet-admission' }).addTo(layer);
+      const line = L.polyline(points, { color: '#2563eb', weight: 1.5, opacity: .3, dashArray: '3 6', className: 'fleet-admission' }).addTo(layer);
       line.getElement()?.setAttribute('data-job-id', admission.jobId);
       line.getElement()?.setAttribute('data-event-id', identity);
-      line.bindTooltip(`${admission.jobId} · simulated submission from ${source.name}`);
+      line.bindTooltip(`${admission.jobId} · New job · simulated submission from ${source.name}`);
       line.on('click', () => callbacks.current.onJob(admission.jobId));
       if (!seen.current.has(identity)) {
         seen.current.add(identity);
@@ -150,6 +169,6 @@ export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob
   return <div className="fleet-geography compact-energy-map" data-playing={playing}>
     <div className="fleet-canvas" ref={container} role="region" aria-label="Continuous fleet map" />
     <div className="fleet-camera"><button onClick={() => zoom(false)}>Show US</button><button onClick={() => zoom(true)}>Explore Utah</button></div>
-    <div className="fleet-legend"><span><i style={{ background: '#53ad83' }} />Available</span><span><i style={{ background: '#d7af5e' }} />Limited</span><span><i style={{ background: '#d16f63' }} />No full-hour slot</span><small>▤ Data center job sources · orbit = working<br />Modeled full-hour capacity & synthetic submissions</small></div>
+    <div className="fleet-legend"><span><i style={{ background: '#53ad83' }} />Available compute</span><span><i style={{ background: '#d7af5e' }} />Limited</span><span><i style={{ background: '#d16f63' }} />No slot</span><span><i style={{ background: '#89969a' }} />Unknown</span><small className="fleet-activity-key"><span><i style={{ background: '#2563eb' }} />New job</span><span><i style={{ background: '#0d9488' }} />Site move</span><span><i style={{ background: '#4f9c68' }} />Completed work</span></small><small>Orbit = running job · modeled GPU availability<br />Site compute slots, not regional grid surplus.</small></div>
   </div>;
 }

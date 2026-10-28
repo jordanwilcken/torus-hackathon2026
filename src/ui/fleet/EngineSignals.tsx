@@ -11,7 +11,7 @@ export function CapacityHorizon({ plan, locationId }: { plan?: HourlyCapacityPla
   const jobs = plan.deadlines.filter(job => job.locationId === locationId);
   const covered = jobs.filter(job => job.status === 'covered').length;
   return <section className="fleet-engine-plan" aria-label="Hourly compute plan">
-    <div><strong>Hourly GPU caps</strong><span>Conditional</span></div>
+    <div><strong>Compute schedule ahead</strong><span>Conditional</span></div>
     <div className="fleet-cap-horizon" role="img" aria-label="Opened compute capacity by model hour">
       {slots.map(slot => <span key={slot.slotId} data-status={slot.status}
         title={`${slot.window.startAt.slice(11,16)} UTC · ${slot.capGpus} GPUs opened / ${slot.physicalFreeGpus + slot.usedGpus} physically supported · ${slot.reason}`}>
@@ -23,7 +23,7 @@ export function CapacityHorizon({ plan, locationId }: { plan?: HourlyCapacityPla
     <p title={plan.reasons.join(' ') || 'A shared-capacity schedule fits the remaining deadlines; future inputs and execution must be rechecked.'}>
       <i data-warning={plan.mode === 'degraded'} />{covered}/{jobs.length} jobs fit · {Math.round(plan.safetyMargin * 100)}% margin target
     </p>
-    <small>Green: opened · pale: physical limit</small>
+    <small>Green: allowed GPUs · pale: site limit</small>
   </section>;
 }
 

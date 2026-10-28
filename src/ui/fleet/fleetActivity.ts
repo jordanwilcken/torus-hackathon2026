@@ -54,7 +54,7 @@ export function createFleetActivity(view: L.Map) {
 
   function show(event: FleetEvent) {
     active.get(event.id)?.close();
-    const color = event.kind === 'submission' ? '#5485a3' : '#35876d';
+    const color = event.kind === 'submission' ? '#2563eb' : '#0d9488';
     const layer = L.layerGroup().addTo(view);
     const endTrail = showMapActivity(view, event.route, color);
     for (const [endpoint, value] of [['source', event.from], ['destination', event.to]] as const) {
@@ -71,7 +71,7 @@ export function createFleetActivity(view: L.Map) {
     const title = document.createElement('strong'); title.textContent = event.jobId;
     const route = document.createElement('span'); route.textContent = `From ${event.from.name} → ${event.to.name}`;
     const kind = document.createElement('small');
-    kind.textContent = event.kind === 'submission' ? 'Simulated submission' : 'Modeled transfer';
+    kind.textContent = event.kind === 'submission' ? 'New job · Simulated submission' : 'Site move · Modeled transfer';
     content.append(title, route, kind);
     const tooltip = L.tooltip({
       permanent: true, interactive: false, opacity: 1, direction: 'top',
