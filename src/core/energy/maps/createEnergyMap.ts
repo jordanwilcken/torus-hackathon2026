@@ -4,7 +4,7 @@ import type { SlotSnapshot } from "../SlotSnapshot.type.js";
 import type { SlotForecast } from "../SlotForecast.type.js";
 import type { SlotQuery } from "../SlotQuery.interface.js";
 import type { SlotReference } from "../SlotReference.type.js";
-import type { EnergyMapScope, EnergyMapProviders } from "./types.js";
+import type { EnergyMapScope, EnergyMapProviders } from "./EnergyMap.types.js";
 
 /**
  * Read-only EnergyMap over the existing site and regional providers.
