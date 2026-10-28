@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useState, type ReactNode } from 'react';
 import type { getEnergyMap } from '../../core/energy/getEnergyMap';
 import type { SlotReference } from '../../core/energy/SlotReference.type';
 import type { Job } from '../../core/jobs/Job.type';
@@ -37,9 +37,10 @@ type EnergyMapViewProps = {
     onInspect: (slot: SlotReference) => void;
   };
   activity?: EnergyActivity;
+  controls?: ReactNode;
 };
 
-export function EnergyMapView({ map, jobFlow, inspection, activity }: EnergyMapViewProps) {
+export function EnergyMapView({ map, jobFlow, inspection, activity, controls }: EnergyMapViewProps) {
   const { job, report, routeAttempt } = jobFlow;
   const { inspectedSlot, focusSlot, onInspect } = inspection;
   const id = useId();
@@ -128,6 +129,7 @@ export function EnergyMapView({ map, jobFlow, inspection, activity }: EnergyMapV
         inspection={{ inspectedSlot: activeReading?.reference, focusSlot, onInspect: inspect,
           onPreview: previewSite, onRegion: previewRegion, onDismiss: dismiss }}
         detailCard={{ content: details, location: region ?? activeSite }}>
+        {controls}
         {allocation && <div className="impact-readout" role="region" aria-label="Job impact">
           <p>{report.jobId}</p>
           <dl>

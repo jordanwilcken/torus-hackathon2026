@@ -6,7 +6,7 @@ declare global {
   interface Window { playbackFixture: PlaybackFixture }
 }
 
-const fixtureUrl = '/test/userflows/controls/fixture.html';
+const fixtureUrl = '/test/userflows/controls/fixture.html?view=controls';
 
 test.beforeEach(async ({ page }) => {
   await page.goto(fixtureUrl);

@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { PlaybackControls } from '../../../src/ui/core/controls/PlaybackControls';
+import { ChaosMonkeyControls } from '../../../src/ui/core/controls/ChaosMonkeyControls';
+import { EnergyMapView } from '../../../src/ui/energy/EnergyMapView';
+import { getFakeEnergyMap } from '../../../src/core/energy/fakes/fakeEnergyMap';
+import { getFakeJob } from '../../../src/core/jobs/fakes/getFakeJob';
+import { createJobReport } from '../../../src/core/reporting/getJobReport';
+import type { SlotReference } from '../../../src/core/energy/SlotReference.type';
+import '../../../src/style.css';
 import type {
   PlaybackActions, PlaybackState, ScenarioEventOption, ScenarioMenu,
 } from '../../../src/ui/core/controls/PlaybackControls.types';
@@ -37,6 +44,14 @@ const events: readonly ScenarioEventOption[] = [
   },
 ];
 
+const view = new URLSearchParams(location.search).get('view');
+const mapJob = getFakeJob();
+const mapReading = getFakeEnergyMap({
+  window: mapJob.window, asOf: mapJob.readyAt,
+  locations: mapJob.allowedLocations, computeProfile: mapJob.computeProfile,
+});
+const mapReport = createJobReport({ jobId: mapJob.id }, { fake: true, label: 'Supplied map preview' });
+
 type CommandCall = { action: string; input?: unknown };
 export type PlaybackFixture = {
   setState(patch: Partial<PlaybackState>): void;
@@ -58,6 +73,7 @@ function Fixture() {
   const [state, setState] = useState<PlaybackState>(initialState);
   const [scenario, setScenario] = useState<ScenarioMenu>({ events, selectedEventId: events[0].id });
   const [journal, setJournal] = useState<CommandCall[]>([]);
+  const [inspectedSlot, setInspectedSlot] = useState<SlotReference>();
   // The holder survives React renders without owning any simulation state or timer.
   const [commands] = useState(() => ({
     calls: [] as CommandCall[],
@@ -152,9 +168,12 @@ function Fixture() {
   };
 
   return <main>
-    <h1>Playback controls component fixture</h1>
+    <h1>{view === 'controls' ? 'Playback controls component fixture' : 'Map controls preview'}</h1>
     <p>Sample state and callback responses. This page does not execute jobs or model energy.</p>
-    <PlaybackControls state={state} actions={actions} scenario={scenario} />
+    {view === 'controls' ? <PlaybackControls state={state} actions={actions} scenario={scenario} />
+      : <EnergyMapView map={mapReading} jobFlow={{ job: mapJob, report: mapReport, routeAttempt: 0 }}
+          inspection={{ inspectedSlot, onInspect: setInspectedSlot }}
+          controls={view === 'map-only' ? undefined : <ChaosMonkeyControls state={state} actions={actions} scenario={scenario} />} />}
     <aside aria-label="Fixture callback observations">
       <h2>Fixture callback observations</h2>
       <output aria-label="Callback journal">{JSON.stringify(journal)}</output>
@@ -166,7 +185,7 @@ const style = document.createElement('style');
 style.textContent = `
   * { box-sizing: border-box; }
   body { margin: 0; color: #203833; background: #f2f5f2; font-family: 'Segoe UI', sans-serif; }
-  main { max-width: 960px; min-width: 0; margin: 0 auto; padding: 24px; }
+  main { max-width: 1180px; min-width: 0; margin: 0 auto; padding: 24px; }
   h1 { font-size: 1.4rem; }
   p { line-height: 1.5; }
   aside { margin-top: 24px; padding: 16px; border: 1px solid #cbd5cc; border-radius: 8px; }

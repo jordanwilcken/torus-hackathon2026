@@ -1,0 +1,94 @@
+.chaos-monkey-dock {
+    position: absolute;
+    z-index: 700;
+    top: 14px;
+    right: 14px;
+    bottom: 32px;
+    width: min(370px, calc(100% - 28px));
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: 8px;
+    pointer-events: none;
+}
+.chaos-monkey-dock > * { pointer-events: auto; }
+.chaos-monkey-launcher { position: relative; flex: 0 0 auto; }
+.chaos-monkey-trigger {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border: 1px solid #96b5a3;
+    border-radius: 13px;
+    color: #fff;
+    background: #244d39;
+    box-shadow: 0 3px 12px #183d342b;
+    font-size: 26px;
+    cursor: pointer;
+}
+.chaos-monkey-trigger:hover, .chaos-monkey-trigger[aria-expanded="true"] { background: #173e2c; border-color: #6f9d82; }
+.chaos-monkey-trigger:focus-visible, .chaos-monkey-close:focus-visible { outline: 3px solid #257bba; outline-offset: 3px; }
+.chaos-monkey-tooltip {
+    position: absolute;
+    right: 54px;
+    top: 9px;
+    white-space: nowrap;
+    padding: 4px 9px;
+    color: white;
+    background: #203d30;
+    border-radius: 5px;
+    font: 12px/1.5 "Segoe UI", system-ui, sans-serif;
+    box-shadow: 0 2px 8px #14352426;
+    visibility: hidden;
+    pointer-events: none;
+}
+.chaos-monkey-launcher:hover .chaos-monkey-tooltip,
+.chaos-monkey-launcher:focus-within .chaos-monkey-tooltip { visibility: visible; }
+.chaos-monkey-panel {
+    width: 100%;
+    min-height: 0;
+    flex: 0 1 auto;
+    overflow: auto;
+    overscroll-behavior: contain;
+    border: 1px solid #b7cebd;
+    border-radius: 11px;
+    background: #fff;
+    box-shadow: 0 6px 24px #15362930;
+    color: #203833;
+    font: 13px/1.5 "Segoe UI", system-ui, sans-serif;
+}
+.chaos-monkey-panel[hidden] { display: none; }
+.chaos-monkey-heading {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #e1e9e2;
+    background: #f2f7f1;
+}
+.chaos-monkey-heading h2 { margin: 0; font-size: 14px; letter-spacing: 0; }
+.chaos-monkey-close { width: 30px; height: 30px; border-radius: 5px; background: transparent; color: #365846; font-size: 22px; cursor: pointer; }
+.chaos-monkey-panel .playback-controls { padding: 12px; border: 0; border-radius: 0; font-size: 12px; }
+.chaos-monkey-panel .playback-heading h2 { font-size: 14px; }
+.chaos-monkey-panel .playback-mode { font-size: 11px; }
+.chaos-monkey-panel .playback-clock { margin: 10px 0; gap: 7px 18px; }
+.chaos-monkey-panel .playback-clock dt { font-size: 10px; }
+.chaos-monkey-panel .playback-clock dd { font-size: 12px; }
+.chaos-monkey-panel .playback-buttons { gap: 6px; }
+.chaos-monkey-panel .playback-controls button,
+.chaos-monkey-panel .playback-controls select { min-height: 36px; padding: 6px 10px; }
+.chaos-monkey-panel .playback-controls label { font-size: 11px; }
+.chaos-monkey-panel .playback-scenario { margin-top: 12px; padding-top: 10px; }
+.chaos-monkey-panel .playback-scenario h3 { font-size: 13px; }
+.chaos-monkey-panel .playback-event-actions { margin-top: 7px; flex-direction: row; align-items: end; }
+.chaos-monkey-panel .playback-condition,
+.chaos-monkey-panel .playback-response,
+.chaos-monkey-panel .playback-failure { padding: 7px 9px; margin-top: 10px; }
+@media (prefers-reduced-motion: no-preference) {
+    .chaos-monkey-trigger { transition: background .12s ease, border-color .12s ease; }
+}
