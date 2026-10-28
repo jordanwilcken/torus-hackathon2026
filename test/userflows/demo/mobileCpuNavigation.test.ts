@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { FleetFlow } from '../fleet/fleet-flow';
+import { LiveExecutionFlow } from '../execution/live-execution-flow';
 
 async function expectNavigationInViewport(page: Page) {
   const navigation = page.getByRole('navigation', { name: 'Demo flow', exact: true });
@@ -79,3 +80,76 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }
     });
   });
 }
+
+
+async function fleetMarkerPositions(page: Page) {
+  return page.getByRole('region', { name: 'Continuous fleet map', exact: true }).evaluate(element => {
+    const bounds = element.getBoundingClientRect();
+    return [...element.querySelectorAll<HTMLButtonElement>('button[data-site-id]')].map(button => {
+      const marker = button.getBoundingClientRect();
+      return {
+        id: button.dataset.siteId,
+        x: Math.round(marker.x - bounds.x), y: Math.round(marker.y - bounds.y),
+        inside: marker.left >= bounds.left && marker.right <= bounds.right &&
+          marker.top >= bounds.top && marker.bottom <= bounds.bottom,
+      };
+    });
+  });
+}
+
+test.describe('a saved CPU URL on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, actionTimeout: 5_000 });
+
+  test('Fleet fits all six sites when first revealed and preserves the chosen camera on later tab changes', async ({ page }) => {
+    test.setTimeout(60_000);
+    const pageErrors: string[] = [];
+    page.on('pageerror', error => pageErrors.push(error.stack ?? error.message));
+    const fleet = new FleetFlow(page);
+    await fleet.open();
+    await fleet.pause();
+    await fleet.step();
+    const saved = await fleet.saveFrozenMoment();
+    await page.getByRole('link', { name: 'Run CPU work', exact: true }).click();
+    const worker = page.getByRole('dialog', { name: 'Run CPU work', exact: true });
+    await expect(worker.getByRole('button', { name: 'Run locally', exact: true })).toBeEnabled();
+
+    // Produce a saved receipt through the real owned fixture, not a forged URL or response.
+    await page.clock.resume();
+    const cpu = new LiveExecutionFlow(page);
+    const run = await cpu.submitIntegerSum({ values: [12, -4, 19] });
+    expect(run.status).toBe('done');
+    expect(run.execution.simulated).toBe(false);
+    await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 1000));
+    await page.goto('/?run=' + encodeURIComponent(run.id) + '&capture=' + saved.revision);
+    await expect(worker).toBeVisible();
+    await expect(worker.getByTestId('run-status')).toHaveText('done');
+
+    // The saved map must finish mounting while CPU is still the initial visible view.
+    await expect.poll(async () => {
+      await page.clock.runFor(250);
+      return page.locator('#fleet [aria-label="Fleet model hour"]').getAttribute('data-hour', { timeout: 500 }).catch(() => null);
+    }).toBe('1');
+    await page.getByRole('link', { name: 'Live fleet', exact: true }).click();
+    await expect(worker).toBeHidden();
+    await expect.poll(async () => (await fleetMarkerPositions(page)).map(({ id, inside }) => ({ id, inside })))
+      .toEqual(['A', 'B', 'C', 'D', 'E', 'F'].map(id => ({ id, inside: true })));
+    const map = page.getByRole('region', { name: 'Continuous fleet map', exact: true });
+    await expect(map.getByRole('button', { name: 'Zoom in', exact: true })).toHaveAttribute('aria-disabled', 'false');
+    expect(await fleet.modelHour()).toBe(1);
+
+    await fleet.showGeography('Explore Utah');
+    const utah = await fleetMarkerPositions(page);
+    expect(utah.filter(marker => marker.inside).map(marker => marker.id)).toEqual(['A', 'B']);
+    await page.getByRole('link', { name: 'Run CPU work', exact: true }).click();
+    await expect(worker).toBeVisible();
+    await page.getByRole('link', { name: 'Live fleet', exact: true }).click();
+    await expect.poll(() => fleetMarkerPositions(page)).toEqual(utah);
+    await page.getByRole('link', { name: 'Compare scheduling', exact: true }).click();
+    await expect(page.getByRole('region', { name: 'Paired replay', exact: true })).toBeVisible();
+    await page.getByRole('link', { name: 'Live fleet', exact: true }).click();
+    await expect.poll(() => fleetMarkerPositions(page)).toEqual(utah);
+    expect(await fleet.modelHour()).toBe(1);
+    await fleet.expectPausedAt(1);
+    expect(pageErrors, 'Saved-run restoration and map visibility changes must not throw browser errors').toEqual([]);
+  });
+});

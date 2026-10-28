@@ -45,10 +45,14 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
     activity.current?.clear();
   }, [activityEpoch]);
   useEffect(() => {
-    const view = L.map(container.current!, { zoomControl: false, scrollWheelZoom: true, zoomAnimation: false, zoomSnap: .25 });
+    const element = container.current!;
+    const view = L.map(element, { zoomControl: false, scrollWheelZoom: true, zoomAnimation: false, zoomSnap: .25 });
     map.current = view;
     activity.current = createFleetActivity(view);
-    view.fitBounds([[25, -125], [49, -67]], { padding: [40, 55], animate: false });
+    const initialBounds = L.latLngBounds([[25, -125], [49, -67]]);
+    const padding = L.point(40, 55);
+    // Layers need a finite camera even when the CPU pane initially hides this map.
+    view.setView(initialBounds.getCenter(), 3);
     L.control.zoom({ position: 'bottomleft' }).addTo(view);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -67,9 +71,20 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
     };
     view.on('tooltipopen', showInspection);
     view.on('movestart zoomstart', closeInspection);
-    const resize = new ResizeObserver(() => view.invalidateSize({ pan: false }));
-    resize.observe(container.current!);
-    return () => { resize.disconnect(); view.off('tooltipopen', showInspection); view.off('movestart zoomstart', closeInspection); closeInspection(); activity.current?.clear(); view.remove(); map.current = null; activity.current = null; };
+    let initiallyFitted = false;
+    let disposed = false;
+    const resize = new ResizeObserver(() => {
+      if (disposed) return;
+      // A zero-size container minus padding produces an invalid bounds-fit scale.
+      if (element.clientWidth <= padding.x * 2 || element.clientHeight <= padding.y * 2) return;
+      view.invalidateSize({ pan: false });
+      if (!initiallyFitted) {
+        view.fitBounds(initialBounds, { padding, animate: false });
+        initiallyFitted = true;
+      }
+    });
+    resize.observe(element);
+    return () => { disposed = true; resize.disconnect(); view.off('tooltipopen', showInspection); view.off('movestart zoomstart', closeInspection); closeInspection(); activity.current?.clear(); view.remove(); map.current = null; activity.current = null; };
   }, []);
   useEffect(() => {
     const layer = L.layerGroup().addTo(map.current!);
