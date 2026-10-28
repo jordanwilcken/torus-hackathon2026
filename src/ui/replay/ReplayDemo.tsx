@@ -122,7 +122,7 @@ export function ReplayDemo() {
         <p className="replay-geography">Map locations A/B are display-only city references, not observed Torus site locations.
             {' '}Decision offers published at {decisionMap.asOf}; these precede reservation and dispatch.
             {inspectedDecisionHour !== undefined && ` Inspecting retained hour ${inspectedDecisionHour} for ${activeJob.id}.`}</p>
-        <EnergyMapView map={displayMap} jobFlow={{ job: activeJob, report, routeAttempt: history.length }}
+        <EnergyMapView appearance="compact" map={displayMap} jobFlow={{ job: activeJob, report, routeAttempt: history.length }}
             inspection={{ inspectedSlot, focusSlot: inspectedSlot,
                 onInspect: setInspectedSlot }} activity={mapActivity} controls={controls} />
         <section className="replay-job-detail" role="region" aria-label="Job details" data-active-job-id={activeJob.id}>

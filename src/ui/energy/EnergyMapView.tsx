@@ -8,6 +8,7 @@ import type { JobExecution } from '../../core/execution/JobExecution.type';
 import type { TransferObservation } from '../../core/execution/TransferObservation.type';
 import { carbonReductionKg, modeledCostReductionUsd } from '../../core/reporting/impact/compareImpact';
 import { EnergyBasemap } from './EnergyBasemap';
+import { PriceDetails } from '../scheduling/PostedPrices';
 import regions from './regions.json';
 
 const time = (value: string) => value.slice(11, 16);
@@ -25,6 +26,7 @@ type EnergyActivity = {
 };
 
 type EnergyMapViewProps = {
+  appearance?: 'compact';
   map: ReturnType<typeof getEnergyMap>;
   jobFlow: {
     job: Job;
@@ -40,7 +42,7 @@ type EnergyMapViewProps = {
   controls?: ReactNode;
 };
 
-export function EnergyMapView({ map, jobFlow, inspection, activity, controls }: EnergyMapViewProps) {
+export function EnergyMapView({ map, jobFlow, inspection, activity, controls, appearance }: EnergyMapViewProps) {
   const { job, report, routeAttempt } = jobFlow;
   const { inspectedSlot, focusSlot, onInspect } = inspection;
   const id = useId();
@@ -89,10 +91,35 @@ export function EnergyMapView({ map, jobFlow, inspection, activity, controls }: 
   const transfers = activity?.transfers.filter(transfer =>
     (transfer.fromLocation === activeSite?.id || transfer.toLocation === activeSite?.id) && overlaps(transfer.window)) ?? [];
 
+  const siteEnergyDetails = siteEnergy && <dl className="energy-site-metrics local-energy-details">
+    <div><dt>Solar supplied</dt><dd>{amount(siteEnergy.solarKWh, ' kWh')}</dd></div>
+    <div><dt>Stored energy</dt><dd>{amount(siteEnergy.storedKWh, ' kWh')}</dd></div>
+    <div><dt>Protected reserve</dt><dd>{amount(siteEnergy.protectedKWh, ' kWh')}</dd></div>
+    <div><dt>Storage capacity</dt><dd>{amount(siteEnergy.capacityKWh, ' kWh')}</dd></div>
+    <div><dt>Utility import limit</dt><dd>{amount(siteEnergy.gridImportLimitKW, ' kW')}</dd></div>
+  </dl>;
+  const impact = allocation && <div className="impact-readout" role="region" aria-label="Job impact">
+    <p>{report.jobId}</p>
+    <dl>
+      <div title="Energy estimated for the selected allocation."><dt>Planned energy</dt><dd>{plannedEnergy === undefined ? '—' : '~' + plannedEnergy.toFixed(2) + ' kWh'}</dd></div>
+      <div data-direction={direction(carbonReduction)} title={report.carbon.unavailableReason ?? 'Change versus baseline; negative means lower carbon emissions.'}>
+        <dt>Carbon change</dt><dd>{change(carbonReduction, 'kg')}</dd></div>
+      <div data-direction={direction(costReduction)} title={report.cost.unavailableReason ?? 'Change versus baseline under the report’s modeled cost policy; negative means lower cost.'}>
+        <dt>Modeled cost change</dt><dd>{change(costReduction, 'USD')}</dd></div>
+    </dl>
+  </div>;
+  const compactDetails = activeReading?.snapshot.slot ? <>
+    <PriceDetails siteName={activeSite?.name ?? activeSite?.id ?? 'Site'} hour={{
+      reference: activeReading.reference, window: activeReading.snapshot.slot.window,
+      snapshot: activeReading.snapshot, forecast: activeReading.forecast,
+    }} />
+    {siteEnergyDetails && <details className="source-details"><summary>Site energy details</summary>{siteEnergyDetails}</details>}
+  </> : <section aria-label="Site details"><strong>{activeSite?.name ?? activeSite?.id}</strong><p>Offer unavailable.</p></section>;
+
   const details = preview && (region ? <section aria-label="Regional overview">
     <strong>{region.city}</strong><span className="pill">{region.id}</span>
     <p>Energy data not connected.</p><p className="muted">City reference location.</p>
-  </section> : <section aria-label="Site details" className="energy-site-details">
+  </section> : appearance === 'compact' ? compactDetails : <section aria-label="Site details" className="energy-site-details">
     <strong>{activeSite?.name ?? activeSite?.id}</strong>
     <p className="evidence-state">{activeSite?.regionId} · {activeReading?.snapshot.status} evidence · {activeReading?.snapshot.simulated ? 'Fake data' : 'source data'}
       {activeReading?.snapshot.projected && ' · projected'}</p>
@@ -104,44 +131,30 @@ export function EnergyMapView({ map, jobFlow, inspection, activity, controls }: 
       <div><dt>Power limit</dt><dd>{amount(slot?.availablePowerKW, ' kW')}</dd></div>
       <div><dt>GPU cap / reserved</dt><dd>{slot ? slot.capGpus + ' / ' + slot.usedGpus : 'Unavailable'}</dd></div>
     </dl>
-    {siteEnergy && <dl className="energy-site-metrics local-energy-details">
-      <div><dt>Solar supplied</dt><dd>{amount(siteEnergy.solarKWh, ' kWh')}</dd></div>
-      <div><dt>Stored energy</dt><dd>{amount(siteEnergy.storedKWh, ' kWh')}</dd></div>
-      <div><dt>Protected reserve</dt><dd>{amount(siteEnergy.protectedKWh, ' kWh')}</dd></div>
-      <div><dt>Storage capacity</dt><dd>{amount(siteEnergy.capacityKWh, ' kWh')}</dd></div>
-      <div><dt>Utility import limit</dt><dd>{amount(siteEnergy.gridImportLimitKW, ' kW')}</dd></div>
-    </dl>}
+    {siteEnergyDetails}
     <details className="source-details"><summary>Data source</summary>
       <p>Snapshot: {activeReading?.snapshot.source ?? 'Unavailable'}</p>
       <p>Observed: {activeReading?.snapshot.observedAt ?? 'Unavailable'}</p>
     </details>
   </section>);
 
-  return <section className="energy-view" aria-label="Energy sites">
+  return <section className={'energy-view' + (appearance === 'compact' ? ' compact-energy-view' : '')} aria-label="Energy sites">
     <header className="energy-heading">
       <div><p className="eyebrow">THE NETWORK</p><h2>Energy across the US</h2></div>
       <p>{regions.length} regional locations <span>+</span> Utah local energy</p>
     </header>
     <div className="energy-map-layout">
-      <EnergyBasemap sites={map.sites}
+      <EnergyBasemap appearance={appearance} sites={map.sites}
         placement={{ job, outcome, routeAttempt, transfers: activity?.transfers,
           executionObserved: activity?.executions.some(execution => execution.jobId === job.id) }}
         inspection={{ inspectedSlot: activeReading?.reference, focusSlot, onInspect: inspect,
           onPreview: previewSite, onRegion: previewRegion, onDismiss: dismiss }}
         detailCard={{ content: details, location: region ?? activeSite }}>
         {controls}
-        {allocation && <div className="impact-readout" role="region" aria-label="Job impact">
-          <p>{report.jobId}</p>
-          <dl>
-            <div title="Energy estimated for the selected allocation."><dt>Planned energy</dt><dd>{plannedEnergy === undefined ? '—' : '~' + plannedEnergy.toFixed(2) + ' kWh'}</dd></div>
-            <div data-direction={direction(carbonReduction)} title={report.carbon.unavailableReason ?? 'Change versus baseline; negative means lower carbon emissions.'}>
-              <dt>Carbon change</dt><dd>{change(carbonReduction, 'kg')}</dd></div>
-            <div data-direction={direction(costReduction)} title={report.cost.unavailableReason ?? 'Change versus baseline under the report’s modeled cost policy; negative means lower cost.'}>
-              <dt>Modeled cost change</dt><dd>{change(costReduction, 'USD')}</dd></div>
-          </dl>
-        </div>}
+        {appearance !== 'compact' && impact}
       </EnergyBasemap>
     </div>
+    {appearance === 'compact' && impact && <div className="inline-job-impact">{impact}</div>}
     <div className="site-picker" aria-label="Utah site list">
       <span className="eyebrow">UTAH SITES</span>
       {sites.map(site => {
