@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createEnergyMap } from "../../../src/core/energy/map/createEnergyMap.js";
+import { createEnergyMap } from "../../../src/core/energy/maps/createEnergyMap.js";
 import { getEnergyMap } from "../../../src/core/energy/getEnergyMap.js";
 import type { SlotSnapshot } from "../../../src/core/energy/SlotSnapshot.type.js";
 import type { SlotForecast } from "../../../src/core/energy/SlotForecast.type.js";
@@ -7,8 +7,7 @@ import type { SlotQuery } from "../../../src/core/energy/SlotQuery.interface.js"
 import type { SlotReference } from "../../../src/core/energy/SlotReference.type.js";
 import type { TimeWindow } from "../../../src/core/TimeWindow.type.js";
 import type { GridContext } from "../../../src/core/energy/GridContext.type.js";
-import type { EnergyMapScope } from "../../../src/core/energy/map/EnergyMapScope.type.js";
-import type { EnergyMapProviders } from "../../../src/core/energy/map/EnergyMapProviders.type.js";
+import type { EnergyMapScope, EnergyMapProviders } from "../../../src/core/energy/maps/types.js";
 
 const window: TimeWindow = { startAt: "2026-10-27T12:00:00Z", endAt: "2026-10-27T13:00:00Z" };
 const asOf = "2026-10-27T12:06:00Z";
