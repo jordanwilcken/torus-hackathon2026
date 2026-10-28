@@ -1,19 +1,27 @@
 import { expect, type Page } from '@playwright/test';
-import type { ReplayPlaybackOptions } from '../../../../src/ui/replay/useReplayPlayback';
+import type { ReplayPlaybackOptions, ReplayProgress } from '../../../../src/ui/replay/useReplayPlayback';
+
+type ReadObservation = Omit<ReplayProgress, 'map'> & { map: unknown };
 
 /** Advances presentation time and reads actual hook publications; no engine result is reconstructed. */
 export class PlaybackFlow {
+    private capturedSession = false;
     constructor(private readonly page: Page) {}
 
-    async open(options?: ReplayPlaybackOptions): Promise<void> {
+    async open(options?: ReplayPlaybackOptions, capture?: 'hour-2'): Promise<void> {
         const start = Date.parse('2026-10-28T18:00:00Z');
         await this.page.clock.install({ time: start });
         const query = new URLSearchParams(options === undefined ? { profile: 'defaults' } : Object.fromEntries(
             Object.entries(options).map(([key, value]) => [key, String(value)])));
+        if (capture) query.set('capture', capture);
+        this.capturedSession = capture !== undefined;
         await this.page.goto('/test/userflows/replay/playback/fixture.html?' + query);
         // There is no mounted hook yet, so freezing here cannot consume a playback tick during page loading.
         await this.page.clock.pauseAt(start + 60_000);
         await this.page.getByRole('button', { name: 'Mount playback', exact: true }).click();
+        // Two zero-delay restoration yields need tasks to run while the browser clock is frozen.
+        // The hook is not mounted until reconstruction ends, so this cannot consume a playback tick.
+        if (capture) await this.page.clock.runFor(2);
         await expect(this.page.getByRole('region', { name: 'Playback observation', exact: true })).toBeVisible();
     }
 
@@ -25,8 +33,26 @@ export class PlaybackFlow {
     async pause(): Promise<void> { await this.page.getByRole('button', { name: 'Pause', exact: true }).click(); }
     async step(): Promise<void> { await this.page.getByRole('button', { name: 'Step', exact: true }).click(); }
     async stepAndPause(): Promise<void> { await this.page.getByRole('button', { name: 'Step and immediately pause', exact: true }).click(); }
-    async reset(): Promise<void> { await this.page.getByRole('button', { name: 'Reset', exact: true }).click(); }
+    async reset(): Promise<void> {
+        await this.page.getByRole('button', { name: 'Reset', exact: true }).click();
+        // Reconstruction yields between the two captured hours; model time still ends at the captured hour.
+        if (this.capturedSession) await this.page.clock.runFor(2);
+    }
     async resetAndStep(): Promise<void> { await this.page.getByRole('button', { name: 'Reset and start fresh step', exact: true }).click(); }
+    async pauseAndCapture(): Promise<void> { await this.page.getByRole('button', { name: 'Pause and capture', exact: true }).click(); }
+    async injectFreshEvent(): Promise<void> { await this.page.getByRole('button', { name: 'Inject fresh solar drop', exact: true }).click(); }
+    async currentMoment(): Promise<ReadObservation> {
+        await this.page.getByRole('button', { name: 'Read current moment', exact: true }).click();
+        await this.expectAcknowledged('Read current');
+        return this.readObservation('Current read');
+    }
+    async savedMoment(): Promise<ReadObservation> { return this.readObservation('Saved read'); }
+    private async readObservation(label: string): Promise<ReadObservation> {
+        const output = this.page.getByLabel(label, { exact: true });
+        await expect(output).not.toHaveText('null');
+        await expect(output).not.toHaveText('"Unavailable"');
+        return JSON.parse(await output.textContent() ?? 'null') as ReadObservation;
+    }
 
     async expectPhase(phase: string, hour: number): Promise<void> {
         await expect(this.page.getByLabel('Observed phase', { exact: true })).toHaveText(phase);

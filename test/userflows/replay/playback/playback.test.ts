@@ -158,3 +158,52 @@ test('one-times and four-times playback produce byte-identical raw replay eviden
         await fastContext.close();
     }
 });
+
+test('Pause then read in the same command captures the settled hour and retains a detached moment', async ({ page }) => {
+    const flow = new PlaybackFlow(page);
+    await flow.open({ autoPlay: false, tickMs: 4000, routedDwellMs: 1800 });
+    await flow.step();
+    await flow.expectPhase('routed', 0);
+    await flow.pauseAndCapture();
+    await flow.expectAcknowledged('Pause and capture');
+    const frozen = await flow.savedMoment();
+    expect(frozen.hour).toBe(1);
+    expect(frozen.phase).toBe('settled');
+    expect(frozen.selected.run.ticks).toHaveLength(1);
+    await flow.expectPlaying(false);
+    await flow.step();
+    await flow.advance(1800);
+    await flow.expectPhase('settled', 2);
+    expect(await flow.savedMoment()).toEqual(frozen);
+    await flow.reset();
+    await flow.expectAcknowledged('Reset');
+    await flow.expectPhase('ready', 0);
+    expect(await flow.savedMoment()).toEqual(frozen);
+    await flow.expectNoError();
+});
+
+test('a session captured at hour 2 resumes at 2 and Reset restores its original receipts and prior events', async ({ page }) => {
+    const flow = new PlaybackFlow(page);
+    await flow.open({ autoPlay: false, tickMs: 4000, routedDwellMs: 1800 }, 'hour-2');
+    await flow.expectPhase('settled', 2);
+    await flow.expectPlaying(false);
+    const initial = await flow.currentMoment();
+    expect(initial.baseline.run.ticks).toHaveLength(2);
+    expect(initial.selected.run.ticks).toHaveLength(2);
+    expect(initial.scenario.events).toEqual([{ kind: 'solar-drop', atHour: 1, payload: { locationId: 'A' } }]);
+    await flow.injectFreshEvent();
+    await flow.expectAcknowledged('Inject fresh event');
+    expect((await flow.currentMoment()).scenario.events).toHaveLength(2);
+    await flow.step();
+    await flow.advance(1800);
+    await flow.expectPhase('settled', 3);
+    expect((await flow.currentMoment()).selected.run.ticks).toHaveLength(3);
+    await flow.reset();
+    await flow.expectAcknowledged('Reset');
+    await flow.expectPhase('settled', 2);
+    await flow.expectPlaying(false);
+    expect(await flow.currentMoment()).toEqual(initial);
+    await flow.advance(20_000);
+    await flow.expectPhase('settled', 2);
+    await flow.expectNoError();
+});

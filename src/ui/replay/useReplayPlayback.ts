@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPairedReplaySession } from '../../core/execution/replay/createPairedReplaySession';
 import type { PairedReplay, ReplayScenario } from '../../core/execution/replay/Replay.types';
 import type { PlaybackActions, ControlsResponse } from '../core/controls/PlaybackControls.types';
+import { restoreReplayProgress, type ReplaySession } from './restoreFrozenFleet';
+
+export type { ReplaySession } from './restoreFrozenFleet';
 
 export type ReplayProgress = ReturnType<ReturnType<typeof createPairedReplaySession>['read']>;
 
@@ -11,12 +14,15 @@ export type ReplayPlaybackOptions = {
     tickMs?: number;
     routedDwellMs?: number;
     initialSpeed?: number;
+    /** A restored session becomes this controller's owned starting point, including Reset. */
+    session?: ReplaySession;
 };
 
 type ActiveStep = {
     completion: Promise<void>;
     presentationCancelled: boolean;
     finishPresentation?: () => void;
+    abortRestore?: () => void;
 };
 
 function cancelPresentation(step: ActiveStep | undefined): void {
@@ -38,6 +44,11 @@ function holdPresentation(step: ActiveStep, milliseconds: number): Promise<void>
     });
 }
 
+function latestPublication(progress: ReplayProgress): Map<number, ReplayProgress['map']> {
+    const hour = progress.selected.decisions.at(-1)?.hour;
+    return hour === undefined ? new Map() : new Map([[hour, structuredClone(progress.map)]]);
+}
+
 export function replayFailures(progress: ReplayProgress) {
     return (['baseline', 'selected'] as const).flatMap(arm => {
         const failure = progress[arm].run.ticks.find(tick => !tick.feasible);
@@ -56,19 +67,20 @@ export function useReplayPlayback(supplied: ReplayScenario, options: ReplayPlayb
             throw new RangeError('Playback needs finite nonnegative delays and a positive initial speed.');
         return configured;
     });
-    const [original] = useState(() => structuredClone(supplied));
-    const [initialSession] = useState(() => createPairedReplaySession(original));
+    const [initialSession] = useState(() => options.session ?? createPairedReplaySession(supplied));
+    const [initialProgress] = useState(() => initialSession.read());
+    const original = initialProgress.scenario;
     const session = useRef(initialSession);
-    const [progress, setProgress] = useState<ReplayProgress>(() => initialSession.read());
-    const [publications, setPublications] = useState(() => new Map<number, ReplayProgress['map']>());
-    const [playing, setPlaying] = useState(settings.autoPlay);
+    const [progress, setProgress] = useState<ReplayProgress>(() => structuredClone(initialProgress));
+    const [publications, setPublications] = useState(() => latestPublication(initialProgress));
+    const [playing, setPlaying] = useState(settings.autoPlay && !initialProgress.done);
     const [busy, setBusy] = useState(false);
     const [speed, setSpeed] = useState(settings.initialSpeed);
     const [response, setResponse] = useState<ControlsResponse>();
-    const [completed, setCompleted] = useState<PairedReplay>();
+    const [completed, setCompleted] = useState<PairedReplay | undefined>(() => initialProgress.done ? initialSession.result() : undefined);
     const [eventId, setEventId] = useState('solar-drop-A');
     const busyNow = useRef(false);
-    const playingNow = useRef(settings.autoPlay);
+    const playingNow = useRef(settings.autoPlay && !initialProgress.done);
     const speedNow = useRef(speed);
     const mounted = useRef(false);
     const generation = useRef(0);
@@ -102,6 +114,7 @@ export function useReplayPlayback(supplied: ReplayScenario, options: ReplayPlayb
             generation.current++;
             clearScheduledTick();
             cancelPresentation(activeStep.current);
+            activeStep.current?.abortRestore?.();
         };
     }, [clearScheduledTick]);
 
@@ -163,30 +176,71 @@ export function useReplayPlayback(supplied: ReplayScenario, options: ReplayPlayb
         return clearScheduledTick;
     }, [playing, busy, progress.done, speed, advance, settings.tickMs, clearScheduledTick]);
 
+    const read = useCallback((): ReplayProgress => session.current.read(), []);
+
+    function publishReset(restored: ReplaySession): void {
+        session.current = restored;
+        const starting = restored.read();
+        setProgress(starting);
+        setPublications(latestPublication(starting));
+        setCompleted(starting.done ? restored.result() : undefined);
+        setEventId('solar-drop-A');
+        setResponse({ kind: 'info', message: initialProgress.hour === 0
+            ? 'Reset to the original captured inputs; progress and added events cleared.'
+            : `Reset to captured hour ${initialProgress.hour}; subsequent progress and added events cleared.` });
+    }
+
+    function reset(): void | Promise<void> {
+        stopScheduling();
+        const token = ++generation.current;
+        cancelPresentation(activeStep.current);
+        activeStep.current?.abortRestore?.();
+        activeStep.current = undefined;
+        setPlaying(false);
+        if (initialProgress.hour === 0 && initialProgress.phase === 'ready') {
+            busyNow.current = false;
+            setBusy(false);
+            publishReset(createPairedReplaySession(original));
+            return;
+        }
+
+        const abort = new AbortController();
+        const current: ActiveStep = { completion: Promise.resolve(), presentationCancelled: true,
+            abortRestore: () => abort.abort() };
+        activeStep.current = current;
+        busyNow.current = true;
+        setBusy(true);
+        current.completion = (async () => {
+            try {
+                const { map: _, ...captured } = initialProgress;
+                const restored = await restoreReplayProgress(captured, abort.signal);
+                if (mounted.current && generation.current === token) publishReset(restored);
+            } catch (error) {
+                if (mounted.current && generation.current === token) {
+                    setResponse({ kind: 'error', message: error instanceof Error ? error.message : String(error) });
+                    throw error;
+                }
+            } finally {
+                if (mounted.current && generation.current === token) {
+                    busyNow.current = false;
+                    activeStep.current = undefined;
+                    setBusy(false);
+                }
+            }
+        })();
+        return current.completion;
+    }
+
     const actions: PlaybackActions = {
         play() {
-            if (session.current.read().done) return;
+            if (activeStep.current?.abortRestore || session.current.read().done) return;
             playingNow.current = true;
             setPlaying(true);
             setResponse({ kind: 'info', message: 'Playback started. Each step advances the active simulation arms.' });
         },
         pause,
         step: advance,
-        reset() {
-            stopScheduling();
-            generation.current++;
-            cancelPresentation(activeStep.current);
-            activeStep.current = undefined;
-            busyNow.current = false;
-            setBusy(false);
-            setPlaying(false);
-            session.current = createPairedReplaySession(original);
-            setProgress(session.current.read());
-            setPublications(new Map());
-            setCompleted(undefined);
-            setEventId('solar-drop-A');
-            setResponse({ kind: 'info', message: 'Reset to the original captured inputs; progress and added events cleared.' });
-        },
+        reset,
         setSpeed(value) {
             if (!Number.isFinite(value) || value <= 0) throw new RangeError('Playback speed must be finite and positive.');
             speedNow.current = value;
@@ -194,11 +248,12 @@ export function useReplayPlayback(supplied: ReplayScenario, options: ReplayPlayb
         },
         selectEvent: setEventId,
         applyEvent(input) {
+            if (activeStep.current?.abortRestore) throw new Error('Wait for the captured moment to finish restoring before adding an event.');
             session.current.schedule(input);
             setProgress(session.current.read());
             setResponse({ kind: 'info', message: `Scheduled solar drop at Site A for hour ${input.atHour}; forecasts are unchanged.` });
         },
     };
 
-    return { progress, publications, playing, busy, speed, response, completed, eventId, actions };
+    return { progress, publications, playing, busy, speed, response, completed, eventId, actions, read };
 }
