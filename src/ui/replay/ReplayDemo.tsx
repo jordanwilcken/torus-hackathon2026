@@ -123,7 +123,7 @@ export function ReplayDemo() {
             {' '}Decision offers published at {decisionMap.asOf}; these precede reservation and dispatch.
             {inspectedDecisionHour !== undefined && ` Inspecting retained hour ${inspectedDecisionHour} for ${activeJob.id}.`}</p>
         <EnergyMapView map={displayMap} jobFlow={{ job: activeJob, report, routeAttempt: history.length }}
-            inspection={{ inspectedSlot, focusSlot: latest?.selection.selected ? latest.selection.allocation.slot : undefined,
+            inspection={{ inspectedSlot, focusSlot: inspectedSlot,
                 onInspect: setInspectedSlot }} activity={mapActivity} controls={controls} />
         <section className="replay-job-detail" role="region" aria-label="Job details" data-active-job-id={activeJob.id}>
             <div><p className="eyebrow">INSPECTED JOB</p><h2>{activeJob.id}</h2>

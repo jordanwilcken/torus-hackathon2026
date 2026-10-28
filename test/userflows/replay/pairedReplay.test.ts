@@ -49,6 +49,35 @@ async function exportedEvidence(page: Page): Promise<PairedReplay> {
     return JSON.parse(await readFile(file, 'utf8')) as PairedReplay;
 }
 
+async function expectSiteOnMap(page: Page, name: string): Promise<void> {
+    const map = replay(page).getByRole('region', { name: 'US energy map', exact: true });
+    const marker = map.getByRole('button', { name: `Inspect ${name}`, exact: true });
+    await expect.poll(async () => {
+        const [pin, viewport] = await Promise.all([marker.boundingBox(), map.locator('.map-viewport').boundingBox()]);
+        if (!pin || !viewport) return false;
+        const x = pin.x + pin.width / 2, y = pin.y + pin.height / 2;
+        return x >= viewport.x && x <= viewport.x + viewport.width &&
+            y >= viewport.y && y <= viewport.y + viewport.height;
+    }, { message: `${name} should be inside the visible map, not clipped outside it` }).toBe(true);
+}
+
+test('viewing Site A after the last job runs at B brings A back into the map without moving the job', async ({ page }) => {
+    await openReplay(page);
+    await finishReplay(page);
+    const completed = await exportedEvidence(page);
+    await replay(page).getByRole('button', { name: 'Close chaos monkey', exact: true }).click();
+    await expectSiteOnMap(page, 'Site B · Cedar City reference');
+
+    await replay(page).getByRole('button', { name: 'View Site A · Salt Lake City reference', exact: true }).click();
+    await expectSiteOnMap(page, 'Site A · Salt Lake City reference');
+    await expect(replay(page).getByRole('region', { name: 'Energy timeline', exact: true })).toContainText('Site A');
+    await expect(replay(page).getByRole('region', { name: 'Job details', exact: true })).toHaveAttribute('data-active-job-id', 'job-03');
+
+    await replay(page).getByRole('button', { name: 'View Site B · Cedar City reference', exact: true }).click();
+    await expectSiteOnMap(page, 'Site B · Cedar City reference');
+    expect(await exportedEvidence(page)).toEqual(completed);
+});
+
 test('successive jobs arrive, wait, execute and remain inspectable on the production map', async ({ page }) => {
     await openReplay(page);
     await expect(replay(page).getByLabel('Replay hour', { exact: true })).toHaveText('0 / 4');
