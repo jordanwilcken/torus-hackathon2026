@@ -24,7 +24,7 @@ Changed sections: §1, §3, §4, §5, §6, §7, §8.1, §8.2, §8.3, **§9 (rewr
 
 Electricity is cleaner and cheaper in different places at different times. For example, California is solar-heavy at noon, and the Pacific Northwest runs on hydro. Many AI jobs, such as training, batch inference and evals, are flexible: they don't care *when* they run or *where*, within limits.
 
-**Torus integration:** use the same planner and posted-price flow with simulated local solar/storage, fixed load, protected reserves and utility import limits. Two Utah sites can share the PACE regional signal but have different usable energy. EIA supplies regional context; local inputs are labeled simulations, without Lasso access.
+**Modeled local energy:** use the same planner and posted-price flow with simulated local solar/storage, fixed load, protected reserves and utility import limits. Two Utah sites can share the PACE regional signal but have different usable energy. EIA supplies regional context; local inputs are labeled simulations, without access to private energy-control systems.
 
 Sunchaser has two layers:
 
@@ -85,8 +85,8 @@ flowchart LR
     CLK --> FC[Forecaster]
     FC --> PL[Capacity planner]
     FC --> PB[Posted prices]
-    Torus[Simulated Torus local energy + limits] --> PL & PB
-    Torus -->|revalidate / reserve / dispatch| EX
+    LocalEnergy[Simulated local energy + limits] --> PL & PB
+    LocalEnergy -->|revalidate / reserve / dispatch| EX
     PL -->|caps per region/hour| PB
     JB[Jobs] -->|buy GPU-hours| PB
     PB -->|allocations + reasons| EX[Executor / job state]
@@ -134,7 +134,7 @@ Base prices are tunable simulation assumptions, not observed tariffs or wholesal
 
 ## 6. Core model
 
-The regional sketch below remains useful for the multi-region demo. Torus sites use the site-level contracts in `src/core/energy/` and `src/core/scheduling/`; local storage, reserve and utility limits constrain their slots independently.
+The regional sketch below remains useful for the multi-region demo. Modeled sites use the site-level contracts in `src/core/energy/` and `src/core/scheduling/`; local storage, reserve and utility limits constrain their slots independently.
 
 ```ts
 type RegionId = 'BPAT' | 'CISO' | 'SWPP' | 'ERCO' | 'PJM';
@@ -171,7 +171,7 @@ interface Job {
 
 **Energy model:** 1 GPU-hour ≈ 0.85 kWh at the wall, including PUE (H100 700 W × 1.2). Carbon = kWh × actual intensity. Plans and prices use *forecast* values; scoring always uses *actual* values.
 
-For Torus slots, one local ledger accounts for solar, fixed load, storage efficiency/SOC and reservations across hours. Protected energy and utility commitments are unavailable to flexible compute. Selection completes no work; execution rechecks the slot version and reserves capacity atomically. Use the same declared carbon basis for grid, local energy and transfer accounting.
+For modeled site slots, one local ledger accounts for solar, fixed load, storage efficiency/SOC and reservations across hours. Protected energy and utility commitments are unavailable to flexible compute. Selection completes no work; execution rechecks the slot version and reserves capacity atomically. Use the same declared carbon basis for grid, local energy and transfer accounting.
 
 ## 7. Control loop (each sim hour)
 
@@ -190,7 +190,7 @@ This is the part specific to carbon-aware scheduling, and the main technical sto
 
 **Inputs:**
 - Forecast intensity `I[r,h]`
-- Free capacity `free[r,h] = min(gpuCapacity − inflexibleLoad[h], powerCap-derived GPUs)`, further bounded by usable local energy, reserves and utility limits at Torus sites
+- Free capacity `free[r,h] = min(gpuCapacity − inflexibleLoad[h], powerCap-derived GPUs)`, further bounded by usable local energy, reserves and utility limits at modeled sites
 - The outstanding flexible work, grouped by deadline
 
 **Steps:**
@@ -235,7 +235,7 @@ price[r,h]       = 0.85 × (energy$ + carbon$) / 1000             // $ per GPU-h
 
 We price only the part of compute cost that **varies**: energy and carbon. The GPU rental itself costs the same in every region and hour, so it is left out.
 
-For Torus sites, adjust the posted rate using the ledger's expected local/grid energy mix over the full remaining posted capacity, including storage provenance/losses. Refresh the slot version as capacity is reserved; one cheap solar GPU-hour must not price a larger grid-powered allocation. Posted rates guide scheduling; realized meters determine the comparison.
+For modeled sites, adjust the posted rate using the ledger's expected local/grid energy mix over the full remaining posted capacity, including storage provenance/losses. Refresh the slot version as capacity is reserved; one cheap solar GPU-hour must not price a larger grid-powered allocation. Posted rates guide scheduling; realized meters determine the comparison.
 
 **Example at 18:00 PT, carbonPrice = $100/tCO₂:**
 
@@ -322,7 +322,7 @@ Each control injects an event, and the UI highlights the system's response.
 |---|---|---|
 | **Forecast bust** | Actual intensity in region R is +40% for 6h ("wind died") | R's price jumps, so jobs shift away. Next replan shifts caps away from R. *m* grows. Some carbon is lost, which is shown. |
 | **Region outage** | Capacity in R drops to 0 | Jobs buy in their next-cheapest region. Pinned jobs wait, may miss deadlines, and are flagged. |
-| **Demand-response event** | Grid asks R to shed 50% flexible load for 3h | Caps in R are cut immediately and R's grid load (and price) spikes. Work shifts or waits. Counted as "DR MWh delivered". (The partner's 2025 report cites 360+ DR events.) |
+| **Demand-response event** | Grid asks R to shed 50% flexible load for 3h | Caps in R are cut immediately and R's grid load (and price) spikes. Work shifts or waits. Counted as "DR MWh delivered". |
 | **Heat wave** | Grid demand in R is +30% for 8h | R's price rises even though its carbon doesn't change much. Shows the "busy grid = expensive" half of the price. |
 | **Job flood** | 50 urgent jobs arrive | Cheap regions sell out; backlog fallback relaxes caps. The carbon cost of urgency is visible. |
 | **Stale data feed** | Forecast stops updating | Planner and price formula keep using the last forecast and widen *m*. A "degraded" badge appears. |
@@ -334,7 +334,7 @@ Chaos events go into the seeded event log, so "replay this run" reproduces the s
 
 ## 13. Metrics and baseline
 
-**Baseline:** the same job stream runs **as soon as feasible at home** (FIFO, no shifting or soft planning caps), with the same Torus assets, initial storage, dispatch policy, fixed load and hard limits. This measures the added benefit of compute coordination alongside Torus.
+**Baseline:** the same job stream runs **as soon as feasible at home** (FIFO, no shifting or soft planning caps), with the same modeled energy assets, initial storage, dispatch policy, fixed load and hard limits. This measures the modeled benefit of coordinating compute with local energy availability.
 
 **Headline tiles:** only two, so the story stays simple.
 - **Estimated CO₂e saved** (kg and %, with the accounting basis)

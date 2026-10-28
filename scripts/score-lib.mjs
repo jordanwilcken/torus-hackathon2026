@@ -231,7 +231,7 @@ export function renderMarkdown(report) {
     report.validRun
       ? `**${report.earned}/${report.maximum}** ${progress(report.earned, report.maximum)}\n\n${state}`
       : '**Score unavailable** — test evidence is incomplete or invalid; results below are diagnostic only.',
-    '', report.note ?? 'Internal rubric; not official sponsor judging.',
+    '', report.note ?? 'Internal rubric; not official competition judging.',
     '', `Commit: \`${report.commitSha}\` · Run: \`${report.runId}\``,
     `Rubric: \`${report.rubric.version}\` · SHA-256: \`${report.rubric.hash}\``, '',
     '| Area | Earned | Available | Progress |', '|---|---:|---:|---|',

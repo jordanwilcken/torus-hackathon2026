@@ -14,7 +14,7 @@ progress by area and every requirement's result. The download includes the
 scorecard and exact rubric. The badge above shows build/reporting health,
 not the rubric score.
 
-TypeScript, React and Vite application for the Torus hackathon. The map, energy
+Independent hackathon project built with TypeScript, React and Vite. Sunchaser is not affiliated with, sponsored by, endorsed by, or partnered with Torus. The map, energy
 timeline and job stream display supplied observations; reporting aggregates fleet
 meters, work and transfers into comparable carbon and cost summaries. The real
 planner, scheduler and executor remain separate implementation work.

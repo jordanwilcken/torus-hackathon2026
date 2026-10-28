@@ -86,7 +86,7 @@ export class DemoFlow {
     await expect(this.cpuPanel).toContainText('Historical input replay; the worker executes now.');
     await expect(this.cpuPanel).toContainText('Measured energy: unavailable');
     await expect(this.cpuPanel).toContainText('Measured carbon: unavailable');
-    const comparison = this.cpuPanel.getByRole('heading', { name: 'Modeled Torus storage comparison', exact: true, includeHidden: true });
+    const comparison = this.cpuPanel.getByRole('heading', { name: 'Modeled storage comparison', exact: true, includeHidden: true });
     await this.reveal(comparison);
     await expect(comparison).toBeVisible();
   }

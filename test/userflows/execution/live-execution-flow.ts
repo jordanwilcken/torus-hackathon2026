@@ -133,7 +133,7 @@ export class LiveExecutionFlow {
     await expect(this.panel.getByText(run.decision.explanation, { exact: true })).toBeVisible();
     await expect(this.panel).toContainText('This computer');
     await expect(this.panel).toContainText('Measured energy: unavailable');
-    const comparison = this.panel.getByRole('heading', { name: 'Modeled Torus storage comparison', exact: true, includeHidden: true });
+    const comparison = this.panel.getByRole('heading', { name: 'Modeled storage comparison', exact: true, includeHidden: true });
     await this.reveal(comparison);
     await expect(comparison).toBeVisible();
   }

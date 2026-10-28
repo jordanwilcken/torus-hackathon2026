@@ -48,7 +48,7 @@ createRoot(root).render(
   <StrictMode>
     <main>
       <header className="demo-heading">
-        <div><h1>Sunchaser</h1><p>Compute coordinated with Torus energy.</p></div>
+        <div><h1>Sunchaser</h1><p>Compute follows energy.</p></div>
         <p className="demo-scope">Public grid inputs and real CPU output, alongside a modeled comparison of when to run GPU work.</p>
       </header>
       <a href="/">Open the working demo</a>

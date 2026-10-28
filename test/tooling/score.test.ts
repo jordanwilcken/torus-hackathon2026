@@ -160,7 +160,7 @@ test('known unimplemented drivers stay RED with their raw failure preserved', ()
 const liveRequirement = {
   id: 'LIVE-01', runner: 'playwright', file: 'test/userflows/scheduling/scheduling.test.ts',
   project: 'chromium', title: 'does useful work',
-  description: 'Current public inputs drive a real worker; the Torus comparison remains modeled.',
+  description: 'Current public inputs drive a real worker; the storage comparison remains modeled.',
 };
 
 test('an unfinished business requirement is individually visible without changing the 100-point score', () => {

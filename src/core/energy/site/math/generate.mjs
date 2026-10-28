@@ -1,6 +1,6 @@
 /**
  * Markdown block discovery and strict Cortex compilation adapted from
- * examples/math-formula-proof/generate.mjs (Torus, @cortex-js/compute-engine 0.171.0).
+ * examples/math-formula-proof/generate.mjs (Sunchaser, @cortex-js/compute-engine 0.171.0).
  * This local emitter accepts explicitly declared scalar real inputs and real results.
  * It preserves the compiler expression unchanged and refuses preambles/runtime helpers.
  * Generated functions accept prepared numeric scalars; callers validate inputs and reject nonfinite calculated results.

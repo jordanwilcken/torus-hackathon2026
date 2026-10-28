@@ -1,7 +1,7 @@
 {
   "id": "torus-internal-readiness",
   "version": "2.0.0",
-  "description": "Internal automated readiness rubric, not the sponsor's judging weights or an official competition score. The three group labels retain the literal bounty capabilities. Clean-slot bidding is demonstrated through posted-price choice using supplied forecast evidence, not an auction or measured execution emissions. Compare scores only within the same rubric version.",
+  "description": "Internal automated readiness rubric, not official competition judging weights or an official competition score. The three group labels retain the literal bounty capabilities. Clean-slot bidding is demonstrated through posted-price choice using supplied forecast evidence, not an auction or measured execution emissions. Compare scores only within the same rubric version.",
   "humanReview": [
     "Creativity",
     "Clarity of insight",
@@ -133,7 +133,7 @@
       "file": "test/userflows/execution/liveExecution.test.ts",
       "project": "chromium",
       "title": "[LIVE-01] current public inputs drive a scheduler decision and an actual job result",
-      "description": "Current public grid/market inputs retain source, retrieval time, validity and freshness; the genuine scheduler retains its input evidence and decision; an actual worker runs the submitted job and produces its output. A separate Torus comparison is labeled modeled and declares energy, storage, carbon and market assumptions. This requirement remains unimplemented until the full application path exists; collecting EIA data alone does not satisfy it."
+      "description": "Current public grid/market inputs retain source, retrieval time, validity and freshness; the genuine scheduler retains its input evidence and decision; an actual worker runs the submitted job and produces its output. A separate storage comparison is labeled modeled and declares energy, storage, carbon and market assumptions. This requirement remains unimplemented until the full application path exists; collecting EIA data alone does not satisfy it."
     }
   ],
   "changes": [

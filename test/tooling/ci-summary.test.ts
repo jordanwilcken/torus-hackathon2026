@@ -118,12 +118,12 @@ test('full rubric points do not hide a failing unscored test', async () => {
 test('the commit summary shows an unfinished business requirement separately from rubric points', async () => {
   const result = await publish({ ...report(100, false), nonScoredRequirements: [{
     id: 'LIVE-01', title: 'runs a real job from current public inputs', classification: 'unimplemented',
-    description: 'The separate Torus comparison is modeled and declares assumptions.',
+    description: 'The separate storage comparison is modeled and declares assumptions.',
   }] });
   assert.equal(result.conclusionExit, 0);
   assert.match(result.text, /100\/100/);
   assert.match(result.text, /LIVE-01.*unimplemented/);
-  assert.match(result.text, /Torus comparison is modeled/);
+  assert.match(result.text, /storage comparison is modeled/);
   assert.doesNotMatch(result.outputs, /all tests green/);
 });
 

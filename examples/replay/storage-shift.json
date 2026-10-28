@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "storage-shift",
   "inputRevision": "storage-shift-v1",
-  "label": "Synthetic four-hour Torus-style storage scenario; modeled GPU work and energy, not measured hardware",
+  "label": "Synthetic four-hour storage scenario; modeled GPU work and energy, not measured hardware",
   "seed": 17,
   "startAt": "2026-10-28T18:00:00Z",
   "hours": 4,

@@ -75,7 +75,7 @@ export function LocalExecution({ compact = false }: { compact?: boolean } = {}) 
       <label>Maximum wholesale price (USD/MWh)<input type="number" step="any" value={price} onChange={event => setPrice(event.target.value)} required /></label>
       <p>Reported demand must be within 240 minutes; price and retrieval age within 30 minutes for CAISO. One local process can run at a time. These settings are policy choices, not site capacity or a retail tariff.</p>
     </fieldset>
-    <fieldset><legend>Separate Torus storage scenario</legend>
+    <fieldset><legend>Separate modeled storage scenario</legend>
       <label>Assumed compute energy (kWh)<input type="number" min="0.000001" step="any" value={energy} onChange={event => setEnergy(event.target.value)} required /></label>
       <label>Assumed round-trip efficiency (%)<input type="number" min="0.01" max="100" step="any" value={efficiency} onChange={event => setEfficiency(event.target.value)} required /></label>
     </fieldset>
@@ -92,7 +92,7 @@ export function LocalExecution({ compact = false }: { compact?: boolean } = {}) 
     {compact && <p>Run ID: {run.id}</p>}
   </>;
   const comparison = run && <>
-    <h4>Modeled Torus storage comparison</h4><p>{run.comparison.label}</p>
+    <h4>Modeled storage comparison</h4><p>{run.comparison.label}</p>
     <p>Same assumed compute work: {run.comparison.computeKWh} kWh. Direct-grid input: {run.comparison.baselineGridKWh} kWh. Storage-cycle input: {run.comparison.storageGridKWh.toLocaleString('en-US', { maximumFractionDigits: 6 })} kWh.</p>
     <p>Wholesale reference difference: {run.comparison.differenceUsd === null ? 'unavailable' : `${run.comparison.differenceUsd.toFixed(6)} USD`} · Carbon: unknown</p>
     <dl>{Object.entries(run.comparison.assumptions).map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{value}</dd></div>)}</dl>
@@ -141,7 +141,7 @@ export function LocalExecution({ compact = false }: { compact?: boolean } = {}) 
         {compact ? <details><summary>Actual output JSON</summary><p>Output SHA-256: {run.execution.output.id}</p><pre data-testid="actual-output">{run.execution.output.text}</pre></details>
           : <><p>Output SHA-256: {run.execution.output.id}</p><pre data-testid="actual-output">{run.execution.output.text}</pre></>}
       </>}
-      {compact ? <details className="local-modeled-comparison"><summary>Modeled Torus storage comparison</summary>{comparison}</details> : comparison}
+      {compact ? <details className="local-modeled-comparison"><summary>Modeled storage comparison</summary>{comparison}</details> : comparison}
       <details><summary>Saved decision and receipt</summary><pre data-testid="run-evidence">{JSON.stringify(run, null, 2)}</pre></details>
     </article>}
   </section>;
