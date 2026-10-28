@@ -39,7 +39,7 @@ jobs:
         run: npm run test:tooling
       - name: Verify public demo deployment controls
         if: steps.dependencies.outcome == 'success'
-        run: node --test test/tooling/demo-gateway.test.mjs test/tooling/demo-updater.test.mjs
+        run: node --test test/tooling/demo-gateway.test.mjs test/tooling/demo-updater.test.mjs test/tooling/demo-boot-recovery.test.mjs test/tooling/demo-release-storage.test.mjs
       - name: Install the Chromium test browser
         id: browser
         if: steps.dependencies.outcome == 'success'

@@ -35,3 +35,15 @@ Keep this PC awake, plugged in and online. The current Quick Tunnel URL ends if 
 Only built assets, live inputs, capture save/retrieve and allowlisted CPU work are exposed. Writes require the exact public origin and have payload, rate, concurrency and session budgets. Session limits are 20 writes per minute, 500 job submissions, 250 capture saves and 256 MiB of capture input. Existing evidence remains readable if a write budget is exhausted. Updates do not reset those gateway budgets.
 
 Weather/grid/price data are public observations or forecasts. Fleet sites, jobs and energy execution are modeled. CPU work executes on the home demo host; it does not run on a judge's laptop or at map locations.
+
+## Crowd and failure behavior
+
+Map playback, speed, inspection and disruptions are local to each browser. The shared host handles public-feed reads, frozen captures and one actual CPU worker. A busy CPU request is blocked with a reason; there is no automatic multi-user CPU queue.
+
+The gateway allows 16 in-flight HTTP requests and 20 write attempts per minute across all visitors. Pause saves a capture and therefore counts as a write. These are request limits, not a guaranteed visitor count. Lifetime write budgets remain in force across application updates; exhausting them does not remove existing evidence.
+
+Initial JavaScript or stylesheet failures trigger at most three staggered page reloads, followed by an explicit retry button. Only initial same-origin built assets can trigger that behavior; map-tile errors and errors after page load cannot reset an active simulation. Live-feed requests have a deadline and bounded retries, retaining genuine previous evidence as stale when a request fails.
+
+Production preview maintenance preserves the active release, a build in progress and two previously deployed releases. It removes only obsolete dependency installations and their build markers; saved data, source, built pages and logs remain. It verifies process ownership and exact runtime paths before removing anything.
+
+This is still a temporary, single-PC demo. A machine restart, internet outage or stopped tunnel can take the link down. Application updates do not restart the tunnel, but the current host supervisor still stops the session if the gateway or updater exits. For a 100+ visitor event, use durable hosting and validate the expected workload before sharing broadly.

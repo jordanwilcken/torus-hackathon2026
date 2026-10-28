@@ -4,6 +4,7 @@ import { createServer } from 'node:net';
 import { join, resolve, dirname, delimiter } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
+import { maintainDemoReleaseStorage } from './demo-release-storage.mjs';
 
 const repository = 'https://github.com/jordanwilcken/torus-hackathon2026.git';
 const revisionPattern = /^[a-f0-9]{40}$/;
@@ -280,10 +281,26 @@ async function serve(values) {
   const { preview } = await import(pathToFileURL(join(directory, 'node_modules/vite/dist/node/index.js')).href);
   const server = await preview({ root: directory, preview: { host: '127.0.0.1', port, strictPort: true } });
   let closing = false;
+  let maintenance;
+  const runtimeDirectory = dirname(dirname(directory));
+  const production = resolve(process.env.JOB_RUN_DIRECTORY ?? '.') === join(runtimeDirectory, 'data', 'jobs');
+  const storageTimer = production ? setInterval(() => {
+    if (closing || maintenance) return;
+    maintenance = maintainDemoReleaseStorage({
+      runtimeDirectory, releaseDirectory: directory, ownerPid: owner, previewPid: process.pid,
+      gridDirectory: process.env.GRID_SNAPSHOT_DIR, jobsDirectory: process.env.JOB_RUN_DIRECTORY,
+    }).then(result => {
+      if (result.error) console.error('Release retention deferred: ' + result.error);
+      if (result.removed.length) console.log('Retired dependency caches: ' + result.removed.join(', '));
+    }).catch(() => console.error('Release retention failed; the application remains running.'))
+      .finally(() => { maintenance = undefined; });
+  }, 30_000) : undefined;
   const close = async () => {
     if (closing) return;
     closing = true;
     clearInterval(ownerCheck);
+    clearInterval(storageTimer);
+    await maintenance;
     server.httpServer.closeIdleConnections?.();
     await new Promise(resolveClose => server.httpServer.close(resolveClose));
     await new Promise(resolveClose => setImmediate(resolveClose));

@@ -4,6 +4,53 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sunchaser</title>
+    <!-- Inline so a rejected JavaScript bundle can recover before the app loads. -->
+    <script id="demo-boot-recovery">
+      (() => {
+        const key = 'sunchaser-boot-retries';
+        let loading = true;
+        let failed = false;
+        function explain(retrying) {
+          const show = () => {
+            const notice = document.createElement('section');
+            notice.setAttribute('role', 'status');
+            notice.style.cssText = 'position:fixed;inset:20px 20px auto;z-index:99999;padding:20px;background:#fff;color:#173b2c;border:1px solid #cddbd2;border-radius:12px;font:16px system-ui';
+            const message = document.createElement('p');
+            message.textContent = retrying ? 'The demo is busy. Retrying the page shortly…' : 'The demo could not finish loading. Please try again.';
+            const retry = document.createElement('button');
+            retry.textContent = 'Retry loading';
+            retry.addEventListener('click', () => {
+              try { sessionStorage.removeItem(key); } catch {}
+              location.reload();
+            });
+            notice.append(message, retry);
+            document.body.append(notice);
+          };
+          if (document.body) show();
+          else window.addEventListener('DOMContentLoaded', show, { once: true });
+        }
+        window.addEventListener('error', event => {
+          const resource = event.target;
+          if (!loading || failed || !resource ||
+              !(resource.tagName === 'SCRIPT' || resource.tagName === 'LINK' && resource.rel === 'stylesheet')) return;
+          const address = new URL(resource.src || resource.href, location.href);
+          if (address.origin !== location.origin || !address.pathname.startsWith('/assets/')) return;
+          failed = true;
+          let attempts;
+          try {
+            attempts = Number(sessionStorage.getItem(key) || 0);
+            if (!Number.isInteger(attempts) || attempts < 0) attempts = 0;
+            if (attempts < 3) sessionStorage.setItem(key, String(attempts + 1));
+          } catch { attempts = 3; }
+          explain(attempts < 3);
+          if (attempts < 3) setTimeout(() => location.reload(), 1000 * 2 ** attempts + Math.random() * 1000);
+        }, true);
+        window.addEventListener('load', () => {
+          loading = false;
+          if (!failed) { try { sessionStorage.removeItem(key); } catch {} }
+        }, { once: true });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
