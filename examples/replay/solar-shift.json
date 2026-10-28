@@ -1,0 +1,398 @@
+{
+  "schemaVersion": 1,
+  "id": "solar-shift",
+  "inputRevision": "solar-shift-v1",
+  "label": "Synthetic three-hour solar-shift scenario; modeled GPU work and energy, not measured hardware",
+  "seed": 17,
+  "startAt": "2026-10-28T18:00:00Z",
+  "hours": 3,
+  "jobs": [
+    {
+      "id": "training",
+      "workloadRef": "synthetic-checkpointable-training",
+      "computeProfile": "modeled-1kW-gpu",
+      "window": {
+        "startAt": "2026-10-28T18:00:00Z",
+        "endAt": "2026-10-28T21:00:00Z"
+      },
+      "allowedLocations": [
+        "A"
+      ],
+      "homeLocation": "A",
+      "currentLocation": "A",
+      "readyAt": "2026-10-28T18:00:00Z",
+      "workGpuH": 1,
+      "remainingGpuH": 1,
+      "maxGpus": 1,
+      "dataGB": 0,
+      "state": "queued"
+    }
+  ],
+  "sites": [
+    {
+      "configuration": {
+        "locationId": "A",
+        "compute": {
+          "capGpus": 1,
+          "kWPerGpu": 1
+        },
+        "storage": {
+          "initial": {
+            "storedKWh": 0,
+            "carbonKg": 0,
+            "electricityUsd": 0
+          },
+          "limits": {
+            "capacityKWh": 0,
+            "chargeKW": 0,
+            "dischargeKW": 0
+          },
+          "efficiency": {
+            "charge": 1,
+            "discharge": 1
+          }
+        },
+        "accountingBasis": "Modeled operational consumption; storage burdens retained until discharge"
+      },
+      "computeProfile": "modeled-1kW-gpu",
+      "forecast": [
+        {
+          "window": {
+            "startAt": "2026-10-28T18:00:00Z",
+            "endAt": "2026-10-28T19:00:00Z"
+          },
+          "supply": {
+            "solarKW": 0,
+            "fixedLoadKW": 0,
+            "gridImportLimitKW": 2,
+            "protectedKWh": 0
+          },
+          "evidence": {
+            "source": "Declared synthetic solar forecast",
+            "version": "A-forecast-0-v1",
+            "observedAt": "2026-10-28T18:00:00Z",
+            "status": "current",
+            "projected": true
+          },
+          "accounting": {
+            "solarCarbonGPerKWh": 0,
+            "gridCarbonGPerKWh": 400,
+            "solarUsdPerMWh": 0,
+            "gridUsdPerMWh": 50
+          }
+        },
+        {
+          "window": {
+            "startAt": "2026-10-28T19:00:00Z",
+            "endAt": "2026-10-28T20:00:00Z"
+          },
+          "supply": {
+            "solarKW": 1,
+            "fixedLoadKW": 0,
+            "gridImportLimitKW": 2,
+            "protectedKWh": 0
+          },
+          "evidence": {
+            "source": "Declared synthetic solar forecast",
+            "version": "A-forecast-1-v1",
+            "observedAt": "2026-10-28T18:00:00Z",
+            "status": "current",
+            "projected": true
+          },
+          "accounting": {
+            "solarCarbonGPerKWh": 0,
+            "gridCarbonGPerKWh": 400,
+            "solarUsdPerMWh": 0,
+            "gridUsdPerMWh": 50
+          }
+        },
+        {
+          "window": {
+            "startAt": "2026-10-28T20:00:00Z",
+            "endAt": "2026-10-28T21:00:00Z"
+          },
+          "supply": {
+            "solarKW": 1,
+            "fixedLoadKW": 0,
+            "gridImportLimitKW": 2,
+            "protectedKWh": 0
+          },
+          "evidence": {
+            "source": "Declared synthetic solar forecast",
+            "version": "A-forecast-2-v1",
+            "observedAt": "2026-10-28T18:00:00Z",
+            "status": "current",
+            "projected": true
+          },
+          "accounting": {
+            "solarCarbonGPerKWh": 0,
+            "gridCarbonGPerKWh": 400,
+            "solarUsdPerMWh": 0,
+            "gridUsdPerMWh": 50
+          }
+        }
+      ],
+      "observations": [
+        {
+          "window": {
+            "startAt": "2026-10-28T18:00:00Z",
+            "endAt": "2026-10-28T19:00:00Z"
+          },
+          "supply": {
+            "solarKW": 0,
+            "fixedLoadKW": 0,
+            "gridImportLimitKW": 2,
+            "protectedKWh": 0
+          },
+          "evidence": {
+            "source": "Declared synthetic realized supply",
+            "version": "A-actual-0-v1",
+            "observedAt": "2026-10-28T18:00:00Z",
+            "status": "current",
+            "projected": false
+          },
+          "accounting": {
+            "solarCarbonGPerKWh": 0,
+            "gridCarbonGPerKWh": 400,
+            "solarUsdPerMWh": 0,
+            "gridUsdPerMWh": 50
+          }
+        },
+        {
+          "window": {
+            "startAt": "2026-10-28T19:00:00Z",
+            "endAt": "2026-10-28T20:00:00Z"
+          },
+          "supply": {
+            "solarKW": 1,
+            "fixedLoadKW": 0,
+            "gridImportLimitKW": 2,
+            "protectedKWh": 0
+          },
+          "evidence": {
+            "source": "Declared synthetic realized supply",
+            "version": "A-actual-1-v1",
+            "observedAt": "2026-10-28T19:00:00Z",
+            "status": "current",
+            "projected": false
+          },
+          "accounting": {
+            "solarCarbonGPerKWh": 0,
+            "gridCarbonGPerKWh": 400,
+            "solarUsdPerMWh": 0,
+            "gridUsdPerMWh": 50
+          }
+        },
+        {
+          "window": {
+            "startAt": "2026-10-28T20:00:00Z",
+            "endAt": "2026-10-28T21:00:00Z"
+          },
+          "supply": {
+            "solarKW": 1,
+            "fixedLoadKW": 0,
+            "gridImportLimitKW": 2,
+            "protectedKWh": 0
+          },
+          "evidence": {
+            "source": "Declared synthetic realized supply",
+            "version": "A-actual-2-v1",
+            "observedAt": "2026-10-28T20:00:00Z",
+            "status": "current",
+            "projected": false
+          },
+          "accounting": {
+            "solarCarbonGPerKWh": 0,
+            "gridCarbonGPerKWh": 400,
+            "solarUsdPerMWh": 0,
+            "gridUsdPerMWh": 50
+          }
+        }
+      ]
+    },
+    {
+      "configuration": {
+        "locationId": "B",
+        "compute": {
+          "capGpus": 1,
+          "kWPerGpu": 1
+        },
+        "storage": {
+          "initial": {
+            "storedKWh": 0,
+            "carbonKg": 0,
+            "electricityUsd": 0
+          },
+          "limits": {
+            "capacityKWh": 0,
+            "chargeKW": 0,
+            "dischargeKW": 0
+          },
+          "efficiency": {
+            "charge": 1,
+            "discharge": 1
+          }
+        },
+        "accountingBasis": "Modeled operational consumption; storage burdens retained until discharge"
+      },
+      "computeProfile": "modeled-1kW-gpu",
+      "forecast": [
+        {
+          "window": {
+            "startAt": "2026-10-28T18:00:00Z",
+            "endAt": "2026-10-28T19:00:00Z"
+          },
+          "supply": {
+            "solarKW": 0,
+            "fixedLoadKW": 0.1,
+            "gridImportLimitKW": 2,
+            "protectedKWh": 0
+          },
+          "evidence": {
+            "source": "Declared synthetic solar forecast",
+            "version": "B-forecast-0-v1",
+            "observedAt": "2026-10-28T18:00:00Z",
+            "status": "current",
+            "projected": true
+          },
+          "accounting": {
+            "solarCarbonGPerKWh": 0,
+            "gridCarbonGPerKWh": 400,
+            "solarUsdPerMWh": 0,
+            "gridUsdPerMWh": 50
+          }
+        },
+        {
+          "window": {
+            "startAt": "2026-10-28T19:00:00Z",
+            "endAt": "2026-10-28T20:00:00Z"
+          },
+          "supply": {
+            "solarKW": 0,
+            "fixedLoadKW": 0.1,
+            "gridImportLimitKW": 2,
+            "protectedKWh": 0
+          },
+          "evidence": {
+            "source": "Declared synthetic solar forecast",
+            "version": "B-forecast-1-v1",
+            "observedAt": "2026-10-28T18:00:00Z",
+            "status": "current",
+            "projected": true
+          },
+          "accounting": {
+            "solarCarbonGPerKWh": 0,
+            "gridCarbonGPerKWh": 400,
+            "solarUsdPerMWh": 0,
+            "gridUsdPerMWh": 50
+          }
+        },
+        {
+          "window": {
+            "startAt": "2026-10-28T20:00:00Z",
+            "endAt": "2026-10-28T21:00:00Z"
+          },
+          "supply": {
+            "solarKW": 0,
+            "fixedLoadKW": 0.1,
+            "gridImportLimitKW": 2,
+            "protectedKWh": 0
+          },
+          "evidence": {
+            "source": "Declared synthetic solar forecast",
+            "version": "B-forecast-2-v1",
+            "observedAt": "2026-10-28T18:00:00Z",
+            "status": "current",
+            "projected": true
+          },
+          "accounting": {
+            "solarCarbonGPerKWh": 0,
+            "gridCarbonGPerKWh": 400,
+            "solarUsdPerMWh": 0,
+            "gridUsdPerMWh": 50
+          }
+        }
+      ],
+      "observations": [
+        {
+          "window": {
+            "startAt": "2026-10-28T18:00:00Z",
+            "endAt": "2026-10-28T19:00:00Z"
+          },
+          "supply": {
+            "solarKW": 0,
+            "fixedLoadKW": 0.1,
+            "gridImportLimitKW": 2,
+            "protectedKWh": 0
+          },
+          "evidence": {
+            "source": "Declared synthetic realized supply",
+            "version": "B-actual-0-v1",
+            "observedAt": "2026-10-28T18:00:00Z",
+            "status": "current",
+            "projected": false
+          },
+          "accounting": {
+            "solarCarbonGPerKWh": 0,
+            "gridCarbonGPerKWh": 400,
+            "solarUsdPerMWh": 0,
+            "gridUsdPerMWh": 50
+          }
+        },
+        {
+          "window": {
+            "startAt": "2026-10-28T19:00:00Z",
+            "endAt": "2026-10-28T20:00:00Z"
+          },
+          "supply": {
+            "solarKW": 0,
+            "fixedLoadKW": 0.1,
+            "gridImportLimitKW": 2,
+            "protectedKWh": 0
+          },
+          "evidence": {
+            "source": "Declared synthetic realized supply",
+            "version": "B-actual-1-v1",
+            "observedAt": "2026-10-28T19:00:00Z",
+            "status": "current",
+            "projected": false
+          },
+          "accounting": {
+            "solarCarbonGPerKWh": 0,
+            "gridCarbonGPerKWh": 400,
+            "solarUsdPerMWh": 0,
+            "gridUsdPerMWh": 50
+          }
+        },
+        {
+          "window": {
+            "startAt": "2026-10-28T20:00:00Z",
+            "endAt": "2026-10-28T21:00:00Z"
+          },
+          "supply": {
+            "solarKW": 0,
+            "fixedLoadKW": 0.1,
+            "gridImportLimitKW": 2,
+            "protectedKWh": 0
+          },
+          "evidence": {
+            "source": "Declared synthetic realized supply",
+            "version": "B-actual-2-v1",
+            "observedAt": "2026-10-28T20:00:00Z",
+            "status": "current",
+            "projected": false
+          },
+          "accounting": {
+            "solarCarbonGPerKWh": 0,
+            "gridCarbonGPerKWh": 400,
+            "solarUsdPerMWh": 0,
+            "gridUsdPerMWh": 50
+          }
+        }
+      ]
+    }
+  ],
+  "carbonPriceUsdPerTonne": 100,
+  "maximumAgeMinutes": 180,
+  "storageToleranceKWh": 0
+}
