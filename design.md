@@ -16,7 +16,7 @@ v1 had jobs **bid in an auction** for capacity. That was hard to explain and har
 
 **The realism we keep:** power really is cheaper when the grid has spare capacity (low demand, lots of wind or solar) and pricier when it is stressed. Sunchaser prices compute off real hourly grid demand and real carbon intensity, so jobs "chase" the same signals a real operator would.
 
-Changed sections: §1, §3, §4, §5, §6, §7, §8.1, §8.2, §8.3, **§9 (rewritten)**, §12, §13 (only two headline tiles), §14, §15, §16.
+Changed sections: §1, §3, §4, §5, §6, §7, §8.1, §8.2, §8.3, **§9 (rewritten)**, §12, §13 (only two headline tiles), §14 (no separate price-board panel; prices live on pins, timeline strips and the job card), §15, §16.
 
 ---
 
@@ -29,16 +29,16 @@ Electricity is cleaner and cheaper in different places at different times. For e
 Sunchaser has two layers:
 
 1. **Capacity planner (supply side).** It turns carbon forecasts into **hourly compute caps per region**. This is the same shape as Google's carbon-aware system: it doesn't place jobs, it shapes how much flexible capacity exists in each region and hour.
-2. **Price board (demand side).** Every region posts a **price per GPU-hour** for each hour. The price goes up when the local grid is busy or dirty. Each job is a simple shopper: it runs in the hours that are cheapest for it while still meeting its deadline. Every choice is logged with a reason.
+2. **Posted prices (demand side).** Every region posts a **price per GPU-hour** for each hour. The price goes up when the local grid is busy or dirty. Each job is a simple shopper: it runs in the hours that are cheapest for it while still meeting its deadline. Every choice is logged with a reason.
 
-A **responsive web app** shows a live map, the price board and the carbon saved against a baseline. It also lets the viewer act as a **chaos monkey**: bust a forecast, kill a region, flood the queue or trigger a demand-response event, and then watch the system recover.
+A **responsive web app** shows a live map with current prices, a timeline of what's coming and the carbon saved against a baseline. It also lets the viewer act as a **chaos monkey**: bust a forecast, kill a region, flood the queue or trigger a demand-response event, and then watch the system recover.
 
 The prompt's three ideas map onto one system:
 
 | Prompt idea | Sunchaser component |
 |---|---|
 | Live map of where to train right now | Map plus a per-region intensity timeline |
-| Job router that shows carbon saved | Planner, price board and baseline comparison |
+| Job router that shows carbon saved | Planner, posted prices and baseline comparison |
 | Agents that bid for the cleanest slots | Jobs choosing eligible posted-price slots; the rubric checks this capability without requiring an auction |
 
 ## 2. Goals and non-goals
@@ -84,7 +84,7 @@ flowchart LR
     J --> CLK[Sim clock]
     CLK --> FC[Forecaster]
     FC --> PL[Capacity planner]
-    FC --> PB[Price board]
+    FC --> PB[Posted prices]
     Torus[Simulated Torus local energy + limits] --> PL & PB
     Torus -->|revalidate / reserve / dispatch| EX
     PL -->|caps per region/hour| PB
@@ -200,7 +200,7 @@ This is the part specific to carbon-aware scheduling, and the main technical sto
 4. **Safety margin.** Inflate total opened capacity by `(1 + m)`. *m* grows with forecast error seen so far and with backlog, starting at 10%.
 5. **Damping.** Limit `|cap[r,h] − previousPlan[r,h]|` to Δ per replan, and limit hour-to-hour cap change to avoid sharp ramps (hysteresis).
 
-The planner decides *how much* capacity exists. It does not set prices; the price board (§9) does that from grid conditions. The algorithm is a greedy heuristic, so it is explainable and fast. An LP or MILP formulation is **[Next step]**. The greedy plan is a good slide because each step maps to one pitfall.
+The planner decides *how much* capacity exists. It does not set prices; posted prices (§9) come from grid conditions. The algorithm is a greedy heuristic, so it is explainable and fast. An LP or MILP formulation is **[Next step]**. The greedy plan is a good slide because each step maps to one pitfall.
 
 ### 8.2 Pitfalls and how the design handles them
 
@@ -220,7 +220,7 @@ The planner looks at **carbon only** and decides how much capacity to open. Jobs
 
 In CISO, a midday hour has low *average* intensity because of solar. But if solar is being curtailed, the *marginal* kWh is effectively free and clean. In the evening, the marginal kWh comes from a gas peaker even though the average still looks moderate. Ranking hours by average intensity understates the value of moving load *off* the evening peak. The demo uses average intensity, because that is what EIA provides. The deck calls this out, and a marginal signal (e.g. WattTime) is **[Next step]**.
 
-## 9. Price board: jobs buy at posted prices
+## 9. Posted prices: how jobs buy compute
 
 ### 9.1 The price
 
@@ -294,7 +294,7 @@ t=35 bought    — BPAT full (cap 120), took CISO @ $0.045 (2nd cheapest)
 t=40 MUST-RUN  — slack 0.8h, bought 8 GPUs in PJM @ $0.097
 ```
 
-The UI shows these logs.
+The UI shows these logs in the job card (§14).
 
 ## 10. Cross-region moves (lightweight)
 
@@ -325,10 +325,10 @@ Each control injects an event, and the UI highlights the system's response.
 | **Demand-response event** | Grid asks R to shed 50% flexible load for 3h | Caps in R are cut immediately and R's grid load (and price) spikes. Work shifts or waits. Counted as "DR MWh delivered". (The partner's 2025 report cites 360+ DR events.) |
 | **Heat wave** | Grid demand in R is +30% for 8h | R's price rises even though its carbon doesn't change much. Shows the "busy grid = expensive" half of the price. |
 | **Job flood** | 50 urgent jobs arrive | Cheap regions sell out; backlog fallback relaxes caps. The carbon cost of urgency is visible. |
-| **Stale data feed** | Forecast stops updating | Planner and price board hold the last forecast and widen *m*. A "degraded" badge appears. |
+| **Stale data feed** | Forecast stops updating | Planner and price formula keep using the last forecast and widen *m*. A "degraded" badge appears. |
 | **Deadline crunch** | Halves all remaining deadlines | Many jobs become must-run and stop caring about price. Carbon savings drop and the UI shows why. |
 | **Damping off** | Disables hysteresis and quotas | Herd oscillation becomes visible on the timeline. |
-| **Carbon price slider** | $0 → $300/tCO₂ | Price board re-colors live; cost-vs-carbon trade-off |
+| **Carbon price slider** | $0 → $300/tCO₂ | Pin prices and timeline price strips re-color live; cost-vs-carbon trade-off |
 
 Chaos events go into the seeded event log, so "replay this run" reproduces the same result.
 
@@ -348,11 +348,13 @@ Deadline misses, delay and DR MWh are still tracked by the sim and appear in the
 
 ## 14. UI (responsive)
 
-- **Map:** region pins colored by current intensity, sized by running GPUs. Arrows show jobs moving between regions.
-- **Timeline:** per-region intensity, both forecast and actual, overlaid with caps and usage. This is the key chart for the planner story.
-- **Price board:** a region × hour grid of posted $/GPU-h for the next 24h, colored cheap (green) to expensive (red), with "sold out" cells marked. Current hour highlighted. Clicking a job opens its decision log.
+There is no separate price-board panel. A region × hour grid of decimals is hard to read and repeats the timeline's axes. Prices appear in three places instead, each at the level of detail that spot needs:
+
+- **Map:** region pins colored by current intensity, sized by running GPUs. Each pin's label shows the current posted price, e.g. `San Jose · 145 g · $0.061`. Arrows show jobs moving between regions. *Prices now.*
+- **Timeline:** per-region intensity, both forecast and actual, overlaid with caps and usage. This is the key chart for the planner story. Under each region's row, a thin **price strip** colors each future hour cheap (green) to expensive (red), with sold-out hours hatched. You can see "SWPP turns green tonight" without reading numbers. *Prices ahead.*
+- **Details on tap:** tapping a pin or a timeline hour shows the exact price and its energy vs carbon split. The **job card** (opened from the queue) shows the job's own row of upcoming prices with its chosen cheapest hours ticked, plus its decision log (§9.4). This is the only place a row of numbers appears, because it explains one decision. *Exact prices.*
 - **Metrics tiles:** two tiles, CO₂ saved and $ delta, each Sunchaser vs baseline.
-- **Chaos drawer:** buttons and sliders. On mobile, the layout stacks as map → tiles → chaos → timeline → price board.
+- **Chaos drawer:** buttons and sliders. On mobile, the layout stacks as map → tiles → chaos → timeline.
 
 ## 15. 24h build plan
 
@@ -361,15 +363,15 @@ Deadline misses, delay and DR MWh are still tracked by the sim and appear in the
 | 1 | Data fetch script (fuel mix + demand), intensity calc, JSON snapshot | 2.5h | Must |
 | 2 | Sim core: clock, regions, jobs generator, executor, baseline, metrics | 4h | Must |
 | 3 | Planner: water-filling, deadline pass, margin, damping | 3h | Must |
-| 4 | Price board: price formula, job shopping rule, decision log | 2h | Must |
+| 4 | Posted prices: price formula, job shopping rule, decision log | 2h | Must |
 | 5 | UI shell, map, metrics tiles, timeline | 4h | Must |
 | 6 | Chaos controls: bust, outage, DR, flood | 2h | Must |
-| 7 | Price-board grid view, job log, move arrows | 2h | Should |
+| 7 | Pin price labels, timeline price strips, job card and log, move arrows | 2h | Should |
 | 8 | Stale feed, heat wave, deadline crunch, damping toggle, carbon-price slider | 1.5h | Should |
 | 9 | Headless runner and slide numbers | 1h | Should |
 | 10 | Deploy and polish | 2h | Must |
 
-That totals about 24h. If time runs short, cut #7 and #8 first. Simplest fallback for the price board: drop demand from the price (carbon only). That keeps the planner story intact.
+That totals about 24h. If time runs short, cut #7 and #8 first. Simplest fallback for posted prices: drop demand from the price (carbon only). That keeps the planner story intact.
 
 ## 16. Next steps (for the deck)
 
