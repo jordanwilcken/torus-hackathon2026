@@ -322,3 +322,15 @@ test("overflowed source quantities cannot pass the full-quantity check as free e
 
   expect(postSitePrice(request).status).toBe("unavailable");
 });
+
+test("very large finite evidence cannot match a four-GPU-hour assessment", () => {
+  const wrongWork = input();
+  wrongWork.assessment!.remainingGpuHours = 1e308;
+  expect(postSitePrice(wrongWork).status).toBe("unavailable");
+
+  const wrongEnergy = input();
+  wrongEnergy.assessment!.sources = [{
+    source: "solar", deliveredKWh: 1e308, supplyKWh: 1e308, usdPerMWh: 0, gramsCO2PerKWh: 0,
+  }];
+  expect(postSitePrice(wrongEnergy).status).toBe("unavailable");
+});
