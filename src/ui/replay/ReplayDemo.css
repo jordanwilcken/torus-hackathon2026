@@ -1,0 +1,32 @@
+.replay-demo { display: grid; gap: 16px; }
+.replay-demo > section { background: #fff; border: 1px solid #dce4dd; border-radius: 12px; min-width: 0; }
+.replay-demo .replay-intro { padding: 20px 24px; display: flex; gap: 24px; justify-content: space-between; }
+.replay-demo .replay-intro p { margin: 6px 0 0; max-width: 680px; font-size: 13px; color: #5e7467; }
+.replay-demo .replay-progress { display: grid; align-content: center; gap: 3px; min-width: 150px; }
+.replay-demo .replay-progress > span { color: #68796e; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; }
+.replay-demo .replay-progress output { font-size: 28px; font-weight: 650; letter-spacing: -.04em; }
+.replay-demo .replay-progress small { font-size: 11px; color: #68796e; }
+.replay-demo .replay-job-stream { padding: 12px; display: flex; gap: 10px; flex-wrap: wrap; }
+.replay-demo .replay-job-stream button { flex: 1; min-width: 170px; display: grid; grid-template-columns: 1fr auto; gap: 5px; text-align: left; padding: 12px; border: 1px solid #dae4da; background: #f5f8f3; color: #30553f; }
+.replay-demo .replay-job-stream button[aria-pressed="true"] { background: #eaf4f7; border-color: #7ca8b6; }
+.replay-demo .replay-job-stream button[data-job-state="Running"] { border-color: #1e9364; background: #e3f5eb; }
+.replay-demo .replay-job-stream button[data-job-state="Done"] span { color: #20774b; }
+.replay-demo .replay-job-stream small { grid-column: 1 / -1; color: #6b7d70; font-size: 11px; }
+.replay-demo .replay-job-stream span { font-size: 12px; font-weight: 600; }
+.replay-demo .replay-geography { margin: -4px 4px; color: #667d6f; font-size: 11px; }
+.replay-demo .replay-job-detail, .replay-demo .replay-fleet { padding: 20px 24px; }
+.replay-demo .replay-job-detail p, .replay-demo .replay-fleet p { font-size: 12px; color: #607869; }
+.replay-demo .replay-job-detail h3 { margin-top: 22px; margin-bottom: 4px; }
+.replay-demo table { width: 100%; text-align: left; border-collapse: collapse; font-size: 12px; }
+.replay-demo th, .replay-demo td { padding: 10px 12px; border-bottom: 1px solid #e2e9e1; vertical-align: top; }
+.replay-demo th { color: #54705f; font-weight: 600; }
+.replay-demo .replay-fleet-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.replay-demo .replay-fleet-heading button { padding: 10px 14px; background: #28533e; color: #fff; font-size: 12px; }
+.replay-demo .replay-fleet-heading button:disabled { background: #e6ede6; color: #829184; cursor: default; }
+@media (max-width: 650px) {
+    .replay-demo .replay-intro { flex-direction: column; gap: 12px; padding: 16px; }
+    .replay-demo .replay-progress { grid-template-columns: 1fr auto; align-items: center; }
+    .replay-demo .replay-progress small { grid-column: 1 / -1; }
+    .replay-demo .replay-job-detail, .replay-demo .replay-fleet { padding: 16px; }
+    .replay-demo .replay-fleet-heading { align-items: start; flex-direction: column; }
+}
