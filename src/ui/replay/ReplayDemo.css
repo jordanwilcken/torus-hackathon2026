@@ -6,6 +6,10 @@
 .replay-demo .replay-progress > span { color: #68796e; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; }
 .replay-demo .replay-progress output { font-size: 28px; font-weight: 650; letter-spacing: -.04em; }
 .replay-demo .replay-progress small { font-size: 11px; color: #68796e; }
+.replay-demo .replay-primary-action { margin-top: 10px; padding: 12px 18px; min-height: 44px; border: 1px solid #28533e; background: #28533e; color: #fff; font-size: 13px; font-weight: 650; }
+.replay-demo .replay-primary-action:hover:not(:disabled) { background: #1d4230; }
+.replay-demo .replay-primary-action:focus-visible { outline: 3px solid #80b99b; outline-offset: 3px; }
+.replay-demo .replay-primary-action:disabled { background: #e6ede6; border-color: #dce4dd; color: #607869; cursor: default; }
 .replay-demo .replay-job-stream { padding: 12px; display: flex; gap: 10px; flex-wrap: wrap; }
 .replay-demo .replay-job-stream button { flex: 1; min-width: 170px; display: grid; grid-template-columns: 1fr auto; gap: 5px; text-align: left; padding: 12px; border: 1px solid #dae4da; background: #f5f8f3; color: #30553f; }
 .replay-demo .replay-job-stream button[aria-pressed="true"] { background: #eaf4f7; border-color: #7ca8b6; }
@@ -26,7 +30,7 @@
 @media (max-width: 650px) {
     .replay-demo .replay-intro { flex-direction: column; gap: 12px; padding: 16px; }
     .replay-demo .replay-progress { grid-template-columns: 1fr auto; align-items: center; }
-    .replay-demo .replay-progress small { grid-column: 1 / -1; }
+    .replay-demo .replay-progress small, .replay-demo .replay-primary-action { grid-column: 1 / -1; }
     .replay-demo .replay-job-detail, .replay-demo .replay-fleet { padding: 16px; }
     .replay-demo .replay-fleet-heading { align-items: start; flex-direction: column; }
 }

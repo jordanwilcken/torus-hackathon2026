@@ -104,11 +104,39 @@ export function ReplayDemo({ scenario = captured as ReplayScenario }: { scenario
 
     return <div className="replay-demo" role="region" aria-label="Paired replay">
         <section className="replay-intro">
-            <div><p className="eyebrow">CAPTURED JOB STREAM</p><h2>Home-site time shifting</h2>
-                <p>Real simulator execution from declared synthetic energy and jobs. All work and energy values are modeled.</p></div>
+            <div><p className="eyebrow">COMPARISON LAB</p><h2>Run now or wait for cleaner energy?</h2>
+                <p>This lab uses declared synthetic energy and jobs. Compare running immediately with waiting at the same site. All work and energy values are modeled.</p></div>
             <div className="replay-progress"><span>Replay progress</span><output aria-label="Replay hour">{progress.hour} / {progress.totalHours}</output>
                 <small aria-label="Arm progress">Home FIFO {progress.armHours.baseline} / {progress.totalHours} · Coordinated {progress.armHours.selected} / {progress.totalHours}</small>
-                <small>{progress.phase === 'routed' ? 'Allocations accepted; dispatch is running' : stoppedEarly ? 'Replay stopped; partial evidence retained' : progress.done ? 'Both runs complete' : failures.length ? `${continuing.join(' and ')} continues; partial evidence retained` : 'Ready for the next hour'}</small></div>
+                <small>{progress.phase === 'routed' ? 'Allocations accepted; dispatch is running' : stoppedEarly ? 'Replay stopped; partial evidence retained' : progress.done ? 'Both runs complete' : failures.length ? `${continuing.join(' and ')} continues; partial evidence retained` : 'Ready for the next hour'}</small>
+                <button className="replay-primary-action" type="button"
+                    disabled={progress.done || (playback.busy && !playback.playing)}
+                    onClick={() => void (playback.playing ? actions.pause() : actions.play())}>
+                    {progress.done ? 'Comparison complete' : playback.playing ? 'Pause comparison'
+                        : progress.phase === 'ready' ? 'Run comparison' : 'Resume comparison'}
+                </button></div>
+        </section>
+        <section className="replay-fleet" role="region" aria-label="Fleet comparison" data-comparison={completed?.comparison.comparison ?? 'pending'}>
+            <div className="replay-fleet-heading"><div><p className="eyebrow">COUNTED ONCE ACROSS THE FLEET</p><h2>Paired comparison</h2></div>
+                <button type="button" disabled={!completed} onClick={download}>Download evidence JSON</button></div>
+            {!completed ? <p>Fleet comparison available after both runs finish.</p> : <>
+                <p>{completed.comparison.comparison === 'comparable' ? 'Comparable modeled runs' : 'Comparison unavailable'} · same captured jobs, assets, hard limits and dispatch policy.</p>
+                <div className="table-scroll"><table aria-label="Modeled fleet totals">
+                    <thead><tr><th>Quantity</th><th>Home FIFO</th><th>Coordinated</th></tr></thead>
+                    <tbody><tr><th>Carbon (kg)</th><td data-value={completed.baseline.impact.carbonKg}>{number(completed.baseline.impact.carbonKg)}</td><td data-value={completed.selected.impact.carbonKg}>{number(completed.selected.impact.carbonKg)}</td></tr>
+                        <tr><th>Modeled cost (USD)</th><td data-value={completed.baseline.impact.modeledCostUsd}>{number(completed.baseline.impact.modeledCostUsd, 3)}</td><td data-value={completed.selected.impact.modeledCostUsd}>{number(completed.selected.impact.modeledCostUsd, 3)}</td></tr>
+                        <tr><th>Electricity (USD)</th><td data-value={completed.baseline.impact.electricityUsd}>{number(completed.baseline.impact.electricityUsd, 3)}</td><td data-value={completed.selected.impact.electricityUsd}>{number(completed.selected.impact.electricityUsd, 3)}</td></tr></tbody>
+                </table></div>
+                <dl className="replay-fairness" aria-label="Comparison fairness">
+                    <div><dt>Completed GPU-hours · FIFO / coordinated</dt><dd>{number(completed.baseline.impact.work.reduce((sum, job) => sum + job.completedGpuH, 0))} / {number(completed.selected.impact.work.reduce((sum, job) => sum + job.completedGpuH, 0))}</dd></div>
+                    <div><dt>Ending storage (kWh) · FIFO / coordinated, by site</dt><dd>{completed.baseline.impact.inventory.map(site => `${site.locationId}: ${number(site.endingStoredKWh)} / ${number(completed.selected.impact.inventory.find(other => other.locationId === site.locationId)?.endingStoredKWh)}`).join(' · ')}</dd></div>
+                </dl>
+                <p>Carbon reduction: <span data-testid="modeled-carbon-reduction">{number(completed.reductions.carbonKg)}</span> kg · Modeled cost reduction: <span data-testid="modeled-cost-reduction">{completed.reductions.modeledCostUsd === null ? 'Unavailable' : '$' + number(completed.reductions.modeledCostUsd, 3)}</span></p>
+                {(completed.reductions.carbonKg !== null && completed.reductions.carbonKg < 0 || completed.reductions.modeledCostUsd !== null && completed.reductions.modeledCostUsd < 0) && <p>The coordinated run performed worse. Negative reductions are retained.</p>}
+                {completed.comparison.carbon.unavailableReason && <p>{completed.comparison.carbon.unavailableReason}</p>}
+                {completed.comparison.cost.unavailableReason && completed.comparison.cost.unavailableReason !== completed.comparison.carbon.unavailableReason && <p>{completed.comparison.cost.unavailableReason}</p>}
+                <p>Raw receipts include idle sites and storage inventory. Selection alone earns no savings.</p>
+            </>}
         </section>
         <section className="replay-job-stream" aria-label="Job stream">
             {progress.scenario.jobs.map(job => <button key={job.id} type="button" aria-label={`Inspect job ${job.id}`}
@@ -121,7 +149,7 @@ export function ReplayDemo({ scenario = captured as ReplayScenario }: { scenario
                     setInspectedDecisionHour(decision?.hour);
                 }}><strong>{job.id}</strong><span>{jobState(job, progress)}</span><small>Home {job.homeLocation} · arrives {job.readyAt.slice(11, 16)} UTC</small></button>)}
         </section>
-        <p className="replay-geography">Map locations A/B are display-only city references, not observed Torus site locations.
+        <p className="replay-geography">Map locations A/B are modeled compute locations; no physical site connection.
             {' '}Decision offers published at {decisionMap.asOf}; these precede reservation and dispatch.
             {inspectedDecisionHour !== undefined && ` Inspecting retained hour ${inspectedDecisionHour} for ${activeJob.id}.`}</p>
         <EnergyMapView appearance="compact" map={displayMap} jobFlow={{ job: activeJob, report, routeAttempt: history.length }}
@@ -150,27 +178,6 @@ export function ReplayDemo({ scenario = captured as ReplayScenario }: { scenario
             </table></div>
             {receipts.length === 0 && <p>No modeled work has completed for this job.</p>}
         </section>
-        <section className="replay-fleet" role="region" aria-label="Fleet comparison" data-comparison={completed?.comparison.comparison ?? 'pending'}>
-            <div className="replay-fleet-heading"><div><p className="eyebrow">COUNTED ONCE ACROSS THE FLEET</p><h2>Paired comparison</h2></div>
-                <button type="button" disabled={!completed} onClick={download}>Download evidence JSON</button></div>
-            {!completed ? <p>Fleet comparison available after both runs finish.</p> : <>
-                <p>{completed.comparison.comparison === 'comparable' ? 'Comparable modeled runs' : 'Comparison unavailable'} · same captured jobs, assets, hard limits and dispatch policy.</p>
-                <div className="table-scroll"><table aria-label="Modeled fleet totals">
-                    <thead><tr><th>Quantity</th><th>Home FIFO</th><th>Coordinated</th></tr></thead>
-                    <tbody><tr><th>Carbon (kg)</th><td data-value={completed.baseline.impact.carbonKg}>{number(completed.baseline.impact.carbonKg)}</td><td data-value={completed.selected.impact.carbonKg}>{number(completed.selected.impact.carbonKg)}</td></tr>
-                        <tr><th>Modeled cost (USD)</th><td data-value={completed.baseline.impact.modeledCostUsd}>{number(completed.baseline.impact.modeledCostUsd, 3)}</td><td data-value={completed.selected.impact.modeledCostUsd}>{number(completed.selected.impact.modeledCostUsd, 3)}</td></tr>
-                        <tr><th>Electricity (USD)</th><td data-value={completed.baseline.impact.electricityUsd}>{number(completed.baseline.impact.electricityUsd, 3)}</td><td data-value={completed.selected.impact.electricityUsd}>{number(completed.selected.impact.electricityUsd, 3)}</td></tr></tbody>
-                </table></div>
-                <dl className="replay-fairness" aria-label="Comparison fairness">
-                    <div><dt>Completed GPU-hours · FIFO / coordinated</dt><dd>{number(completed.baseline.impact.work.reduce((sum, job) => sum + job.completedGpuH, 0))} / {number(completed.selected.impact.work.reduce((sum, job) => sum + job.completedGpuH, 0))}</dd></div>
-                    <div><dt>Ending storage (kWh) · FIFO / coordinated, by site</dt><dd>{completed.baseline.impact.inventory.map(site => `${site.locationId}: ${number(site.endingStoredKWh)} / ${number(completed.selected.impact.inventory.find(other => other.locationId === site.locationId)?.endingStoredKWh)}`).join(' · ')}</dd></div>
-                </dl>
-                <p>Carbon reduction: <span data-testid="modeled-carbon-reduction">{number(completed.reductions.carbonKg)}</span> kg · Modeled cost reduction: <span data-testid="modeled-cost-reduction">{completed.reductions.modeledCostUsd === null ? 'Unavailable' : '$' + number(completed.reductions.modeledCostUsd, 3)}</span></p>
-                {(completed.reductions.carbonKg !== null && completed.reductions.carbonKg < 0 || completed.reductions.modeledCostUsd !== null && completed.reductions.modeledCostUsd < 0) && <p>The coordinated run performed worse. Negative reductions are retained.</p>}
-                {completed.comparison.carbon.unavailableReason && <p>{completed.comparison.carbon.unavailableReason}</p>}
-                {completed.comparison.cost.unavailableReason && completed.comparison.cost.unavailableReason !== completed.comparison.carbon.unavailableReason && <p>{completed.comparison.cost.unavailableReason}</p>}
-                <p>Raw receipts include idle sites and storage inventory. Selection alone earns no savings.</p>
-            </>}
-        </section>
+
     </div>;
 }

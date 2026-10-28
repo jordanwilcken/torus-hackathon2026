@@ -162,7 +162,7 @@ export class FleetFlow {
     await expect(origin).toBeVisible();
     await expect(origin).toHaveAttribute('data-origin-id', id);
     await expect(origin).toContainText('SIMULATED JOB ORIGIN');
-    await expect(origin).toContainText(`${submissions} generated jobs`);
+    await expect(origin).toContainText(`${submissions} generated ${submissions === 1 ? 'job' : 'jobs'}`);
     await expect(origin).toContainText('Location is public. Jobs are simulated. No connection to this operator.');
     await expect(origin.getByRole('link', { name: 'Public location reference', exact: true })).toHaveAttribute('href', sourceUrl);
   }

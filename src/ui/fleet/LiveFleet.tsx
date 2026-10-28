@@ -17,7 +17,7 @@ import { FleetSummary } from './FleetSummary';
 import { CapacityHorizon, MoveSignal } from './EngineSignals';
 import './LiveFleet.css';
 
-const number = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 3 });
+const number = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 2 });
 const time = (value: string) => value.slice(11, 16) + ' UTC';
 const unconnected = modeledSites.map(site => ({ ...site, capacity: 8, availableGpus: 0, solarKW: 0, storedKWh: 0, storageCapacityKWh: 0, activeJobs: 0, queuedJobs: 0, unknown: true }));
 
@@ -66,7 +66,7 @@ export function LiveFleet({ grid }: { grid: PublicGridClient }) {
   }
   return <section className="live-fleet" aria-label="Live input fleet">
     <div className="fleet-heading"><div className="fleet-heading-label"><h2>Compute fleet</h2><span className="fleet-mode">Modeled execution</span></div>
-      <SourceSignals weather={weather} market={market} eia={eia} capture={capture} now={now} onRefresh={() => { void weatherClient.refresh(); void grid.caiso.refresh(); void grid.eia.refresh(); }} />
+      <SourceSignals weather={weather} market={market} eia={eia} capture={capture} now={now} onRefresh={() => Promise.allSettled([weatherClient.refresh(), grid.caiso.refresh(), grid.eia.refresh()])} />
     </div>
     {capture?.runInputs.caiso?.status === 'stale' && <p className="fleet-source-notice" role="status">
       This run uses the captured CAISO price. It met the one-hour age limit at capture, when refreshing was delayed.
@@ -205,19 +205,19 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
   }
   return <>
     <div className="fleet-livebar"><div className="fleet-clock"><span className={playback.playing ? 'clock-pulse' : ''} />
-      <strong>{failure ? 'Stopped' : progress.done ? 'Horizon complete' : playback.playing ? 'Running model' : 'Paused model'}</strong>
+      <strong>{failure ? 'Stopped' : progress.done ? 'Model complete' : playback.playing ? 'Running model' : 'Paused model'}</strong>
       <output aria-label="Fleet model hour" data-hour={progress.hour}>{progress.hour} / {progress.totalHours} h</output>
       <small>{time(currentAt)} · 1 model hour ≈ {number(5.8 / playback.speed)} s</small></div>
       <button className="fleet-monkey" aria-label="Chaos monkey" aria-expanded={monkey} onClick={() => void openDisruption()}>🐒 <span>Disrupt</span></button></div>
     <FleetMapKey />
     <FleetSummary progress={progress} />
     <div className="fleet-stage">
-      <FleetMap activityEpoch={activityEpoch} sites={sites} transfers={progress.selected.run.transfers} playing={playback.playing}
+      <FleetMap completed={progress.done && !failure} activityEpoch={activityEpoch} sites={sites} transfers={progress.selected.run.transfers} playing={playback.playing}
         admissions={admissions} onOrigin={id => { setOriginId(id); setSelected(undefined); setJobId(undefined); }} selected={selected} onInspect={inspect} onJob={id => { setOriginId(undefined); setJobId(id); setSelected(undefined); }} />
       {(active || job || origin) && <aside className="fleet-inspector">
         <button className="fleet-close" aria-label="Close activity" onClick={() => { setSelected(undefined); setJobId(undefined); setOriginId(undefined); }}>×</button>
         {origin && <section aria-label="Data center activity" data-origin-id={origin.id}><p className="eyebrow">SIMULATED JOB ORIGIN</p><h3>{origin.name}</h3>
-          <p>{admissions.filter(job => originForJob(job.jobId).id === origin.id).length} generated jobs</p>
+          <p>{admissions.filter(job => originForJob(job.jobId).id === origin.id).length} generated {admissions.filter(job => originForJob(job.jobId).id === origin.id).length === 1 ? 'job' : 'jobs'}</p>
           <p className="fleet-origin-note">Synthetic GPU batches start here, then run at a modeled compute site.</p>
           <a href={origin.sourceUrl} target="_blank" rel="noreferrer">Public location reference</a>
           <div className="fleet-site-jobs">{arrived.filter(job => originForJob(job.id).id === origin.id).slice(-6).map(job => <button key={job.id} onClick={() => { setJobId(job.id); setOriginId(undefined); }}>{job.id}<span>{job.state}</span></button>)}</div>
@@ -252,7 +252,7 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
       </aside>}
       {monkey && <section className="fleet-chaos" aria-label="Fleet simulation controls"><div><h3>Crash the party</h3><button aria-label="Close controls" onClick={() => setMonkey(false)}>×</button></div>
         <p>Change model inputs. Watch the scheduler respond.</p><div className="fleet-control-row">
-          <button onClick={() => void freezeMoment()} disabled={!playback.playing || saving}>Pause</button><button onClick={actions.play} disabled={playback.playing || progress.done || saving || preparingDisruption}>Play</button>
+          <button onClick={() => void actions.pause()} disabled={!playback.playing || saving}>Pause</button><button onClick={actions.play} disabled={playback.playing || progress.done || saving || preparingDisruption}>Play</button>
           <button onClick={() => { actions.pause(); void actions.step(); }} disabled={playback.busy || progress.done || saving || preparingDisruption}>Step</button>
           <select aria-label="Playback speed" value={playback.speed} onChange={event => actions.setSpeed(Number(event.target.value))}><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></div>
         <label>Disruption location<select aria-label="Disruption location" value={eventSite} disabled={preparingDisruption || saving} onChange={event => setEventSite(event.target.value)}>{disruptionOptions.map(option => <option key={option.id} value={option.id} disabled={!option.next}>{option.name}{option.next ? ' · ' + number(option.next.solarKW) + ' kW at ' + time(option.next.startAt) : ' · no remaining solar'}</option>)}</select></label>

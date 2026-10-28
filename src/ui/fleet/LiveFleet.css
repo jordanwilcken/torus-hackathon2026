@@ -104,3 +104,6 @@
 .fleet-power-heading { display:flex; justify-content:space-between; align-items:center; gap:8px; border-top:1px solid #e3eae4; padding-top:13px; margin:14px 0 12px; font-size:10px; font-weight:650; color:#526b5b; }
 .fleet-power-heading small { font-size:8px; font-weight:400; }
 .fleet-inspector .fleet-engine-plan { margin-top:14px; }
+
+.fleet-canvas { height:clamp(420px,calc(100dvh - 260px),740px); }
+@media(max-width:760px) { .fleet-monkey span { display:inline; font-size:10px; }.fleet-canvas { height:440px; } }

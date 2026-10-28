@@ -51,3 +51,7 @@
 .source-signals-grid-evidence .live-grid-heading h2 { font-size:16px; }
 .source-signals-grid-evidence .table-scroll { max-width:100%; overflow-x:auto; }
 .source-signals-grid-evidence table { min-width:520px; }
+
+.source-signals .source-signals-button { padding:6px 9px; gap:2px; border-radius:7px; }
+.source-signals-status { font-size:8px; }
+.source-signals-strip { gap:5px; }

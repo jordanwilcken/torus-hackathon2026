@@ -1,19 +1,17 @@
-.fleet-map-key { box-sizing:border-box; display:flex; flex-direction:column; justify-content:center; gap:6px; padding:9px 16px; border-bottom:1px solid #dbe5dc; background:#f8faf5; color:#45604e; }
+.fleet-map-key { box-sizing:border-box; display:flex; flex-direction:column; justify-content:center; gap:0; padding:6px 12px; border-bottom:1px solid #dbe5dc; background:#f8faf5; color:#45604e; }
 .fleet-map-key-flow { display:flex; align-items:center; flex-wrap:wrap; gap:7px; font-size:10px; line-height:1.25; }
 .fleet-map-key-flow>span { display:flex; align-items:center; gap:5px; white-space:nowrap; }
 .fleet-map-key-flow>b { color:#9ba99a; font-size:13px; font-weight:400; }
-.fleet-map-key-flow i { display:grid; place-items:center; flex-shrink:0; width:20px; height:20px; border-radius:5px; font-style:normal; }
+.fleet-map-key-flow i { display:grid; place-items:center; flex-shrink:0; width:17px; height:17px; border-radius:5px; font-style:normal; }
 .fleet-map-key-origin { border:1px solid #779de8; color:#2563eb; background:#f0f6fb; font-size:6px; font-weight:750; letter-spacing:.02em; }
-.fleet-map-key-compute { border:1px solid #8fb29a; color:#4d946d; background:#f3f8f1; font-size:17px; }
+.fleet-map-key-compute { border:1px solid #79b8ae; color:#0d9488; background:#eff8f4; font-size:15px; }
 .fleet-map-key-done { color:#4f9c68; background:#eaf4e8; font-size:12px; }
-.fleet-map-key>small { color:#7e8c7b; font-size:9px; line-height:1.35; }
 .fleet-geography .fleet-datacenter small { font-size:6px; letter-spacing:.03em; }
-.fleet-geography .fleet-tooltip { max-width:300px; }
+.fleet-geography .fleet-tooltip { max-width:280px; pointer-events:none!important; }.fleet-geography .fleet-tooltip * { pointer-events:none!important; }
 @media(max-width:600px) {
-  .fleet-map-key { padding:8px 12px; gap:5px; }
+  .fleet-map-key { padding:6px 10px; gap:0; }
   .fleet-map-key-flow { gap:4px 6px; font-size:9px; }
   .fleet-map-key-flow i { width:17px; height:17px; }
-  .fleet-map-key>small { font-size:8px; }
 }
 
 .fleet-geography .fleet-datacenter { border-color:#779de8; color:#2563eb; background:#f1f6ff; }
@@ -23,3 +21,5 @@
 .fleet-event-tag[data-kind='submission'] small { color:#5275ab; }
 .fleet-event-tag[data-kind='transfer'] { border-color:#69b7aa; color:#11786d; background:#f0faf6; }
 .fleet-event-tag[data-kind='transfer'] small { color:#4b8d7f; }
+
+.fleet-geography .fleet-node[data-state='complete'] .fleet-node-halo { background:#e5edf0; opacity:.55; }

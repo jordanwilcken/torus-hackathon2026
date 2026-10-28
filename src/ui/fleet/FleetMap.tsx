@@ -12,28 +12,27 @@ export type FleetSiteVisual = {
   activeJobs: number; queuedJobs: number; unknown?: boolean;
 };
 type Props = {
-  activityEpoch?: number; sites: FleetSiteVisual[]; transfers: readonly TransferObservation[]; playing: boolean;
+  activityEpoch?: number; sites: FleetSiteVisual[]; transfers: readonly TransferObservation[]; playing: boolean; completed?: boolean;
   admissions?: Array<{ jobId: string; homeLocation: string }>; onOrigin?: (id: string) => void;
   selected?: string; onInspect: (id: string) => void; onJob: (id: string) => void;
 };
-const color = (site: FleetSiteVisual) => site.unknown ? '#89969a' : site.availableGpus <= 0 ? '#d16f63'
+const color = (site: FleetSiteVisual, completed: boolean) => completed ? '#7c929c' : site.unknown ? '#89969a' : site.availableGpus <= 0 ? '#d16f63'
   : site.availableGpus < site.capacity / 2 ? '#d7af5e' : '#53ad83';
 
 export function FleetMapKey() {
   return <div className="fleet-map-key" role="group" aria-label="Modeled job flow">
       <div className="fleet-map-key-flow">
-        <span><i className="fleet-map-key-origin" aria-hidden="true">JOB</i>Simulated job origins</span>
+        <span><i className="fleet-map-key-origin" aria-hidden="true">JOB</i>Simulated jobs</span>
         <b aria-hidden="true">→</b>
-        <span><i className="fleet-map-key-compute" aria-hidden="true">▦</i>Compute sites · GPUs</span>
+        <span><i className="fleet-map-key-compute" aria-hidden="true">▦</i>Modeled compute</span>
         <b aria-hidden="true">→</b>
-        <span><i className="fleet-map-key-done" aria-hidden="true">✓</i>Completed work</span>
+        <span><i className="fleet-map-key-done" aria-hidden="true">✓</i>Results</span>
       </div>
-      <small>Synthetic jobs follow modeled energy + capacity: solar · grid · battery.</small>
     </div>;
 }
 
 /** One persistent geographic view. Camera changes never step or reconstruct the model. */
-export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob, admissions = [], onOrigin, activityEpoch = 0 }: Props) {
+export function FleetMap({ sites, transfers, playing, completed = false, selected, onInspect, onJob, admissions = [], onOrigin, activityEpoch = 0 }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const seen = useRef(new Set<string>());
@@ -54,9 +53,23 @@ export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(view);
+    let inspection: L.Tooltip | undefined;
+    const closeInspection = () => {
+      if (!inspection) return;
+      const previous = inspection; inspection = undefined;
+      view.closeTooltip(previous);
+      previous.getElement()?.remove();
+    };
+    const showInspection = (event: L.TooltipEvent) => {
+      if (!event.tooltip.options.className?.split(' ').includes('fleet-tooltip')) return;
+      if (inspection !== event.tooltip) closeInspection();
+      inspection = event.tooltip;
+    };
+    view.on('tooltipopen', showInspection);
+    view.on('movestart zoomstart', closeInspection);
     const resize = new ResizeObserver(() => view.invalidateSize({ pan: false }));
     resize.observe(container.current!);
-    return () => { resize.disconnect(); activity.current?.clear(); view.remove(); map.current = null; activity.current = null; };
+    return () => { resize.disconnect(); view.off('tooltipopen', showInspection); view.off('movestart zoomstart', closeInspection); closeInspection(); activity.current?.clear(); view.remove(); map.current = null; activity.current = null; };
   }, []);
   useEffect(() => {
     const layer = L.layerGroup().addTo(map.current!);
@@ -64,9 +77,9 @@ export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob
       if (!Number.isFinite(site.latitude) || !Number.isFinite(site.longitude)) continue;
       const element = document.createElement('button');
       element.className = 'fleet-node';
-      element.style.setProperty('--site-color', color(site));
+      element.style.setProperty('--site-color', color(site, completed));
       element.dataset.siteId = site.id;
-      element.dataset.state = site.unknown ? 'unknown' : site.activeJobs ? 'working' : site.availableGpus > 0 ? 'available' : 'constrained';
+      element.dataset.state = completed ? 'complete' : site.unknown ? 'unknown' : site.activeJobs ? 'working' : site.availableGpus > 0 ? 'available' : 'constrained';
       element.setAttribute('aria-label', `Inspect ${site.name}`);
       element.setAttribute('aria-pressed', String(selected === site.id));
       element.innerHTML = '<span class="fleet-node-halo"></span><span class="fleet-node-body"><span class="fleet-node-glyph">▦</span></span><span class="fleet-node-orbit"></span><span class="fleet-node-name"></span>';
@@ -77,18 +90,18 @@ export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob
       const tooltip = document.createElement('div');
       const name = document.createElement('strong'); name.textContent = site.name; tooltip.append(name);
       const purpose = document.createElement('div'); purpose.textContent = 'Modeled compute site · solar, grid and battery'; tooltip.append(purpose);
-      const line = document.createElement('div'); line.textContent = site.unknown ? 'GPU availability unknown · public inputs unavailable'
+      const line = document.createElement('div'); line.textContent = completed ? 'Model complete · inspect results' : site.unknown ? 'GPU availability unknown · public inputs unavailable'
         : `${site.availableGpus} / ${site.capacity} modeled GPUs open this hour · ${site.activeJobs} working`;
       tooltip.append(line);
-      const power = document.createElement('small'); power.textContent = site.unknown ? 'Connect public inputs to start'
+      const power = document.createElement('small'); power.textContent = completed ? 'Final modeled storage: ' + site.storedKWh.toFixed(2) + ' kWh' : site.unknown ? 'Connect public inputs to start'
         : `${site.solarKW.toFixed(2)} kW modeled solar · ${site.storedKWh.toFixed(2)} kWh stored`;
       tooltip.append(power);
-      marker.bindTooltip(tooltip, { direction: 'top', offset: [0, -22], className: 'fleet-tooltip' });
+      marker.bindTooltip(tooltip, { direction: 'top', offset: [0, -22], className: 'fleet-tooltip', interactive: false });
       element.addEventListener('focus', () => marker.openTooltip());
       element.addEventListener('blur', () => marker.closeTooltip());
     }
     return () => { layer.remove(); };
-  }, [sites, selected]);
+  }, [sites, selected, completed]);
   useEffect(() => {
     const view = map.current!;
     const layer = L.layerGroup().addTo(view);
@@ -107,7 +120,7 @@ export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob
       path?.setAttribute('role', 'button');
       path?.setAttribute('tabindex', '0');
       path?.setAttribute('aria-label', `Inspect transfer ${transfer.jobId} from ${from.name} to ${to.name}`);
-      line.bindTooltip(`${transfer.jobId} · ${from.name} → ${to.name} · Site move · modeled transfer`);
+      line.bindTooltip(`${transfer.jobId} · ${from.name} → ${to.name} · Site move · modeled transfer`, { className: 'fleet-tooltip', interactive: false });
       line.on('click', () => callbacks.current.onJob(transfer.jobId));
       path?.addEventListener('keydown', event => { if ((event as KeyboardEvent).key === 'Enter') callbacks.current.onJob(transfer.jobId); });
       if (!seen.current.has(transfer.id)) {
@@ -136,7 +149,7 @@ export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob
       const count = document.createElement('small'); count.textContent = admissions.filter(job => originForJob(job.jobId).id === source.id).length + ' simulated submissions · no operator workload feed';
       const citation = document.createElement('small'); citation.textContent = 'Location source: ' + new URL(source.sourceUrl).hostname; citation.title = source.sourceUrl;
       tooltip.append(title, purpose, count, citation);
-      marker.bindTooltip(tooltip, { direction: 'top', className: 'fleet-tooltip' });
+      marker.bindTooltip(tooltip, { direction: 'top', className: 'fleet-tooltip', interactive: false });
       element.addEventListener('focus', () => marker.openTooltip());
       element.addEventListener('blur', () => marker.closeTooltip());
     }
@@ -152,7 +165,7 @@ export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob
       const line = L.polyline(points, { color: '#2563eb', weight: 1.5, opacity: .3, dashArray: '3 6', className: 'fleet-admission' }).addTo(layer);
       line.getElement()?.setAttribute('data-job-id', admission.jobId);
       line.getElement()?.setAttribute('data-event-id', identity);
-      line.bindTooltip(`${admission.jobId} · New job · simulated submission from ${source.name}`);
+      line.bindTooltip(`${admission.jobId} · New job · simulated submission from ${source.name}`, { className: 'fleet-tooltip', interactive: false });
       line.on('click', () => callbacks.current.onJob(admission.jobId));
       if (!seen.current.has(identity)) {
         seen.current.add(identity);
@@ -169,6 +182,12 @@ export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob
   return <div className="fleet-geography compact-energy-map" data-playing={playing}>
     <div className="fleet-canvas" ref={container} role="region" aria-label="Continuous fleet map" />
     <div className="fleet-camera"><button onClick={() => zoom(false)}>Show US</button><button onClick={() => zoom(true)}>Explore Utah</button></div>
-    <div className="fleet-legend"><span><i style={{ background: '#53ad83' }} />Available compute</span><span><i style={{ background: '#d7af5e' }} />Limited</span><span><i style={{ background: '#d16f63' }} />No slot</span><span><i style={{ background: '#89969a' }} />Unknown</span><small className="fleet-activity-key"><span><i style={{ background: '#2563eb' }} />New job</span><span><i style={{ background: '#0d9488' }} />Site move</span><span><i style={{ background: '#4f9c68' }} />Completed work</span></small><small>Orbit = running job · modeled GPU availability<br />Site compute slots, not regional grid surplus.</small></div>
+    <div className="fleet-legend">
+      {completed ? <span><i style={{ background: '#7c929c' }} />Model complete · inspect results</span> : <>
+        <span><i style={{ background: '#53ad83' }} />Available compute</span><span><i style={{ background: '#d7af5e' }} />Limited</span>
+        <span><i style={{ background: '#d16f63' }} />No slot</span><span><i style={{ background: '#89969a' }} />Unknown</span>
+      </>}
+      <small className="fleet-activity-key"><span><i style={{ background: '#2563eb' }} />New job</span><span><i style={{ background: '#0d9488' }} />Site move</span></small>
+    </div>
   </div>;
 }

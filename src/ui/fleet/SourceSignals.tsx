@@ -23,10 +23,10 @@ export type SourceSignalsProps = {
   eia: FeedState<EiaApiSnapshot>;
   capture?: FleetCapture;
   now: number;
-  onRefresh: () => void;
+  onRefresh: () => void | Promise<unknown>;
 };
 const hour = 3_600_000;
-const formatNumber = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 8 });
+const formatNumber = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 2 });
 const utc = (value: string) => value.slice(0, 19).replace('T', ' ') + ' UTC';
 const interval = (window: TimeWindow) => `${utc(window.startAt)} – ${utc(window.endAt)}`;
 
@@ -48,7 +48,7 @@ function weatherReading(snapshot: SiteWeatherSnapshot | null, at: number): Readi
   return {
     value: value(point?.shortwaveRadiationWm2), window: point?.window,
     available: point?.shortwaveRadiationWm2 != null,
-    note: `${sites.length} city forecasts · preceding-hour average radiation`,
+    note: `Salt Lake City reference · ${sites.length} site forecasts · preceding-hour average radiation`,
     cities: ([['A', 'Salt Lake City'], ['B', 'Cedar City']] as const).map(([id, name]) => ({
       name, value: value(sites.find(item => item.locationId === id)?.intervals.find(item => item.window.startAt === point?.window.startAt)?.shortwaveRadiationWm2),
     })),
@@ -58,7 +58,7 @@ function weatherReading(snapshot: SiteWeatherSnapshot | null, at: number): Readi
 function marketReading(snapshot: CaisoSnapshot | null, at: number, pinnedPrice?: CaisoSnapshot['prices'][number]): Reading {
   const point = pinnedPrice ?? snapshot?.prices.filter(item => Date.parse(item.window.startAt) <= at)
     .toSorted((a, b) => a.window.startAt.localeCompare(b.window.startAt)).at(-1);
-  return { value: point ? `$${formatNumber(point.usdPerMWh)}/MWh` : 'Unavailable', window: point?.window,
+  return { value: point ? `${point.usdPerMWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/MWh` : 'Unavailable', window: point?.window,
     available: !!point, note: 'PACE reference · five-minute wholesale price, not a site tariff' };
 }
 
@@ -117,6 +117,8 @@ function DetailedGridEvidence({ eia, market, now }: Pick<SourceSignalsProps, 'ei
 /** Inspection only: subscriptions, refreshes and run capture belong to the caller. */
 export function SourceSignals({ weather, market, eia, capture, now, onRefresh }: SourceSignalsProps) {
   const [selected, setSelected] = useState<SourceId | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshResult, setRefreshResult] = useState('');
   const id = useId();
   const buttons = useRef<Partial<Record<SourceId, HTMLButtonElement | null>>>({});
   const pinnedWeather = capture?.runInputs.weather;
@@ -131,6 +133,12 @@ export function SourceSignals({ weather, market, eia, capture, now, onRefresh }:
     { id: 'eia', name: 'EIA', role: 'Observed', url: eia.snapshot?.sourceUrl ?? 'https://www.eia.gov/opendata/', feed: eia, reading: eiaReading(eia.snapshot, now) },
   ];
   const active = signals.find(signal => signal.id === selected);
+  async function refresh() {
+    setRefreshing(true); setRefreshResult('');
+    try { await onRefresh(); setRefreshResult('Refresh finished. Source status shown above.'); }
+    catch { setRefreshResult('Refresh failed. Retained readings remain visible.'); }
+    finally { setRefreshing(false); }
+  }
   function dismiss() {
     setSelected(null);
     if (selected) buttons.current[selected]?.focus();
@@ -141,11 +149,11 @@ export function SourceSignals({ weather, market, eia, capture, now, onRefresh }:
         const status = signalStatus(signal, now);
         return <button key={signal.id} ref={node => { buttons.current[signal.id] = node; }} type="button"
           className="source-signals-button" data-state={status.state} aria-label={`${signal.name} source`}
-          aria-expanded={selected === signal.id} aria-controls={`${id}-details`}
+          aria-expanded={selected === signal.id} aria-controls={`${id}-details`} title={`${signal.reading.note} · ${receivedAge(signal.feed.snapshot?.retrievedAt, now)}`}
           onClick={() => setSelected(value => value === signal.id ? null : signal.id)}>
           <span className="source-signals-name"><SourceIcon source={signal.id} />{signal.name}<i aria-hidden="true" /></span>
-          <span className="source-signals-value">{signal.reading.value}</span>
-          <span className="source-signals-status">{status.label}<span aria-hidden="true"> · </span>{receivedAge(signal.feed.snapshot?.retrievedAt, now)}</span>
+
+          <span className="source-signals-status">{status.state === 'ready' ? signal.id === 'weather' ? 'Site weather' : signal.id === 'market' ? 'Reference price' : 'Grid context' : status.label}</span>
         </button>;
       })}
     </div>
@@ -159,7 +167,8 @@ export function SourceSignals({ weather, market, eia, capture, now, onRefresh }:
       {active.pinned && <p className="source-signals-separation">{active.pinned.revision === active.feed.revision ? 'Latest revision matches this run.' : 'New readings do not change this run’s pinned inputs.'}</p>}
       {active.feed.error && <p className="source-signals-error">{active.feed.error}</p>}
       <footer><a href={active.url} aria-label={`${active.name} source`} target="_blank" rel="noreferrer" title={active.url}>{active.url}</a>
-        <button type="button" onClick={onRefresh}>Refresh inputs</button></footer>
+        <button type="button" aria-label="Refresh inputs" disabled={refreshing} onClick={() => void refresh()}>{refreshing ? 'Refreshing…' : 'Refresh inputs'}</button></footer>
+      {refreshResult && <p className="source-signals-note" role="status">{refreshResult}</p>}
       {active.id !== 'weather' && <DetailedGridEvidence key={active.id} eia={eia} market={market} now={now} />}
       {active.id === 'weather' && <WeatherHistory revision={weather.revision} />}
       <details className="source-signals-evidence"><summary>Full snapshot evidence</summary>

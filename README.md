@@ -1,5 +1,35 @@
 # Sunchaser
 
+**Run flexible compute when and where cleaner energy is available.** Sunchaser turns public weather and market inputs into a visible scheduling decision, then compares the same modeled work against running immediately. Click a city or job to see why it ran, waited or moved.
+
+**[Open the live demo](https://norman-conduct-locator-extensions.trycloudflare.com/)** · The demo link is served by the demo host while it is online.
+
+## A 90-second demo
+
+1. **0–20 seconds — Follow a job.** In **Fleet**, click a city to inspect its modeled capacity and energy. Click a job to see its destination, progress and scheduling reason. The source chips show the public inputs and their timestamps.
+2. **20–45 seconds — Compare the same work.** Open **Scenario lab**, choose **Wait for solar**, and press **Run comparison**. The comparison appears at the top: running immediately versus coordinated timing, with equal completed work and ending storage checked before showing a reduction.
+3. **45–70 seconds — Run actual CPU work.** Open **Run CPU**, choose demand analysis, and run it. The demo host evaluates the displayed public-input policy and returns actual process output and a saved receipt. A refusal or process failure remains visible.
+4. **70–90 seconds — Challenge the result.** In the lab choose **Forecast miss** and run the comparison again. A missed solar forecast can make coordination worse; negative results remain visible. In Fleet, **Disrupt** can pause the model and drop solar without rewriting its original forecast.
+
+## What is real, and what is modeled?
+
+| Part | What the demo actually does |
+| --- | --- |
+| Public inputs | Reads EIA PACE regional demand, CAISO PACE wholesale reference prices and site-coordinate Open-Meteo solar-radiation forecasts. Original intervals, retrieval times and unavailable states stay visible. |
+| Actual execution | Runs an allowlisted CPU workload on the demo host, saves its output and process receipt, and verifies its output hash. This is separate from the GPU fleet. |
+| Fleet model | Calculates GPU scheduling, hourly caps, transfers, solar conversion, storage and energy from declared assumptions. The six-city locations do not imply access to physical compute sites. |
+| Comparison lab | Executes two policies against declared synthetic inputs. Savings are modeled differences, not measured marginal emissions or utility-bill savings. EIA supplies no carbon series to this live path; carbon factors are displayed assumptions. |
+
+The captured CAISO value is a shared wholesale reference, not a local tariff for every city. Actual CPU energy and carbon measurements are unavailable. A savings claim requires the same completed work, horizon and per-site ending storage, including idle sites and transfer overhead.
+
+## Implemented engine
+
+- **Hourly capacity planning:** shared deadline-aware quotas, conditional future capacity, adaptive safety margin, soft damping and a visible degraded fallback. Hard energy and utility limits remain authoritative. Future coverage is a conservative scheduling estimate, not a reservation or completion guarantee.
+- **Move or stay:** assess the whole remaining job, require known net modeled carbon benefit and lower total posted cost including transfer, then request an explicit move. Arrival still requires a fresh destination allocation.
+- **Execution and evidence:** actual model ticks produce the displayed work, energy and transfer receipts. Frozen moments retain original inputs and can be retrieved and reconstructed exactly. The separate CPU path records real process execution.
+
+## Build and verification
+
 [![Build and score reporting](https://github.com/jordanwilcken/torus-hackathon2026/actions/workflows/requirements.yml/badge.svg?branch=main)](https://github.com/jordanwilcken/torus-hackathon2026/actions/workflows/requirements.yml?query=branch%3Amain)
 
 <!-- scorecard:start -->
@@ -14,10 +44,7 @@ progress by area and every requirement's result. The download includes the
 scorecard and exact rubric. The badge above shows build/reporting health,
 not the rubric score.
 
-Independent hackathon project built with TypeScript, React and Vite. Sunchaser is not affiliated with, sponsored by, endorsed by, or partnered with Torus. The map, energy
-timeline and job stream display supplied observations; reporting aggregates fleet
-meters, work and transfers into comparable carbon and cost summaries. The real
-planner, scheduler and executor remain separate implementation work.
+Independent hackathon project built with TypeScript, React and Vite. Sunchaser is not affiliated with, sponsored by, endorsed by, or partnered with Torus.
 
 Use Node **24.19.0** and npm **11.20.0**:
 
@@ -33,16 +60,11 @@ npm run dev
 `.reports/score.json`, and returns failure while requirements remain red.
 It keeps runner errors, unimplemented drivers, skipped and missing cases distinct.
 
-## Work from red to green
+## Development boundaries
 
-- Implement application components and bind `test/driver/torus.ts` to their real
-  public APIs. Keep checks in `test/dsl/`; a driver must not contain its own
-  scheduler, carbon calculation or expected answers.
-- Continue connecting `test/userflows/compute-flow.ts` to the real UI. Stale-site and recorded-report checks use implemented components. Scheduling/execution flows
-  remain enabled and fail until their components are implemented. They do not prescribe
-  a product layout. `BOOT-01` only proves React/Vite launches.
-- Keep application logic in ordinary TypeScript components and preserve their
-  public contracts.
+- `test/driver/torus.ts` binds the existing scheduling and reporting requirements to production ledgers, pricing, routing and execution. Keep checks in `test/dsl/`; drivers do not calculate expected results.
+- `test/userflows/compute-flow.ts` drives the real job builder and reporting components in a declared-input test lab. The normal Fleet and Scenario lab have separate browser coverage. `BOOT-01` only proves React/Vite launches.
+- Keep application logic in ordinary TypeScript components and preserve their public contracts.
 
 With the dev server running, `/test/userflows/legacy/index.html?scenario=stale-site` exercises current/stale map readings. `/test/userflows/legacy/index.html?scenario=recorded-comparison` feeds labeled raw simulation records through the real aggregator, observers and UI. It does not execute jobs.
 
@@ -69,8 +91,7 @@ rerun preserves earlier evidence. Both are retained for 14 days.
 Requirement failures are advisory: they remain **RED** in the scorecard and earn
 zero points, while the reporting workflow can succeed. Build, tooling, browser
 setup and invalid/missing score evidence still fail CI. An unavailable score is
-shown as **unavailable**, never as a measured zero. No PR flow, deployment, hooks
-or required checks are configured.
+shown as **unavailable**, never as a measured zero. CI also includes a mandatory working-demo flow gate; rubric points do not replace that evidence.
 
 `rubric.json` fixes 100 internal points under the literal bounty capabilities:
 
@@ -121,9 +142,9 @@ With the pinned Node/npm versions, copy `.env.example` to `.env.local` and set `
 
 The page polls these independent server caches each minute. Failed refreshes preserve the original reading and retrieval timestamps, expose the failure, and back off (including Retry-After). No Fake values replace an unavailable live feed. Each successful collection is saved before publication. On restart, the server restores the last verified snapshot and attempts a live refresh; a failed refresh leaves the saved revision visibly stale. Public source values and UTC validity intervals stay distinct from retrieval time. EIA demand is delayed; generation/interchange generally arrive later. This API connection has no carbon series: the existing workbook adapter remains the separate source for delayed carbon history.
 
-`ApiRegionalGrid` implements the existing synchronous `RegionalGrid.read` contract over a normalized EIA snapshot. The visible live-input panel consumes that provider. The existing illustrative map/job preview remains explicitly simulated; the real local CPU execution panel below it has a separate, explicit dispatch policy. A static `dist/` upload alone cannot serve the APIs: deployment must retain the server routes and server environment secret.
+`ApiRegionalGrid` implements the existing synchronous `RegionalGrid.read` contract over a normalized EIA snapshot. The visible live-input panel consumes that provider. The Fleet view runs the labeled public-input model; Run CPU has a separate, explicit admission policy. A static `dist/` upload alone cannot serve the APIs: deployment must retain the server routes and server environment secret.
 
-Browser CI uses an owned server seeded from sanitized real public captures, with their original timestamps and an explicit historical evaluation time. Provider parsers, revision archives, the actual application, local policy, child process and durable job store all run. No EIA credential or live upstream request is needed. Live connectivity and a current-data run are checked separately. LIVE-01 is reported outside the unchanged 100-point readiness rubric and now verifies the local CPU execution chain with a separately labeled storage model; the other unfinished GPU/map requirements remain visible.
+Browser CI uses an owned server seeded from sanitized real public captures, with their original timestamps and an explicit historical evaluation time. Provider parsers, revision archives, the actual application, local policy, child process and durable job store all run. No EIA credential or live upstream request is needed. Live connectivity and a current-data run are checked separately. LIVE-01 is reported outside the unchanged 100-point readiness rubric and now verifies the local CPU execution chain with a separately labeled storage model; GPU scheduling and map behavior have separate requirement and browser checks.
 
 ### Consume the live feeds
 
@@ -197,15 +218,15 @@ New collections update the current publication by saving a new immutable revisio
 
 ### Real local jobs and saved results
 
-The **Run real work on this computer** panel captures the displayed EIA and CAISO revision IDs, evaluates an explicit policy, and runs an allowlisted Node child process only when admitted. It offers a demand-statistics workload using the captured EIA observations and an integer-sum workload. Change the demand or wholesale-price threshold to observe a genuine run-versus-wait decision using the same data. The policy also checks original observation and retrieval ages and the availability of its single owned worker.
+The **Run CPU** panel captures the displayed EIA and CAISO revision IDs, evaluates an explicit policy, and runs an allowlisted Node child process only when admitted. It offers a demand-statistics workload using the captured EIA observations and an integer-sum workload. Choose the Normal or Hold operator policy to observe a genuine run-versus-wait decision using the same data. The policy also checks original observation and retrieval ages and the availability of its single owned worker.
 
-The reference region is PACE. The actual worker is this computer; its physical grid region is unverified. This CPU admission policy does not reinterpret the existing GPU chooser's units, claim Utah GPU execution, infer site capacity from regional demand, or invent carbon intensity. The existing GPU/map simulation remains labeled separately.
+The reference region is PACE. The actual worker is the demo execution host; its physical grid region is unverified. This CPU admission policy does not reinterpret the existing GPU chooser's units, claim Utah GPU execution, infer site capacity from regional demand, or invent carbon intensity. The existing GPU/map simulation remains labeled separately.
 
 `JobRunStore<T>` in `src/server/jobs/JobRunStore.type.ts` provides `create`, `read`, and version-checked `update`. The shipped SQLite adapter uses Node 24's built-in database module; no external database service or new package is required. `JOB_RUN_DIRECTORY` selects its directory (default `.cache/jobs`). Server assembly chooses this adapter, just as it chooses `SnapshotStore` implementations. A replacement must preserve durable create, atomic version checks, and independent returned values.
 
 The application records the request, pinned input revisions and decision before launch, then records real process events, exit status and the output SHA-256. Reloading `?run=<request-id>` retrieves the stored receipt. Repeating an identical request ID returns the same run; a changed payload cannot replace it. A persisted in-flight run after restart becomes interrupted and is never silently executed again. Failed workers and failed durable writes cannot become successful results.
 
-Run one application server per job directory. Worker ownership is local to that server; concurrent dev/preview servers must use distinct `JOB_RUN_DIRECTORY` values. The current endpoint is intended for the local application, not an unauthenticated public execution service. It accepts fixed structured workloads, never arbitrary code, shell commands or filesystem paths; workers receive no inherited EIA key or application secrets.
+Run one application server per job directory. Worker ownership is local to that server; concurrent dev/preview servers must use distinct `JOB_RUN_DIRECTORY` values. Public hosting must keep the controlled execution boundary and server-side secrets. It accepts fixed structured workloads, never arbitrary code, shell commands or filesystem paths; workers receive no inherited EIA key or application secrets.
 
 The storage comparison is a hypothetical energy-cycle estimate: both cases deliver the same assumed compute energy, and the battery case requires `energy / round-trip efficiency` while restoring its initial inventory. It uses the captured wholesale reference price for both cases, preserves negative differences, and labels the changed dispatch and sufficient-capacity assumptions. It is not the GPU routing comparison or a measured electricity bill. Actual energy, carbon and electricity cost stay unknown.
 
