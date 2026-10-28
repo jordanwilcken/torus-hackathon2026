@@ -1,0 +1,12 @@
+{
+  "name": "math-formula-proof",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "node generate.mjs",
+    "test": "node generate.mjs && node --test generate.test.ts"
+  },
+  "devDependencies": {
+    "@cortex-js/compute-engine": "0.171.0"
+  }
+}
