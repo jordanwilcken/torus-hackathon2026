@@ -146,6 +146,8 @@ export class FleetFlow {
   }
 
   async expectJobState(id: string, state: string): Promise<void> {
+    if (!await this.panel.getByRole('button', { name: 'Inspect ' + id, exact: true }).isVisible())
+      await this.panel.locator('summary').filter({ hasText: 'Inspect jobs' }).click();
     const job = this.panel.getByRole('button', { name: 'Inspect ' + id, exact: true });
     await expect(job).toHaveAttribute('data-job-state', state);
     await job.click();
@@ -171,6 +173,8 @@ export class FleetFlow {
   }
 
   async expectJobChoice(id: string, home: string, current: string, acceptedAt: string): Promise<void> {
+    if (!await this.panel.getByRole('button', { name: 'Inspect ' + id, exact: true }).isVisible())
+      await this.panel.locator('summary').filter({ hasText: 'Inspect jobs' }).click();
     await this.panel.getByRole('button', { name: 'Inspect ' + id, exact: true }).click();
     const detail = this.panel.getByRole('region', { name: 'Job activity', exact: true });
     await expect(detail).toContainText('ASSIGNED HOME QUEUE' + home);
@@ -195,6 +199,8 @@ export class FleetFlow {
   }
 
   async expectAdmissionOnMap(jobId: string): Promise<void> {
+    const history = this.panel.getByRole('button', { name: 'Show route history', exact: true });
+    if (await history.getAttribute('aria-pressed') !== 'true') await history.click();
     const route = this.panel.locator('path.fleet-admission[data-event-id=' + JSON.stringify('admission:' + jobId) + ']');
     await expect(route).toBeVisible();
     await expect(route).toHaveAttribute('data-job-id', jobId);

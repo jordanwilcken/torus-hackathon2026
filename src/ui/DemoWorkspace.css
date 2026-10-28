@@ -14,3 +14,21 @@
 .demo-workspace[data-inline-tools] .workspace-drawer[open] { display:flex; flex-direction:column; }
 .demo-workspace[data-inline-tools] .workspace-dismiss { position:static; align-self:flex-end; flex-shrink:0; margin:10px 12px 0; }
 .demo-workspace[data-inline-tools] .workspace-drawer-content { flex:1; min-height:0; overflow:auto; padding:12px 14px 20px; }
+
+/* The map is primary; optional proofs remain reachable without taking over the navigation. */
+.workspace-header { position:relative; z-index:900; }
+.workspace-more { position:relative; }
+.workspace-more>summary { display:flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:9px 12px; border:1px solid #d8e3dc; border-radius:8px; color:#526e5e; background:#f8faf7; font-size:11px; list-style:none; cursor:pointer; white-space:nowrap; }
+.workspace-more>summary::-webkit-details-marker { display:none; }
+.workspace-more>summary::after { content:"⌄"; font-size:13px; }
+.workspace-more[open]>summary, .workspace-more>summary:hover { background:#e5eee7; color:#244f3d; }
+.workspace-more>summary[data-active] { border-color:#719984; }
+.workspace-more>summary:focus-visible, .workspace-more-panel a:focus-visible { outline:3px solid #80b99b; outline-offset:3px; }
+.workspace-more-panel { position:absolute; top:calc(100% + 8px); right:0; width:min(300px,calc(100vw - 20px)); padding:8px; background:#fff; border:1px solid #d8e3dc; border-radius:12px; box-shadow:0 12px 35px #20382c25; }
+.workspace-more-panel>p { margin:4px 10px 7px; color:#7d8c82; font-size:10px; text-transform:uppercase; letter-spacing:.06em; }
+.workspace-tools .workspace-more-panel a { display:grid; gap:4px; min-height:62px; padding:12px 10px; text-align:left; white-space:normal; }
+.workspace-tools .workspace-more-panel a>span { margin-left:0; }
+.workspace-more-title { font-size:12px; font-weight:650; }
+.workspace-more-panel small { color:#6c7d72; font-size:11px; line-height:1.45; }
+.workspace-more-panel a[aria-current="page"] small { color:#d8e8dd; }
+@media(max-width:760px) { .workspace-tools>a { min-height:44px; display:flex; align-items:center; justify-content:center; }.workspace-more { margin-left:auto; }.workspace-more>summary { min-width:116px; }.workspace-more-panel .workspace-real { display:inline; } }

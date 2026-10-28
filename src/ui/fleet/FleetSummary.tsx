@@ -21,19 +21,27 @@ export function FleetSummary({ progress }: { progress: ReplayProgress }) {
     <div className="fleet-summary-main">
       <div className="fleet-carbon-outcome" data-outcome={outcome.status} data-tone={outcome.tone} data-reduction-kg={outcome.reductionKg ?? undefined}>
         <p className="fleet-summary-eyebrow">ESTIMATED CARBON · ASSUMED FACTORS</p>
-        <h3>{outcome.headline}{outcome.percent !== null && <span className="fleet-carbon-percent">{outcome.percent}% {outcome.reductionKg === 0 ? 'change' : outcome.tone === 'lower' ? 'less' : 'more'}</span>}</h3>
-        <p className="fleet-carbon-totals">Baseline <strong>{outcome.baselineLabel}</strong><span>·</span>Scheduled <strong>{outcome.selectedLabel}</strong></p>
+        <h3>{outcome.headline}</h3>
         <p className="fleet-carbon-qualification">{outcome.detail}</p>
       </div>
       <div className="fleet-summary-work">
-        <h3 title={gpuHour}>Work completed</h3>
-        <p className="fleet-summary-value"><strong>{format.format(work.completedGpuH)}</strong><span>/ {format.format(work.totalGpuH)} <abbr title={gpuHour}>GPU·h</abbr></span></p>
-        <progress aria-label="Modeled GPU work completed" max={100} value={workPercent} />
-        <p className="fleet-summary-detail">{completedJobs} of {progress.scenario.jobs.length} jobs · {Math.round(workPercent)}% completed</p>
+        <p className="fleet-summary-jobs"><strong>{completedJobs}/{progress.scenario.jobs.length}</strong><span>jobs complete</span></p>
+        <progress aria-label="Modeled GPU work completed" aria-valuetext={Math.round(workPercent) + '% of modeled GPU work completed'} title={Math.round(workPercent) + '% of modeled GPU work completed. ' + gpuHour} max={100} value={workPercent} />
       </div>
     </div>
     <details className="fleet-energy-details">
       <summary>Energy details</summary>
+      <div className="fleet-comparison-readings">
+        <div>
+          <p className="fleet-carbon-totals">Baseline <strong>{outcome.baselineLabel}</strong><span>·</span>Scheduled <strong>{outcome.selectedLabel}</strong></p>
+          {outcome.percent !== null && <p className="fleet-carbon-percent">{outcome.percent}% {outcome.reductionKg === 0 ? 'change' : outcome.tone === 'lower' ? 'less' : 'more'} carbon</p>}
+        </div>
+        <div>
+          <h3 title={gpuHour}>Work completed</h3>
+          <p className="fleet-summary-value"><strong>{format.format(work.completedGpuH)}</strong><span>/ {format.format(work.totalGpuH)} <abbr title={gpuHour}>GPU·h</abbr></span></p>
+          <p className="fleet-summary-detail">{Math.round(workPercent)}% of modeled GPU work completed</p>
+        </div>
+      </div>
       <div className="fleet-energy-readings">
         <article>
           <h3>Energy supplied</h3>

@@ -1,12 +1,20 @@
 import { expect, test, type Page } from '@playwright/test';
 import { FleetFlow } from '../fleet/fleet-flow';
 import { LiveExecutionFlow } from '../execution/live-execution-flow';
+import { moreTools, openWorkspaceTool } from '../workspace-navigation';
 
 async function expectNavigationInViewport(page: Page) {
   const navigation = page.getByRole('navigation', { name: 'Demo flow', exact: true });
-  for (const name of ['Live fleet', 'Run CPU work', 'Compare scheduling']) {
+  await expect(navigation.getByRole('link', { name: 'Live fleet', exact: true })).toBeInViewport();
+  await expect(moreTools(page)).toBeInViewport();
+  for (const name of ['Run CPU work', 'Compare scheduling']) {
+    await expect(navigation.getByRole('link', { name, exact: true, includeHidden: true })).toBeHidden();
+  }
+  await moreTools(page).click();
+  for (const name of ['Run CPU work', 'Compare scheduling']) {
     await expect(navigation.getByRole('link', { name, exact: true })).toBeInViewport();
   }
+  await moreTools(page).click();
 }
 
 async function expectCpuBelowHeader(page: Page) {
@@ -26,14 +34,12 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }
       await fleet.open();
       await fleet.pause();
       const originalHour = await fleet.modelHour();
-      const cpuLink = page.getByRole('link', { name: 'Run CPU work', exact: true });
       const fleetLink = page.getByRole('link', { name: 'Live fleet', exact: true });
-      const labLink = page.getByRole('link', { name: 'Compare scheduling', exact: true });
       const cpu = page.getByRole('dialog', { name: 'Run CPU work', exact: true });
       const workload = cpu.getByRole('combobox', { name: 'Workload', exact: true });
       const values = cpu.getByLabel('Integer values', { exact: true });
 
-      await cpuLink.click();
+      await openWorkspaceTool(page, 'Run CPU work');
       await expect(cpu).toBeVisible();
       await expectNavigationInViewport(page);
       await expectCpuBelowHeader(page);
@@ -45,14 +51,14 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }
       await expect(cpu).toBeHidden();
       await expect(page.getByRole('region', { name: 'Live input fleet', exact: true })).toBeVisible();
       expect(await fleet.modelHour()).toBe(originalHour);
-      await cpuLink.click();
+      await openWorkspaceTool(page, 'Run CPU work');
       await expect(workload).toHaveValue('integer-sum');
       await expect(values).toHaveValue('12, -4, 19');
 
-      await labLink.click();
+      await openWorkspaceTool(page, 'Compare scheduling');
       await expect(cpu).toBeHidden();
       await expect(page.getByRole('region', { name: 'Paired replay', exact: true })).toBeVisible();
-      await cpuLink.click();
+      await openWorkspaceTool(page, 'Run CPU work');
       await expect(workload).toHaveValue('integer-sum');
       await expect(values).toHaveValue('12, -4, 19');
 
@@ -66,17 +72,17 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }
       await expect(cpu).toBeHidden();
       expect(await fleet.modelHour()).toBe(originalHour);
 
-      await cpuLink.click();
+      await openWorkspaceTool(page, 'Run CPU work');
       await values.focus();
       await page.keyboard.press('Escape');
       await expect(cpu).toBeHidden();
-      await expect(cpuLink).toBeFocused();
-      await cpuLink.click();
+      await expect(moreTools(page)).toBeFocused();
+      await openWorkspaceTool(page, 'Run CPU work');
       await expect(workload).toHaveValue('integer-sum');
       await expect(values).toHaveValue('12, -4, 19');
       await cpu.getByRole('button', { name: 'Close tool', exact: true }).click();
       await expect(cpu).toBeHidden();
-      await expect(cpuLink).toBeFocused();
+      await expect(moreTools(page)).toBeFocused();
     });
   });
 }
@@ -109,7 +115,7 @@ test.describe('a saved CPU URL on a phone', () => {
     await fleet.pause();
     await fleet.step();
     const saved = await fleet.saveFrozenMoment();
-    await page.getByRole('link', { name: 'Run CPU work', exact: true }).click();
+    await openWorkspaceTool(page, 'Run CPU work');
     const worker = page.getByRole('dialog', { name: 'Run CPU work', exact: true });
     await expect(worker.getByRole('button', { name: 'Run locally', exact: true })).toBeEnabled();
 
@@ -140,11 +146,11 @@ test.describe('a saved CPU URL on a phone', () => {
     await fleet.showGeography('Explore Utah');
     const utah = await fleetMarkerPositions(page);
     expect(utah.filter(marker => marker.inside).map(marker => marker.id)).toEqual(['A', 'B']);
-    await page.getByRole('link', { name: 'Run CPU work', exact: true }).click();
+    await openWorkspaceTool(page, 'Run CPU work');
     await expect(worker).toBeVisible();
     await page.getByRole('link', { name: 'Live fleet', exact: true }).click();
     await expect.poll(() => fleetMarkerPositions(page)).toEqual(utah);
-    await page.getByRole('link', { name: 'Compare scheduling', exact: true }).click();
+    await openWorkspaceTool(page, 'Compare scheduling');
     await expect(page.getByRole('region', { name: 'Paired replay', exact: true })).toBeVisible();
     await page.getByRole('link', { name: 'Live fleet', exact: true }).click();
     await expect.poll(() => fleetMarkerPositions(page)).toEqual(utah);

@@ -14,7 +14,8 @@ export function DemoWorkspace({ grid }: { grid: PublicGridClient }) {
   const [labOpened, setLabOpened] = useState(initialLab);
   const [tool, setTool] = useState<Tool>(() => new URLSearchParams(location.search).has('run') ? 'Run CPU work' : null);
   const dialog = useRef<HTMLDialogElement>(null);
-  const cpuLink = useRef<HTMLAnchorElement>(null);
+  const toolsMenu = useRef<HTMLDetailsElement>(null);
+  const toolsSummary = useRef<HTMLElement>(null);
   const [inlineTool, setInlineTool] = useState(() => matchMedia(inlineToolQuery).matches);
   useEffect(() => {
     const media = matchMedia(inlineToolQuery);
@@ -31,18 +32,46 @@ export function DemoWorkspace({ grid }: { grid: PublicGridClient }) {
       else panel.showModal();
     }
   }, [tool, inlineTool]);
+  useEffect(() => {
+    function closeOutside(event: PointerEvent) {
+      if (event.target instanceof Node && !toolsMenu.current?.contains(event.target))
+        toolsMenu.current?.removeAttribute("open");
+    }
+    document.addEventListener("pointerdown", closeOutside);
+    return () => document.removeEventListener("pointerdown", closeOutside);
+  }, []);
+  function closeTools() {
+    toolsMenu.current?.removeAttribute("open");
+    toolsSummary.current?.focus({ preventScroll: true });
+  }
   function closeTool() {
     dialog.current?.close();
     setTool(null);
-    cpuLink.current?.focus({ preventScroll: true });
+    toolsSummary.current?.focus({ preventScroll: true });
   }
   return <main className="demo-workspace" data-inline-tools={inlineTool || undefined} data-tool-open={Boolean(tool) || undefined}>
     <header className="workspace-header">
       <div className="workspace-brand"><h1>Sunchaser</h1><span>Compute follows energy</span></div>
       <nav aria-label="Demo flow" className="workspace-tools">
-        <a href="#fleet" aria-label="Live fleet" aria-current={!lab && !tool ? 'page' : undefined} onClick={event => { event.preventDefault(); setFleetOpened(true); setLab(false); setTool(null); }}>Fleet</a>
-        <a ref={cpuLink} href="#actual-work" aria-label="Run CPU work" aria-current={tool ? 'page' : undefined} onClick={event => { event.preventDefault(); setTool('Run CPU work'); }}>Run CPU <span className="workspace-real">REAL</span></a>
-        <a href="#modeled-comparison" aria-label="Compare scheduling" aria-current={lab && !tool ? 'page' : undefined} onClick={event => { event.preventDefault(); setLabOpened(true); setLab(true); setTool(null); }}>Scenario lab</a>
+        <a href="#fleet" aria-label="Live fleet" aria-current={!lab && !tool ? 'page' : undefined} onClick={event => {
+          event.preventDefault(); toolsMenu.current?.removeAttribute("open"); setFleetOpened(true); setLab(false); setTool(null);
+        }}>Fleet</a>
+        <details ref={toolsMenu} className="workspace-more" onKeyDown={event => {
+          if (event.key === "Escape") { event.preventDefault(); closeTools(); }
+        }}>
+          <summary ref={toolsSummary} data-active={lab || Boolean(tool) || undefined}>More tools</summary>
+          <div className="workspace-more-panel">
+            <p>Optional tools</p>
+            <a href="#actual-work" aria-label="Run CPU work" aria-current={tool ? 'page' : undefined} onClick={event => {
+              event.preventDefault(); closeTools(); setTool('Run CPU work');
+            }}><span className="workspace-more-title">Run CPU <span className="workspace-real">REAL</span></span>
+              <small>Proof of an actual task running on the demo host.</small></a>
+            <a href="#modeled-comparison" aria-label="Compare scheduling" aria-current={lab && !tool ? 'page' : undefined} onClick={event => {
+              event.preventDefault(); closeTools(); setLabOpened(true); setLab(true); setTool(null);
+            }}><span className="workspace-more-title">Scenario lab</span>
+              <small>Compare scheduling with declared modeled inputs.</small></a>
+          </div>
+        </details>
       </nav>
     </header>
     {fleetOpened && <div id="fleet" hidden={lab || Boolean(inlineTool && tool)}><LiveFleet grid={grid} /></div>}

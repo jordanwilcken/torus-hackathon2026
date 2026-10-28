@@ -174,8 +174,8 @@ export function SourceSignals({ weather, market, eia, capture, now, onRefresh }:
           onClick={() => setSelected(value => value === signal.id ? null : signal.id)}>
           <span className="source-signals-name"><SourceIcon source={signal.id} />{signal.name}<i aria-hidden="true" /></span>
 
-          <span className="source-signals-status">{signal.id === 'weather' ? 'Forecast' : signal.id === 'market' ? 'Reference price' : 'Grid demand'} · {sourceAge(signal, now)}</span>
-          <span className="source-signals-cadence">{status.state !== 'ready' && <b>{status.label} · </b>}{status.state === 'saved' ? 'No refresh scheduled' : '↻ Collect ~' + minutes(signal.id) + 'm'}</span>
+          <span className="source-signals-status">{sourceAge(signal, now)}</span>
+          {status.state !== 'ready' && <span className="source-signals-cadence"><b>{status.label}</b></span>}
         </button>;
       })}
     </div>

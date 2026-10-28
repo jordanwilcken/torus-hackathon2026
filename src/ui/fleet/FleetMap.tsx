@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './FleetMap.css';
@@ -15,7 +15,7 @@ export type FleetSiteVisual = FleetCapacity & {
 type Props = {
   activityEpoch?: number; sites: FleetSiteVisual[]; transfers: readonly TransferObservation[]; playing: boolean; completed?: boolean;
   admissions?: Array<{ jobId: string; homeLocation: string }>; onOrigin?: (id: string) => void;
-  selected?: string; onInspect: (id: string) => void; onJob: (id: string) => void;
+  selected?: string; selectedJob?: string; onInspect: (id: string) => void; onJob: (id: string) => void;
 };
 const color = (site: FleetSiteVisual, completed: boolean) => completed ? '#7c929c' : site.capacityState === 'unknown' ? '#89969a'
   : site.capacityState === 'allocated' ? '#7298b5' : site.capacityState === 'constrained' ? '#d16f63'
@@ -45,14 +45,14 @@ export function FleetMapKey() {
         <span><i className="fleet-map-key-origin" aria-hidden="true"><MapGlyph kind="packet" /></i>Simulated jobs</span>
         <b aria-hidden="true">→</b>
         <span><i className="fleet-map-key-compute" aria-hidden="true"><MapGlyph kind="compute" /></i>Modeled compute</span>
-        <b aria-hidden="true">→</b>
-        <span><i className="fleet-map-key-done" aria-hidden="true">✓</i>Results</span>
+
       </div>
     </div>;
 }
 
 /** One persistent geographic view. Camera changes never step or reconstruct the model. */
-export function FleetMap({ sites, transfers, playing, completed = false, selected, onInspect, onJob, admissions = [], onOrigin, activityEpoch = 0 }: Props) {
+export function FleetMap({ sites, transfers, playing, completed = false, selected, selectedJob, onInspect, onJob, admissions = [], onOrigin, activityEpoch = 0 }: Props) {
+  const [routeHistory, setRouteHistory] = useState(false);
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const seen = useRef(new Set<string>());
@@ -148,7 +148,7 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
   useEffect(() => {
     const view = map.current!;
     const layer = L.layerGroup().addTo(view);
-    for (const transfer of transfers.slice(-10)) {
+    for (const [index, transfer] of transfers.entries()) {
       const from = sites.find(site => site.id === transfer.fromLocation), to = sites.find(site => site.id === transfer.toLocation);
       if (!from || !to) continue;
       const points: L.LatLngTuple[] = Array.from({ length: 33 }, (_, index) => {
@@ -156,16 +156,19 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
         return [from.latitude + (to.latitude - from.latitude) * t + Math.sin(t * Math.PI) * Math.abs(to.longitude - from.longitude) * .14,
           from.longitude + (to.longitude - from.longitude) * t];
       });
-      const line = L.polyline(points, { color: '#0d9488', weight: 2, opacity: .42, className: 'fleet-route' }).addTo(layer);
-      const path = line.getElement();
-      path?.setAttribute('data-job-id', transfer.jobId);
-      path?.setAttribute('data-transfer-id', transfer.id);
-      path?.setAttribute('role', 'button');
-      path?.setAttribute('tabindex', '0');
-      path?.setAttribute('aria-label', `Inspect transfer ${transfer.jobId} from ${from.name} to ${to.name}`);
-      line.bindTooltip(`${transfer.jobId} · ${from.name} → ${to.name} · Site move · modeled transfer`, { className: 'fleet-tooltip', interactive: false });
-      line.on('click', () => callbacks.current.onJob(transfer.jobId));
-      path?.addEventListener('keydown', event => { if ((event as KeyboardEvent).key === 'Enter') callbacks.current.onJob(transfer.jobId); });
+      // Static route density never limits the real event announcements below.
+      if (transfer.jobId === selectedJob || index >= transfers.length - (routeHistory ? 10 : 1)) {
+        const line = L.polyline(points, { color: '#0d9488', weight: 2, opacity: .42, className: 'fleet-route' }).addTo(layer);
+        const path = line.getElement();
+        path?.setAttribute('data-job-id', transfer.jobId);
+        path?.setAttribute('data-transfer-id', transfer.id);
+        path?.setAttribute('role', 'button');
+        path?.setAttribute('tabindex', '0');
+        path?.setAttribute('aria-label', `Inspect transfer ${transfer.jobId} from ${from.name} to ${to.name}`);
+        line.bindTooltip(`${transfer.jobId} · ${from.name} → ${to.name} · Site move · modeled transfer`, { className: 'fleet-tooltip', interactive: false });
+        line.on('click', () => callbacks.current.onJob(transfer.jobId));
+        path?.addEventListener('keydown', event => { if ((event as KeyboardEvent).key === 'Enter') callbacks.current.onJob(transfer.jobId); });
+      }
       if (!seen.current.has(transfer.id)) {
         seen.current.add(transfer.id);
         activity.current?.show({ id: transfer.id, jobId: transfer.jobId, kind: 'transfer', route: points,
@@ -174,7 +177,7 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
       }
     }
     return () => { layer.remove(); };
-  }, [transfers, activityEpoch]);
+  }, [transfers, activityEpoch, routeHistory, selectedJob]);
   useEffect(() => {
     const view = map.current!;
     const layer = L.layerGroup().addTo(view);
@@ -197,7 +200,7 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
       element.addEventListener('focus', () => marker.openTooltip());
       element.addEventListener('blur', () => marker.closeTooltip());
     }
-    for (const admission of admissions.slice(-6)) {
+    for (const [index, admission] of admissions.entries()) {
       const source = originForJob(admission.jobId), destination = sites.find(site => site.id === admission.homeLocation);
       if (!destination) continue;
       const points: L.LatLngTuple[] = Array.from({ length: 25 }, (_, index) => {
@@ -206,11 +209,13 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
           source.longitude + (destination.longitude - source.longitude) * t];
       });
       const identity = `admission:${admission.jobId}`;
-      const line = L.polyline(points, { color: '#2563eb', weight: 1.5, opacity: .3, dashArray: '3 6', className: 'fleet-admission' }).addTo(layer);
-      line.getElement()?.setAttribute('data-job-id', admission.jobId);
-      line.getElement()?.setAttribute('data-event-id', identity);
-      line.bindTooltip(`${admission.jobId} · New job · simulated submission from ${source.name} to assigned home queue ${destination.name}`, { className: 'fleet-tooltip', interactive: false });
-      line.on('click', () => callbacks.current.onJob(admission.jobId));
+      if (admission.jobId === selectedJob || index >= admissions.length - (routeHistory ? 6 : 2)) {
+        const line = L.polyline(points, { color: '#2563eb', weight: 1.5, opacity: .3, dashArray: '3 6', className: 'fleet-admission' }).addTo(layer);
+        line.getElement()?.setAttribute('data-job-id', admission.jobId);
+        line.getElement()?.setAttribute('data-event-id', identity);
+        line.bindTooltip(`${admission.jobId} · New job · simulated submission from ${source.name} to assigned home queue ${destination.name}`, { className: 'fleet-tooltip', interactive: false });
+        line.on('click', () => callbacks.current.onJob(admission.jobId));
+      }
       if (!seen.current.has(identity)) {
         seen.current.add(identity);
         activity.current?.show({ id: identity, jobId: admission.jobId, kind: 'submission', route: points,
@@ -219,14 +224,15 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
       }
     }
     return () => { layer.remove(); };
-  }, [admissions, activityEpoch]);
+  }, [admissions, activityEpoch, routeHistory, selectedJob]);
   function zoom(utah: boolean) {
     map.current?.fitBounds(utah ? [[36.8, -114.4], [41.6, -110.5]] : [[25, -125], [49, -67]], { padding: [40, 55], animate: false });
   }
   return <div className="fleet-geography compact-energy-map" data-playing={playing}>
     <div className="fleet-canvas" ref={container} role="region" aria-label="Continuous fleet map" />
-    <div className="fleet-camera"><button onClick={() => zoom(false)}>Show US</button><button onClick={() => zoom(true)}>Explore Utah</button></div>
-    <div className="fleet-legend"><strong className="fleet-legend-title">Energy-supported GPU capacity · modeled</strong>
+    <div className="fleet-camera"><button onClick={() => zoom(false)}>Show US</button><button onClick={() => zoom(true)}>Explore Utah</button>
+      <button className="fleet-route-history" aria-label="Show route history" aria-pressed={routeHistory} onClick={() => setRouteHistory(value => !value)}>Routes</button></div>
+    <div className="fleet-legend"><FleetMapKey /><strong className="fleet-legend-title">Energy-supported GPU capacity · modeled</strong>
       {completed ? <span><i style={{ background: '#7c929c' }} />Model complete · inspect results</span> : <>
         <span><i style={{ background: '#53ad83' }} />Open</span><span><i style={{ background: '#d7af5e' }} />Limited</span>
         <span><i style={{ background: '#7298b5' }} />Allocated</span><span><i style={{ background: '#d16f63' }} />Energy constrained</span><span><i style={{ background: '#89969a' }} />Unknown</span>

@@ -3,6 +3,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import type { LocalRun } from '../../../src/data/LocalRun.type';
 import type { PairedReplay } from '../../../src/core/execution/replay/Replay.types';
 import { LiveExecutionFlow } from '../execution/live-execution-flow';
+import { expectWorkspaceNavigation, openWorkspaceTool } from '../workspace-navigation';
 
 /** Normal-page navigation and downloaded evidence; no routing, execution or energy calculations. */
 export class DemoFlow {
@@ -37,11 +38,7 @@ export class DemoFlow {
   }
 
   private async expectNavigationAvailable(): Promise<void> {
-    const navigation = this.page.getByRole('navigation', { name: 'Demo flow', exact: true, includeHidden: true });
-    // A native modal makes background links inert, while retaining the workspace and mounted CPU receipt.
-    for (const name of ['Live fleet', 'Run CPU work', 'Compare scheduling']) {
-      await expect(navigation.getByRole('link', { name, exact: true, includeHidden: true })).toBeVisible();
-    }
+    await expectWorkspaceNavigation(this.page);
   }
 
   private async closeTool(): Promise<void> {
@@ -51,12 +48,13 @@ export class DemoFlow {
 
   async visit(section: 'Public inputs' | 'Run CPU work' | 'Compare scheduling'): Promise<void> {
     await this.closeTool();
+    await this.expectNavigationAvailable();
     if (section === 'Public inputs') {
       await this.page.getByRole('link', { name: 'Live fleet', exact: true }).click();
       await this.page.getByRole('button', { name: 'EIA source', exact: true }).click();
       await expect(this.publicInputs).toBeInViewport();
     } else {
-      await this.page.getByRole('link', { name: section, exact: true }).click();
+      await openWorkspaceTool(this.page, section);
       await expect(section === 'Run CPU work' ? this.cpuPanel : this.replay).toBeInViewport();
     }
     await this.expectNavigationAvailable();

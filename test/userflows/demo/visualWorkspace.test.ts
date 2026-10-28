@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { FleetFlow } from '../fleet/fleet-flow';
+import { expectWorkspaceNavigation, openWorkspaceTool } from '../workspace-navigation';
 
 test('the primary workspace is one map with useful signals and on-demand tools', async ({ page }) => {
   const fleet = new FleetFlow(page);
@@ -14,8 +15,9 @@ test('the primary workspace is one map with useful signals and on-demand tools',
   await expect(page.getByRole('region', { name: 'Source details', exact: true })).toContainText('Open-Meteo');
   await expect(page.getByRole('region', { name: 'Source details', exact: true }).getByRole('link', { name: /source/i })).toBeVisible();
   await page.getByRole('button', { name: 'Close source details', exact: true }).click();
+  await expectWorkspaceNavigation(page);
   const before = await fleet.evidence();
-  await page.getByRole('link', { name: 'Run CPU work', exact: true }).click();
+  await openWorkspaceTool(page, 'Run CPU work');
   const worker = page.getByRole('dialog', { name: 'Run CPU work', exact: true });
   await expect(worker).toBeVisible();
   await expect(worker.getByRole('button', { name: 'Run locally', exact: true })).toBeVisible();
@@ -25,7 +27,7 @@ test('the primary workspace is one map with useful signals and on-demand tools',
   await page.keyboard.press('Escape');
   await expect(worker).toBeHidden();
   expect((await fleet.evidence()).selected).toEqual(before.selected);
-  await page.getByRole('link', { name: 'Compare scheduling', exact: true }).click();
+  await openWorkspaceTool(page, 'Compare scheduling');
   await expect(page.getByRole('region', { name: 'Paired replay', exact: true })).toBeVisible();
   await expect(page.locator('.leaflet-container:visible')).toHaveCount(1);
   await page.getByRole('link', { name: 'Live fleet', exact: true }).click();

@@ -2,6 +2,7 @@ import { expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 import type { LocalRun } from '../../../src/data/LocalRun.type';
 import { ComputeFlow } from '../compute-flow';
+import { moreTools, openWorkspaceTool } from '../workspace-navigation';
 
 type RunSubmission = {
   policy?: 'Normal' | 'Hold';
@@ -40,8 +41,8 @@ export class LiveExecutionFlow {
 
   private async ready(): Promise<void> {
     const openWork = this.page.getByRole('link', { name: 'Run CPU work', exact: true });
-    await expect.poll(async () => await this.panel.isVisible() || await openWork.isVisible()).toBe(true);
-    if (!await this.panel.isVisible()) await openWork.click();
+    await expect.poll(async () => await this.panel.isVisible() || await moreTools(this.page).isVisible() || await openWork.isVisible()).toBe(true);
+    if (!await this.panel.isVisible()) await openWorkspaceTool(this.page, 'Run CPU work');
     await expect(this.panel).toBeVisible();
     await expect(this.panel.getByText('Recorded public inputs', { exact: false })).toBeVisible();
     await expect(this.panel.getByRole('button', { name: 'Run locally', exact: true })).toBeEnabled();

@@ -120,3 +120,23 @@
 .fleet-clock-time { color:#819083; font-size:9px; }
 .fleet-clock>strong { font-size:10px; font-weight:500; }
 @media(max-width:760px) { .fleet-clock { gap:5px 7px; }.fleet-clock .fleet-clock-rate { font-size:10px; }.fleet-clock-label { width:100%; font-size:8px; }.fleet-clock-time { font-size:8px; } }
+
+/* A short control rail above the map, with evidence available on demand. */
+.fleet-heading { padding:9px 16px; }
+.fleet-livebar { padding:7px 16px; gap:10px; }
+.fleet-clock { gap:7px; }
+.fleet-clock-label { font-size:10px; }
+.fleet-clock .fleet-clock-rate { font-size:10px; font-weight:500; background:transparent; padding:0; }
+.fleet-play-actions { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.fleet-play-actions .fleet-pause { padding:6px 9px; background:#edf3ed; color:#4b6b58; font-size:11px; }
+.fleet-monkey { padding:5px 8px; font-size:16px; }
+.fleet-monkey span { font-size:11px; }
+.fleet-footer { display:flex; align-items:flex-start; padding:7px 16px; gap:12px; }
+.fleet-jobs-disclosure { min-width:0; flex:1; }
+.fleet-jobs-disclosure>summary { width:fit-content; padding:5px 0; cursor:pointer; font-size:11px; color:#637a68; }
+.fleet-jobs-disclosure .fleet-work-strip { padding:8px 0 3px; border-top:0; min-height:0; flex-wrap:wrap; max-height:150px; overflow:auto; }
+.fleet-jobs-disclosure .fleet-work-strip button { padding:6px 8px; }
+.fleet-footer>button { margin-left:auto; font-size:10px; }
+@media(max-width:760px) { .fleet-heading { padding:9px 12px; gap:7px; }.fleet-livebar { padding:7px 12px; flex-wrap:wrap; }.fleet-clock-label { width:auto; }.fleet-clock .fleet-clock-rate { font-size:10px; }.fleet-play-actions { margin-left:auto; }.fleet-monkey span { display:inline; }.fleet-footer { padding:6px 12px; } }
+.fleet-inspector .fleet-decision { position:static; width:100%; max-width:none; margin-top:10px; box-shadow:none; }
+@media(max-width:650px) { .fleet-stage>.fleet-decision { top:62px; width:260px; }.fleet-inspector .fleet-decision { position:static; } }
