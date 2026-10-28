@@ -1,6 +1,7 @@
 import type { TimeWindow } from "../../TimeWindow.type.js";
 import type { SiteEnergy } from "../SiteEnergy.interface.js";
 import type { SiteMeter } from "../../execution/SiteMeter.type.js";
+import type { SlotSnapshot } from "../SlotSnapshot.type.js";
 
 export type EnergyInventory = {
     storedKWh: number;
@@ -101,4 +102,70 @@ export interface SiteEnergyLedger extends SiteEnergy {
     update(input: SiteEnergyInput): void;
     /** Invalidate published quotes and old selection versions without changing physical readings. */
     refreshPublication(): void;
+}
+
+/** Numeric period in which the set of active loads is constant. */
+export type SiteEnergyPeriod = {
+    hours: number;
+    gpus: number;
+    loads: readonly { id: string; gpus: number }[];
+};
+
+export type SiteEnergyPeriodCalculation = {
+    period: SiteEnergyPeriod;
+    supply: SiteEnergySupply;
+    storedKWh: number;
+};
+
+/** Energy measured at the site boundary, plus the corresponding storage transition. */
+export type SiteEnergyBalance = {
+    solarKWh: number;
+    solarUsedKWh: number;
+    fixedLoadKWh: number;
+    computeKWh: number;
+    gridImportKWh: number;
+    batteryDischargeKWh: number;
+    batteryChargeKWh: number;
+    curtailedKWh: number;
+    withdrawnKWh: number;
+    storedAfterDischargeKWh: number;
+    endingStoredKWh: number;
+};
+
+export type SiteEnergyBalanceResult = { feasible: true; balance: SiteEnergyBalance } | { feasible: false; reason: string };
+export type SiteEnergyConsumption = {
+    balance: SiteEnergyBalance;
+    loads: readonly { id: string; energyKWh: number }[];
+};
+export type SiteEnergyAccountedPeriod = {
+    inventory: EnergyInventory;
+    consumed: SiteEnergyUsage;
+    usage: Record<string, SiteEnergyUsage>;
+};
+/** Read-only view supplied by the coordinator; projections advance copied inventory only. */
+export type SiteEnergyProjectionContext = {
+    readings: readonly SiteEnergyInput[];
+    cursor: number;
+    inventory: EnergyInventory;
+    version: string;
+    reservations: readonly SiteEnergyLoad[];
+};
+
+export type SiteEnergyPublicationRequest = { locationId: string; window: TimeWindow };
+
+export interface SiteEnergyProjection {
+    assess(context: SiteEnergyProjectionContext, plan: readonly SiteEnergyLoad[]): SiteEnergyAssessment;
+    slots(context: SiteEnergyProjectionContext, request: SiteEnergyPublicationRequest): SlotSnapshot[];
+    invalidateQuotes(): void;
+}
+
+export type SiteEnergyReservationRelease = "released" | "unchanged" | "missing";
+
+export interface SiteEnergyReservations {
+    loads(): SiteEnergyLoad[];
+    retry(request: SiteEnergyReservation, version: string): SiteEnergyReservationResult | undefined;
+    accept(request: SiteEnergyReservation, result: SiteEnergyReservationResult): void;
+    release(reservationId: string): SiteEnergyReservationRelease;
+    actual(loads: readonly SiteEnergyLoad[]): SiteEnergyLoad[] | undefined;
+    clear(): void;
 }
