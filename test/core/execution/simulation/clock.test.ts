@@ -628,3 +628,36 @@ test.each([
   expect(() => arms.schedule(event as InputEventWithExtras)).toThrow(RangeError);
   expect(arms.baseline.inputs().events).toEqual([]);
 });
+
+test('a JSON "__proto__" key stays an own frozen field instead of becoming a shared mutable prototype', () => {
+  const event = JSON.parse('{"atHour":1,"kind":"proto","payload":{"__proto__":{"state":{"n":1}},"a":1}}') as InputEvent;
+  const arms = createPolicyArms(fixtureConfig([], 2), recordedEnergy, { baseline: () => ({}), selected: () => ({}) });
+
+  arms.schedule(event);
+
+  const payload = arms.baseline.inputs().events[0].payload as object;
+  expect(Object.getPrototypeOf(payload)).toBe(Object.prototype);
+  expect(Object.keys(payload)).toEqual(['__proto__', 'a']);
+  expect(Object.isFrozen(Object.getOwnPropertyDescriptor(payload, '__proto__')!.value.state)).toBe(true);
+});
+
+test('a shared sub-object is captured once, so its getters are read once and both uses agree', () => {
+  let reads = 0;
+  const shared = { get n() { reads += 1; return reads; } };
+  const sim = createSimulation(fixtureConfig([], 2), { energy: recordedEnergy, createPhases: () => ({}) });
+
+  sim.schedule({ atHour: 1, kind: 'shared', payload: { a: shared, b: shared } });
+
+  expect(reads).toBe(1);
+  expect(sim.inputs().events[0].payload).toEqual({ a: { n: 1 }, b: { n: 1 } });
+});
+
+test('captured arrays keep their length, including holes', () => {
+  const sim = createSimulation(fixtureConfig([], 2), { energy: recordedEnergy, createPhases: () => ({}) });
+  sim.schedule({ atHour: 1, kind: 'arrays', payload: { holes: [1, , ], sized: Object.assign(new Array(3), { metadata: { n: 1 } }) } });
+
+  const payload = sim.inputs().events[0].payload as { holes: Array<number>; sized: Array<number> & { metadata: unknown } };
+  expect(payload.holes).toHaveLength(2);
+  expect(payload.sized).toHaveLength(3);
+  expect(payload.sized.metadata).toEqual({ n: 1 });
+});

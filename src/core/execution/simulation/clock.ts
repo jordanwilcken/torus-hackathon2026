@@ -56,25 +56,32 @@ function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
 // Inputs are deep-frozen and shared by both arms, so events must be plain JSON-like data: a Map, Date or class
 // instance would stay mutable behind the freeze. Each own enumerable value, getters included, is read exactly
 // once into a fresh copy, and its prototype is checked before anything could normalize it away.
-function capturePlain(value: unknown, path: string, ancestors: Set<object>): unknown {
+function capturePlain(value: unknown, path: string, ancestors: Set<object>, captured: WeakMap<object, unknown>): unknown {
     if (value === null || typeof value === "string" || typeof value === "boolean") return value;
     if (typeof value === "number" && Number.isFinite(value)) return value;
     const fail = () => { throw new RangeError(`Event ${path} must be plain JSON-like data.`); };
     if (typeof value !== "object" || ancestors.has(value)) return fail();
+    // A sub-object used twice is captured once, so its getters still run exactly once.
+    if (captured.has(value)) return captured.get(value);
     const prototype = Object.getPrototypeOf(value);
     const isArray = Array.isArray(value);
     if (isArray ? prototype !== Array.prototype : prototype !== Object.prototype && prototype !== null) return fail();
     if (Object.getOwnPropertySymbols(value).some(key => Object.prototype.propertyIsEnumerable.call(value, key))) return fail();
     ancestors.add(value);
-    const copy: Record<string, unknown> = isArray ? [] as unknown as Record<string, unknown> : {};
-    for (const key of Object.keys(value)) copy[key] = capturePlain((value as Record<string, unknown>)[key], `${path}.${key}`, ancestors);
+    const copy = (isArray ? new Array((value as Array<unknown>).length) : {}) as Record<string, unknown>;
+    // defineProperty, not assignment: a JSON "__proto__" key must stay an own field rather than set the prototype.
+    for (const key of Object.keys(value)) Object.defineProperty(copy, key, {
+        value: capturePlain((value as Record<string, unknown>)[key], `${path}.${key}`, ancestors, captured),
+        enumerable: true, writable: true, configurable: true,
+    });
     ancestors.delete(value);
+    captured.set(value, copy);
     return copy;
 }
 
 /** Copy the caller's event exactly once, so getters or later mutation cannot make two arms disagree. */
 function prepareEvent(event: InputEvent): InputEvent {
-    const copy = capturePlain(event, "event", new Set()) as InputEvent;
+    const copy = capturePlain(event, "event", new Set(), new WeakMap()) as InputEvent;
     if (typeof copy.kind !== "string") throw new RangeError("Event kind must be a string.");
     return copy;
 }
