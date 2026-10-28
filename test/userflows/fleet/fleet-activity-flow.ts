@@ -28,40 +28,38 @@ export class FleetActivityFlow extends FleetFlow {
     await this.activityPanel.getByRole('button', { name: 'Close controls', exact: true }).click();
   }
 
-  private tag(jobId: string): Locator {
-    return this.activityPanel.locator('.fleet-event-tag[data-kind="submission"][data-event-id='
-      + JSON.stringify('admission:' + jobId) + '][data-job-id=' + JSON.stringify(jobId) + ']');
-  }
-
   private pulses(jobId: string): Locator {
     return this.activityPanel.locator('.fleet-event-pulse[data-event-id=' + JSON.stringify('admission:' + jobId) + ']');
   }
 
   async expectSubmission(jobId: string, source: string, destination: string): Promise<void> {
-    const tag = this.tag(jobId);
-    await expect(tag).toHaveCount(1);
-    await expect(tag).toBeVisible();
-    await expect(tag).toBeInViewport();
-    await expect(tag).toHaveCSS('opacity', '1');
-    await expect(tag).toContainText(jobId);
-    await expect(tag).toContainText(source);
-    await expect(tag).toContainText(destination);
-    await expect(tag).toContainText(/simulated submission/i);
+    const departure = this.pulses(jobId).and(this.activityPanel.locator('[data-endpoint="source"]'));
+    await expect(departure).toHaveCount(1);
+    await expect(departure).toBeVisible();
+    await expect(departure).toBeInViewport();
+    await expect(departure).toHaveAttribute('data-job-id', jobId);
+    await expect(departure).toHaveAttribute('data-kind', 'submission');
+    await expect(departure).toHaveAttribute('role', 'img');
+    await expect(departure).toHaveAttribute('aria-label', jobId + ' · Simulated submission to home queue · source: ' + source + ' · ' + source + ' → ' + destination);
+    await expect(this.activityPanel.locator('.fleet-event-tag')).toHaveCount(0);
+  }
+
+  async expectArrival(jobId: string, destination: string): Promise<void> {
     const pulses = this.pulses(jobId);
-    await expect(pulses).toHaveCount(2);
-    for (const endpoint of ['source', 'destination']) {
-      // The endpoint attribute belongs to the pulse itself, not a nested test-only element.
-      const atEndpoint = this.activityPanel.locator('.fleet-event-pulse[data-event-id='
-        + JSON.stringify('admission:' + jobId) + '][data-endpoint=' + JSON.stringify(endpoint) + ']');
-      await expect(atEndpoint).toHaveCount(1);
-      await expect(atEndpoint).toBeVisible();
-      await expect(atEndpoint).toBeInViewport();
-    }
+    await expect(pulses).toHaveCount(1);
+    await expect(pulses).toHaveAttribute('data-endpoint', 'destination');
+    await expect(pulses).toHaveAttribute('aria-label', new RegExp('destination: ' + destination));
+    await expect(pulses).toBeVisible();
+    await expect(pulses).toBeInViewport();
+  }
+
+  async expectNoPersistentClutter(): Promise<void> {
+    await expect(this.activityPanel.locator('.fleet-event-tag, .fleet-node svg, .fleet-datacenter svg, path.fleet-admission, path.fleet-route')).toHaveCount(0);
   }
 
   async expectFeedbackPassesPointersThrough(): Promise<void> {
-    const decoration = this.activityPanel.locator('.fleet-event-tag, .fleet-event-pulse');
-    expect(await decoration.count()).toBeGreaterThanOrEqual(3);
+    const decoration = this.activityPanel.locator('.fleet-event-pulse, path.map-comet');
+    expect(await decoration.count()).toBeGreaterThanOrEqual(1);
     expect(await decoration.evaluateAll(elements => elements.every(element => getComputedStyle(element).pointerEvents === 'none'))).toBe(true);
   }
 
@@ -98,22 +96,16 @@ export class FleetActivityFlow extends FleetFlow {
     expect(hit.intercepted, JSON.stringify({ point, hit })).toBe(false);
   }
 
-  async expectSubmissionTagVisible(jobId: string): Promise<void> {
-    await expect(this.tag(jobId)).toHaveCount(1);
-    await expect(this.tag(jobId)).toBeVisible();
-    await expect(this.tag(jobId)).toHaveCSS('opacity', '1');
-  }
-
   async expectSubmissionExpired(jobId: string): Promise<void> {
-    await expect(this.tag(jobId)).toHaveCount(0);
     await expect(this.pulses(jobId)).toHaveCount(0);
+    await expect(this.activityPanel.locator('path.map-comet')).toHaveCount(0);
   }
 
   async expectStaticFeedback(jobId: string): Promise<void> {
-    const feedback = this.activityPanel.locator('.fleet-event-tag[data-event-id='
-      + JSON.stringify('admission:' + jobId) + '], .fleet-event-pulse[data-event-id='
-      + JSON.stringify('admission:' + jobId) + ']');
-    expect(await feedback.count()).toBe(3);
+    const feedback = this.pulses(jobId);
+    expect(await feedback.count()).toBe(2);
+    await expect(feedback.and(this.activityPanel.locator('[data-endpoint="source"]'))).toBeVisible();
+    await expect(feedback.and(this.activityPanel.locator('[data-endpoint="destination"]'))).toBeVisible();
     expect(await feedback.evaluateAll(elements => elements.every(element =>
       getComputedStyle(element).opacity !== '0'
       && element.getAnimations({ subtree: true }).every(animation => animation.playState !== 'running')))).toBe(true);
@@ -124,23 +116,10 @@ export class FleetActivityFlow extends FleetFlow {
     await expect(this.activityPanel.locator('.fleet-event-tag, .fleet-event-pulse, path.map-comet')).toHaveCount(0);
   }
 
-  async expectLabelsDoNotOverlap(): Promise<void> {
-    const boxes = await this.activityPanel.locator('.fleet-event-tag').evaluateAll(elements =>
-      elements.map(element => { const r = element.getBoundingClientRect(); return {
-        text: element.textContent, left: r.left, top: r.top, right: r.right, bottom: r.bottom,
-      }; }));
-    expect(boxes.length).toBeGreaterThan(1);
-    for (let first = 0; first < boxes.length; first++) for (let second = first + 1; second < boxes.length; second++) {
-      const a = boxes[first], b = boxes[second];
-      expect(a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom,
-        `Event labels must remain readable: ${a.text} / ${b.text}`).toBe(false);
-    }
-  }
-
   async resetToCaptured(hour: number): Promise<void> {
     await this.controls();
     await this.activityPanel.getByRole('button', { name: 'Reset model', exact: true }).click();
-    // Reconstruction yields between canonical ticks; flush those tasks without concealing a 4s expiry.
+    // Reconstruction yields between canonical ticks; flush those tasks without skipping the brief event lifetime.
     await expect.poll(async () => {
       await this.activityPage.clock.runFor(1);
       return this.modelHour();

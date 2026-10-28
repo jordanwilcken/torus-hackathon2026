@@ -21,30 +21,12 @@ const color = (site: FleetSiteVisual, completed: boolean) => completed ? '#7c929
   : site.capacityState === 'allocated' ? '#7298b5' : site.capacityState === 'constrained' ? '#d16f63'
   : site.availableGpus! < site.capacity / 2 ? '#d7af5e' : '#53ad83';
 
-const glyphPaths = {
-  packet: 'M6 3h8l4 4v14H6Z M14 3v4h4 M10 10l-2 3 2 3 M14 10l2 3-2 3',
-  compute: 'M6 6h12v12H6Z M10 10h4v4h-4Z M9 3v3 M15 3v3 M9 18v3 M15 18v3 M3 9h3 M3 15h3 M18 9h3 M18 15h3',
-};
-type GlyphKind = keyof typeof glyphPaths;
-function MapGlyph({ kind }: { kind: GlyphKind }) {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false"><path d={glyphPaths[kind]} /></svg>;
-}
-function createMapGlyph(kind: GlyphKind) {
-  const namespace = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(namespace, 'svg');
-  for (const [name, value] of Object.entries({ viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.7', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true', focusable: 'false' })) svg.setAttribute(name, value);
-  const path = document.createElementNS(namespace, 'path');
-  path.setAttribute('d', glyphPaths[kind]);
-  svg.append(path);
-  return svg;
-}
-
 export function FleetMapKey() {
   return <div className="fleet-map-key" role="group" aria-label="Modeled job flow">
       <div className="fleet-map-key-flow">
-        <span><i className="fleet-map-key-origin" aria-hidden="true"><MapGlyph kind="packet" /></i>Simulated jobs</span>
+        <span><i className="fleet-map-key-origin" aria-hidden="true"></i>Simulated jobs</span>
         <b aria-hidden="true">→</b>
-        <span><i className="fleet-map-key-compute" aria-hidden="true"><MapGlyph kind="compute" /></i>Modeled compute</span>
+        <span><i className="fleet-map-key-compute" aria-hidden="true"></i>Modeled compute</span>
 
       </div>
     </div>;
@@ -53,6 +35,7 @@ export function FleetMapKey() {
 /** One persistent geographic view. Camera changes never step or reconstruct the model. */
 export function FleetMap({ sites, transfers, playing, completed = false, selected, selectedJob, onInspect, onJob, admissions = [], onOrigin, activityEpoch = 0 }: Props) {
   const [routeHistory, setRouteHistory] = useState(false);
+  const [mapZoom, setMapZoom] = useState(3);
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const seen = useRef(new Set<string>());
@@ -73,7 +56,7 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
     const padding = L.point(40, 55);
     // Layers need a finite camera even when the CPU pane initially hides this map.
     view.setView(initialBounds.getCenter(), 3);
-    const updateLabelDetail = () => { element.dataset.detailLabels = String(view.getZoom() >= 5); };
+    const updateLabelDetail = () => { element.dataset.detailLabels = String(view.getZoom() >= 5); setMapZoom(view.getZoom()); };
     updateLabelDetail();
     view.on('zoomend', updateLabelDetail);
     L.control.zoom({ position: 'bottomleft' }).addTo(view);
@@ -122,8 +105,7 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
       element.dataset.state = completed ? 'complete' : site.capacityState === 'unknown' ? 'unknown' : site.activeJobs ? 'working' : site.capacityState;
       element.setAttribute('aria-label', `Inspect ${site.name}`);
       element.setAttribute('aria-pressed', String(selected === site.id));
-      element.innerHTML = '<span class="fleet-node-halo"></span><span class="fleet-node-body"><span class="fleet-node-glyph"></span></span><span class="fleet-node-orbit"></span><span class="fleet-node-name"></span>';
-      element.querySelector('.fleet-node-glyph')!.append(createMapGlyph('compute'));
+      element.innerHTML = '<span class="fleet-node-halo"></span><span class="fleet-node-body"></span><span class="fleet-node-name"></span>';
       element.querySelector('.fleet-node-name')!.textContent = site.name;
       element.addEventListener('click', event => { event.stopPropagation(); callbacks.current.onInspect(site.id); });
       const marker = L.marker([site.latitude, site.longitude], { keyboard: false,
@@ -160,7 +142,7 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
           from.longitude + (to.longitude - from.longitude) * t];
       });
       // Static route density never limits the real event announcements below.
-      if (transfer.jobId === selectedJob || index >= transfers.length - (routeHistory ? 10 : 1)) {
+      if (transfer.jobId === selectedJob || (routeHistory && index >= transfers.length - 10)) {
         const line = L.polyline(points, { color: '#0d9488', weight: 2, opacity: .42, className: 'fleet-route' }).addTo(layer);
         const path = line.getElement();
         path?.setAttribute('data-job-id', transfer.jobId);
@@ -184,15 +166,29 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
   useEffect(() => {
     const view = map.current!;
     const layer = L.layerGroup().addTo(view);
+    // Nearby reference locations separate by a few pixels at overview scale so both dots stay selectable.
+    function originPoint(source: { latitude: number; longitude: number }): L.LatLngTuple {
+      const actual = view.latLngToLayerPoint([source.latitude, source.longitude]);
+      const sitePoints = sites.filter(site => Number.isFinite(site.latitude) && Number.isFinite(site.longitude))
+        .map(site => view.latLngToLayerPoint([site.latitude, site.longitude]));
+      if (sitePoints.every(point => actual.distanceTo(point) >= 18)) return [source.latitude, source.longitude];
+      const candidates = [[0, -26], [26, 0], [-26, 0], [0, 26]].map(([x, y]) => actual.add([x, y]));
+      const clear = candidates.find(candidate => sitePoints.every(point => candidate.distanceTo(point) >= 20)) ?? candidates[0];
+      const display = view.layerPointToLatLng(clear);
+      return [display.lat, display.lng];
+    }
     for (const source of dataCenters) {
+      const point = originPoint(source);
+      if (point[0] !== source.latitude || point[1] !== source.longitude) {
+        L.polyline([[source.latitude, source.longitude], point], { color: '#2563eb', weight: 1, opacity: .2, interactive: false }).addTo(layer);
+      }
       const element = document.createElement('button');
       element.className = 'fleet-datacenter';
       element.setAttribute('aria-label', `Inspect data center ${source.name}`);
       element.innerHTML = '<span class="fleet-origin-body" aria-hidden="true"></span>';
-      element.querySelector('.fleet-origin-body')!.append(createMapGlyph('packet'));
       element.addEventListener('click', () => callbacks.current.onOrigin?.(source.id));
-      const marker = L.marker([source.latitude, source.longitude], { keyboard: false,
-        icon: L.divIcon({ html: element, className: 'fleet-marker', iconSize: [30, 30], iconAnchor: [-23, 15] }) }).addTo(layer);
+      const marker = L.marker(point, { keyboard: false,
+        icon: L.divIcon({ html: element, className: 'fleet-marker', iconSize: [30, 30], iconAnchor: [15, 15] }) }).addTo(layer);
       const tooltip = document.createElement('div');
       const title = document.createElement('strong'); title.textContent = source.name;
       const purpose = document.createElement('div'); purpose.textContent = 'Synthetic jobs · public location reference';
@@ -206,13 +202,14 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
     for (const [index, admission] of admissions.entries()) {
       const source = originForJob(admission.jobId), destination = sites.find(site => site.id === admission.homeLocation);
       if (!destination) continue;
+      const start = originPoint(source);
       const points: L.LatLngTuple[] = Array.from({ length: 25 }, (_, index) => {
         const t = index / 24;
-        return [source.latitude + (destination.latitude - source.latitude) * t + Math.sin(t * Math.PI) * Math.abs(destination.longitude - source.longitude) * .08,
-          source.longitude + (destination.longitude - source.longitude) * t];
+        return [start[0] + (destination.latitude - start[0]) * t + Math.sin(t * Math.PI) * Math.abs(destination.longitude - start[1]) * .08,
+          start[1] + (destination.longitude - start[1]) * t];
       });
       const identity = `admission:${admission.jobId}`;
-      if (admission.jobId === selectedJob || index >= admissions.length - (routeHistory ? 6 : 2)) {
+      if (admission.jobId === selectedJob || (routeHistory && index >= admissions.length - 6)) {
         const line = L.polyline(points, { color: '#2563eb', weight: 1.5, opacity: .3, dashArray: '3 6', className: 'fleet-admission' }).addTo(layer);
         line.getElement()?.setAttribute('data-job-id', admission.jobId);
         line.getElement()?.setAttribute('data-event-id', identity);
@@ -222,12 +219,12 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
       if (!seen.current.has(identity)) {
         seen.current.add(identity);
         activity.current?.show({ id: identity, jobId: admission.jobId, kind: 'submission', route: points,
-          from: { name: source.name, point: [source.latitude, source.longitude] },
+          from: { name: source.name, point: start },
           to: { name: destination.name, point: [destination.latitude, destination.longitude] } });
       }
     }
     return () => { layer.remove(); };
-  }, [admissions, activityEpoch, routeHistory, selectedJob]);
+  }, [admissions, activityEpoch, routeHistory, selectedJob, mapZoom]);
   function zoom(utah: boolean) {
     map.current?.fitBounds(utah ? [[36.8, -114.4], [41.6, -110.5]] : [[25, -125], [49, -67]], { padding: [40, 55], animate: false });
   }

@@ -95,6 +95,8 @@ export class FleetFlow {
   }
 
   async expectTransferOnMap(transferId: string, jobId: string): Promise<void> {
+    const history = this.panel.getByRole('button', { name: 'Show route history', exact: true });
+    if (await history.getAttribute('aria-pressed') !== 'true') await history.click();
     const route = this.panel.locator('path[data-transfer-id=' + JSON.stringify(transferId) + ']');
     await expect(route).toBeVisible();
     await expect(route).toHaveAttribute('data-job-id', jobId);
