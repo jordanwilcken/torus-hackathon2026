@@ -126,3 +126,15 @@ test('a successful live refresh replaces restored evidence and clears a restore 
   expect(result).toMatchObject({ status: 'ready', snapshot });
   expect(result.error).toBeUndefined();
 });
+
+test.each(['invalid', '2026-10-28T08:00:01Z', '2026-10-28T07:45:00Z'])(
+  'a restored retrieval time of %s cannot postpone a live refresh', async retrievedAt => {
+    let calls = 0;
+    const snapshot = { retrievedAt, value: 5429 };
+    const feed = createCachedFeed(async () => { calls++; throw new FeedError('Provider unavailable.'); },
+      900_000, () => Date.parse('2026-10-28T08:00:00Z'), async () => snapshot,
+      saved => Date.parse(saved.retrievedAt));
+    const result = await feed.read();
+    expect(calls).toBe(1);
+    expect(result).toMatchObject({ status: 'stale', snapshot, lastAttemptAt: '2026-10-28T08:00:00.000Z' });
+  });

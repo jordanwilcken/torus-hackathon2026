@@ -135,3 +135,27 @@ test('a backend cannot silently change the shared revision rule when saving a pu
   expect(result).toMatchObject({ status: 'unavailable', snapshot: null, revision: null });
   expect(result.error).toContain('could not be saved');
 });
+
+test.each([
+  ['eia', '2026-10-28T08:15:00.000Z'],
+  ['caiso', '2026-10-28T08:05:00.000Z'],
+])('a second %s server reuses the publication until its original refresh deadline', async (feed, deadline) => {
+  const storage = stores();
+  const original = (await read(await application(storage), '/' + feed)).body;
+  at += 2_000;
+  const production = await application(storage);
+  const restored = (await read(production, '/' + feed)).body;
+  expect(restored).toMatchObject({ status: 'ready', snapshot: original.snapshot,
+    revision: original.revision, lastAttemptAt: null, nextRefreshAt: deadline });
+  expect(sourceRequests).toBe(1);
+
+  at = Date.parse(deadline) - 1;
+  expect((await read(production, '/' + feed)).body).toEqual(restored);
+  expect(sourceRequests).toBe(1);
+  at++;
+  unavailable = true;
+  const failed = (await read(production, '/' + feed)).body;
+  expect(failed).toMatchObject({ status: 'stale', snapshot: original.snapshot,
+    revision: original.revision, lastAttemptAt: deadline });
+  expect(sourceRequests).toBe(2);
+});

@@ -16,6 +16,7 @@ export function createCachedFeed<T>(
   refreshMs: number,
   now: () => number = Date.now,
   restore?: () => Promise<T | null>,
+  retrievedAt?: (snapshot: T) => number,
 ) {
   let state: FeedState<T> = { status: 'unavailable', snapshot: null, revision: null, lastAttemptAt: null, nextRefreshAt: null };
   let pending: Promise<void> | undefined;
@@ -29,7 +30,16 @@ export function createCachedFeed<T>(
   const initialize = () => initialization ??= (async () => {
     try {
       const snapshot = await restore?.();
-      if (snapshot != null) state = { ...state, ...publication(snapshot), status: 'stale' };
+      if (snapshot != null) {
+        const saved = publication(snapshot);
+        const collectedAt = retrievedAt?.(saved.snapshot) ?? NaN;
+        const currentTime = now();
+        const nextRefresh = collectedAt + refreshMs;
+        // A restart retains the original refresh deadline, never renews old evidence.
+        const fresh = collectedAt <= currentTime && currentTime < nextRefresh;
+        state = { ...state, ...saved, status: fresh ? 'ready' : 'stale',
+          nextRefreshAt: fresh ? new Date(nextRefresh).toISOString() : null };
+      }
     } catch { restorationFailed = true; }
   })();
   return {

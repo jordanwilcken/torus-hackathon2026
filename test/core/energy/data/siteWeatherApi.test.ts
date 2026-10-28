@@ -124,3 +124,21 @@ test('rate limits defer retry and unsupported HTTP methods cannot trigger collec
   expect(await publication(base)).toEqual(limited);
   expect(fetcher).toHaveBeenCalledTimes(1);
 });
+
+test('a second weather server reuses the archived publication without extending its refresh window', async () => {
+  const original = await publication(await application());
+  at += 2_000;
+  const production = await application();
+  const restored = await publication(production);
+  expect(restored).toMatchObject({ status: 'ready', snapshot: original.snapshot,
+    revision: original.revision, lastAttemptAt: null, nextRefreshAt: '2026-10-28T16:51:26.334Z' });
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  at = Date.parse('2026-10-28T16:51:26.333Z');
+  expect(await publication(production)).toEqual(restored);
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  at++;
+  fetcher.mockRejectedValue(new Error('Provider unavailable'));
+  expect(await publication(production)).toMatchObject({ status: 'stale', snapshot: original.snapshot,
+    revision: original.revision, lastAttemptAt: '2026-10-28T16:51:26.334Z' });
+  expect(fetcher).toHaveBeenCalledTimes(2);
+});

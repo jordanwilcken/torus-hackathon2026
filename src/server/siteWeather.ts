@@ -109,5 +109,6 @@ export function createSiteWeatherFeed(archive: SnapshotStore<SiteWeatherSnapshot
         throw new Error('Weather archive revision mismatch');
     } catch { throw new FeedError('The site weather snapshot could not be saved; no new revision was published.'); }
     return collected.snapshot;
-  }, refreshMs, options.now, options.offline ? undefined : async () => (await restored())?.snapshot ?? null);
+  }, refreshMs, options.now, options.offline ? undefined : async () => (await restored())?.snapshot ?? null,
+  snapshot => Date.parse(snapshot.retrievedAt));
 }

@@ -16,7 +16,7 @@ export type GridFeedOptions = { offline?: boolean; fetcher?: typeof fetch; now?:
 export function createGridFeeds(apiKey: string, stores: GridSnapshotStores, options: GridFeedOptions = {}): GridFeeds {
   const fetcher = options.fetcher ?? fetch;
   const now = options.now ?? Date.now;
-  function feed<T>(archive: SnapshotStore<T>, source: () => Promise<{ snapshot: T; evidence: SourceEvidence }>, refreshMs: number) {
+  function feed<T extends { retrievedAt: string }>(archive: SnapshotStore<T>, source: () => Promise<{ snapshot: T; evidence: SourceEvidence }>, refreshMs: number) {
     return createCachedFeed(async () => {
       if (options.offline) throw new FeedError('External feeds are disabled in this test server.');
       const collected = await source();
@@ -28,7 +28,7 @@ export function createGridFeeds(apiKey: string, stores: GridSnapshotStores, opti
       const record = await archive.latest();
       if (record && record.revision !== snapshotRevision(record.snapshot)) throw new Error('Store returned an invalid revision');
       return record?.snapshot ?? null;
-    });
+    }, snapshot => Date.parse(snapshot.retrievedAt));
   }
   return {
     eia: feed(stores.eia, () => collectEiaPublication(apiKey, fetcher, now), 15 * 60_000),
