@@ -147,7 +147,7 @@ test('[TRANSIENT-06] phone users can read the full-width information below the m
 });
 
 test('[TRANSIENT-07] the existing noncompact map retains its regional hover preview', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?scenario=fake-preview');
   const map = page.getByRole('region', { name: 'US energy map', exact: true });
   await expect(map).toBeVisible();
   await map.getByRole('button', { name: 'Show US', exact: true }).click();

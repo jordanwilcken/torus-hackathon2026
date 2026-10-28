@@ -57,3 +57,21 @@
   .compact-energy-map .site-pin::before, .compact-energy-map path.map-comet { animation: none !important; }
   .compact-energy-map .site-pin::before { opacity: 0; }
 }
+
+.compact-energy-map .map-inspection-card .price-details { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 20px; padding: 0; border: 0; border-radius: 0; }
+.compact-energy-map .map-inspection-card .price-details > header { grid-row: span 2; justify-content: flex-start; align-items: center; }
+.compact-energy-map .map-inspection-card .price-exact { margin: 0; font-size: 20px; }
+.compact-energy-map .map-inspection-card .price-capacity { margin: 0; font-size: 9px; }
+.compact-energy-map .map-inspection-card .price-condition,
+.compact-energy-map .map-inspection-card .price-disclosure { grid-column: 1 / -1; }
+.compact-energy-map .map-inspection-card .price-disclosure { margin-top: 6px; padding-top: 6px; }
+.compact-energy-map .close-details { z-index: 2; }
+.compact-energy-map .map-inspection-card > .source-details { margin-top: 6px; padding-top: 6px; font-size: 10px; }
+.compact-energy-map .map-inspection-card .local-energy-details { margin: 10px 0; gap: 10px; }
+.compact-energy-view .inline-job-impact { padding: 12px 20px; border-bottom: 1px solid #e1e7e0; }
+.compact-energy-view .inline-job-impact .impact-readout { position: static; width: auto; padding: 0; border: 0; background: transparent; box-shadow: none; animation: none; }
+.compact-energy-view .inline-job-impact .impact-readout dl { display: flex; flex-wrap: wrap; gap: 10px 24px; }
+@media (max-width: 760px) {
+  .compact-energy-map .map-inspection-card .price-details { grid-template-columns: minmax(0, 1fr); }
+  .compact-energy-map .map-inspection-card .price-details > header { grid-row: auto; justify-content: space-between; }
+}
