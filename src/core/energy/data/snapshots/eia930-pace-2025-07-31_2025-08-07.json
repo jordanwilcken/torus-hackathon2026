@@ -1,0 +1,2752 @@
+{
+  "schemaVersion": 1,
+  "regionId": "PACE",
+  "provenance": {
+    "source": "EIA-930 PACE workbook",
+    "sourceUrl": "https://www.eia.gov/electricity/gridmonitor/knownissues/xls/PACE.xlsx",
+    "retrievedAt": "2026-10-27T22:16:00.000Z",
+    "sha256": "f58d2a5e088c582def8eb5dc5d27ac2ffed11fbf0f3478c9f15b9550ab7f6f12",
+    "sheet": "Published Hourly Data",
+    "columns": {
+      "regionId": "BA",
+      "utcHourEnding": "UTC time",
+      "localDate": "Local date",
+      "localHour": "Hour",
+      "timeZone": "Time zone",
+      "demandMW": "Demand",
+      "netGenerationMW": "Net generation",
+      "totalInterchangeMW": "Total interchange",
+      "consumedIntensityLbsPerKWh": "CO2 Emissions Intensity for Consumed Electricity",
+      "imputedDemand": "Imputed demand",
+      "imputedNetGeneration": "Imputed net generation",
+      "imputedTotalInterchange": "Imputed total interchange"
+    },
+    "units": {
+      "demandMW": "MWh",
+      "netGenerationMW": "MWh",
+      "totalInterchangeMW": "MWh",
+      "consumedIntensityLbsPerKWh": "lbs/kWh"
+    },
+    "imputedGenerationColumns": [
+      "Imputed COL Gen",
+      "Imputed NG Gen",
+      "Imputed NUC Gen",
+      "Imputed OIL Gen",
+      "Imputed GEO Gen",
+      "Imputed WAT Gen",
+      "Imputed PS Gen",
+      "Imputed SUN Gen",
+      "Imputed SNB Gen",
+      "Imputed WND Gen",
+      "Imputed WNB Gen",
+      "Imputed BAT Gen",
+      "Imputed OES Gen",
+      "Imputed UES Gen",
+      "Imputed OTH Gen",
+      "Imputed UNK Gen"
+    ],
+    "notes": [
+      "EIA preliminary data are published as-is and may be revised; this snapshot preserves the retrieved workbook.",
+      "UTC time is the end of the hour. Each observation covers [hour end minus one hour, hour end).",
+      "Demand, net generation and total interchange are published hourly MWh, equivalent to average MW over that hour.",
+      "Consumed electricity CO2 intensity is published in lbs/kWh and includes interchange; runtime conversion to gCO2/kWh multiplies by 453.59237.",
+      "Positive total interchange means net exports; negative means net imports.",
+      "Reported blanks remain null. EIA-imputed values are flagged and withheld from reported MW observations.",
+      "Regional evidence does not establish site hardware, compute capacity or permission to consume energy."
+    ]
+  },
+  "coverage": {
+    "startAt": "2025-07-31T05:00:00.000Z",
+    "endAt": "2025-08-07T05:00:00.000Z"
+  },
+  "rows": [
+    {
+      "utcHourEnding": "2025-07-31T06:00:00.000Z",
+      "localDate": "2025-07-30",
+      "localHour": 24,
+      "timeZone": "Mountain",
+      "demandMW": 6895,
+      "netGenerationMW": 8200,
+      "totalInterchangeMW": 1305,
+      "consumedIntensityLbsPerKWh": 1.4141296396480794,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-07-31T07:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 1,
+      "timeZone": "Mountain",
+      "demandMW": 6646,
+      "netGenerationMW": 8127,
+      "totalInterchangeMW": 1481,
+      "consumedIntensityLbsPerKWh": 1.336157638482426,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-07-31T08:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 2,
+      "timeZone": "Mountain",
+      "demandMW": 6254,
+      "netGenerationMW": 7484,
+      "totalInterchangeMW": 1230,
+      "consumedIntensityLbsPerKWh": 1.4245127702230014,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-07-31T09:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 3,
+      "timeZone": "Mountain",
+      "demandMW": 5950,
+      "netGenerationMW": 7005,
+      "totalInterchangeMW": 1055,
+      "consumedIntensityLbsPerKWh": 1.54698409583662,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-07-31T10:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 4,
+      "timeZone": "Mountain",
+      "demandMW": 5789,
+      "netGenerationMW": 6658,
+      "totalInterchangeMW": 869,
+      "consumedIntensityLbsPerKWh": 1.5847292006916844,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-07-31T11:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 5,
+      "timeZone": "Mountain",
+      "demandMW": 5695,
+      "netGenerationMW": 6339,
+      "totalInterchangeMW": 644,
+      "consumedIntensityLbsPerKWh": 1.5441748371094979,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-07-31T12:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 6,
+      "timeZone": "Mountain",
+      "demandMW": 5765,
+      "netGenerationMW": 6735,
+      "totalInterchangeMW": 970,
+      "consumedIntensityLbsPerKWh": 1.5154805342844975,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-07-31T13:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 7,
+      "timeZone": "Mountain",
+      "demandMW": 5950,
+      "netGenerationMW": 6846,
+      "totalInterchangeMW": 896,
+      "consumedIntensityLbsPerKWh": 1.5292505783307766,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-07-31T14:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 8,
+      "timeZone": "Mountain",
+      "demandMW": 6195,
+      "netGenerationMW": 6798,
+      "totalInterchangeMW": 603,
+      "consumedIntensityLbsPerKWh": 1.3597756213777619,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-07-31T15:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 9,
+      "timeZone": "Mountain",
+      "demandMW": 6613,
+      "netGenerationMW": 7215,
+      "totalInterchangeMW": 602,
+      "consumedIntensityLbsPerKWh": 0.9495704753426255,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-07-31T16:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 10,
+      "timeZone": "Mountain",
+      "demandMW": 6919,
+      "netGenerationMW": 7619,
+      "totalInterchangeMW": 700,
+      "consumedIntensityLbsPerKWh": 0.901211620222377,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-07-31T17:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 11,
+      "timeZone": "Mountain",
+      "demandMW": 7288,
+      "netGenerationMW": 7507,
+      "totalInterchangeMW": 219,
+      "consumedIntensityLbsPerKWh": 0.8920432937092496,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-07-31T18:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 12,
+      "timeZone": "Mountain",
+      "demandMW": 7559,
+      "netGenerationMW": 7373,
+      "totalInterchangeMW": -186,
+      "consumedIntensityLbsPerKWh": 0.9671609840632278,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-07-31T19:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 13,
+      "timeZone": "Mountain",
+      "demandMW": 7802,
+      "netGenerationMW": 7715,
+      "totalInterchangeMW": -87,
+      "consumedIntensityLbsPerKWh": 0.9834426428091491,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-07-31T20:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 14,
+      "timeZone": "Mountain",
+      "demandMW": 8060,
+      "netGenerationMW": 8380,
+      "totalInterchangeMW": 320,
+      "consumedIntensityLbsPerKWh": 1.0125958553665866,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-07-31T21:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 15,
+      "timeZone": "Mountain",
+      "demandMW": 8308,
+      "netGenerationMW": 8891,
+      "totalInterchangeMW": 583,
+      "consumedIntensityLbsPerKWh": 1.038611948413149,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-07-31T22:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 16,
+      "timeZone": "Mountain",
+      "demandMW": 8609,
+      "netGenerationMW": 9862,
+      "totalInterchangeMW": 1253,
+      "consumedIntensityLbsPerKWh": 0.9659433296758502,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-07-31T23:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 17,
+      "timeZone": "Mountain",
+      "demandMW": 8965,
+      "netGenerationMW": 10642,
+      "totalInterchangeMW": 1677,
+      "consumedIntensityLbsPerKWh": 0.8945316200799855,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T00:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 18,
+      "timeZone": "Mountain",
+      "demandMW": 9045,
+      "netGenerationMW": 10479,
+      "totalInterchangeMW": 1434,
+      "consumedIntensityLbsPerKWh": 0.8651661553310237,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T01:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 19,
+      "timeZone": "Mountain",
+      "demandMW": 8988,
+      "netGenerationMW": 9980,
+      "totalInterchangeMW": 992,
+      "consumedIntensityLbsPerKWh": 0.9736903659258378,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T02:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 20,
+      "timeZone": "Mountain",
+      "demandMW": 8793,
+      "netGenerationMW": 9339,
+      "totalInterchangeMW": 546,
+      "consumedIntensityLbsPerKWh": 1.2380657235617765,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T03:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 21,
+      "timeZone": "Mountain",
+      "demandMW": 8355,
+      "netGenerationMW": 8598,
+      "totalInterchangeMW": 243,
+      "consumedIntensityLbsPerKWh": 1.3742390295482434,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T04:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 22,
+      "timeZone": "Mountain",
+      "demandMW": 7960,
+      "netGenerationMW": 8638,
+      "totalInterchangeMW": 678,
+      "consumedIntensityLbsPerKWh": 1.4267173998784588,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T05:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 23,
+      "timeZone": "Mountain",
+      "demandMW": 7406,
+      "netGenerationMW": 8177,
+      "totalInterchangeMW": 771,
+      "consumedIntensityLbsPerKWh": 1.5072657603191346,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T06:00:00.000Z",
+      "localDate": "2025-07-31",
+      "localHour": 24,
+      "timeZone": "Mountain",
+      "demandMW": 6909,
+      "netGenerationMW": 8322,
+      "totalInterchangeMW": 1413,
+      "consumedIntensityLbsPerKWh": 1.4597642798827835,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T07:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 1,
+      "timeZone": "Mountain",
+      "demandMW": 6401,
+      "netGenerationMW": 7706,
+      "totalInterchangeMW": 1305,
+      "consumedIntensityLbsPerKWh": 1.4896914608389857,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T08:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 2,
+      "timeZone": "Mountain",
+      "demandMW": 6064,
+      "netGenerationMW": 7110,
+      "totalInterchangeMW": 1046,
+      "consumedIntensityLbsPerKWh": 1.472363614290659,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T09:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 3,
+      "timeZone": "Mountain",
+      "demandMW": 5778,
+      "netGenerationMW": 7017,
+      "totalInterchangeMW": 1239,
+      "consumedIntensityLbsPerKWh": 1.535823827863796,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T10:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 4,
+      "timeZone": "Mountain",
+      "demandMW": 5526,
+      "netGenerationMW": 6347,
+      "totalInterchangeMW": 821,
+      "consumedIntensityLbsPerKWh": 1.6441037395101519,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T11:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 5,
+      "timeZone": "Mountain",
+      "demandMW": 5452,
+      "netGenerationMW": 5824,
+      "totalInterchangeMW": 372,
+      "consumedIntensityLbsPerKWh": 1.6905468548230898,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T12:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 6,
+      "timeZone": "Mountain",
+      "demandMW": 5511,
+      "netGenerationMW": 5997,
+      "totalInterchangeMW": 486,
+      "consumedIntensityLbsPerKWh": 1.690283881560388,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T13:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 7,
+      "timeZone": "Mountain",
+      "demandMW": 5609,
+      "netGenerationMW": 6315,
+      "totalInterchangeMW": 706,
+      "consumedIntensityLbsPerKWh": 1.7080747177739775,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T14:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 8,
+      "timeZone": "Mountain",
+      "demandMW": 5864,
+      "netGenerationMW": 6571,
+      "totalInterchangeMW": 707,
+      "consumedIntensityLbsPerKWh": 1.4755491670183003,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T15:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 9,
+      "timeZone": "Mountain",
+      "demandMW": 6326,
+      "netGenerationMW": 6527,
+      "totalInterchangeMW": 201,
+      "consumedIntensityLbsPerKWh": 1.0261659976161597,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T16:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 10,
+      "timeZone": "Mountain",
+      "demandMW": 6808,
+      "netGenerationMW": 6278,
+      "totalInterchangeMW": -530,
+      "consumedIntensityLbsPerKWh": 0.8674885160624554,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T17:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 11,
+      "timeZone": "Mountain",
+      "demandMW": 7167,
+      "netGenerationMW": 6434,
+      "totalInterchangeMW": -733,
+      "consumedIntensityLbsPerKWh": 0.874667778502487,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T18:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 12,
+      "timeZone": "Mountain",
+      "demandMW": 7414,
+      "netGenerationMW": 6716,
+      "totalInterchangeMW": -698,
+      "consumedIntensityLbsPerKWh": 0.9630617952910342,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T19:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 13,
+      "timeZone": "Mountain",
+      "demandMW": 7561,
+      "netGenerationMW": 7158,
+      "totalInterchangeMW": -403,
+      "consumedIntensityLbsPerKWh": 0.999724950803776,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T20:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 14,
+      "timeZone": "Mountain",
+      "demandMW": 7822,
+      "netGenerationMW": 7680,
+      "totalInterchangeMW": -142,
+      "consumedIntensityLbsPerKWh": 0.9881180339424025,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T21:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 15,
+      "timeZone": "Mountain",
+      "demandMW": 8189,
+      "netGenerationMW": 8523,
+      "totalInterchangeMW": 334,
+      "consumedIntensityLbsPerKWh": 0.9537836385498962,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T22:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 16,
+      "timeZone": "Mountain",
+      "demandMW": 8243,
+      "netGenerationMW": 8264,
+      "totalInterchangeMW": 21,
+      "consumedIntensityLbsPerKWh": 0.9737675484438102,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-01T23:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 17,
+      "timeZone": "Mountain",
+      "demandMW": 8618,
+      "netGenerationMW": 9348,
+      "totalInterchangeMW": 730,
+      "consumedIntensityLbsPerKWh": 0.9027763640718135,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T00:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 18,
+      "timeZone": "Mountain",
+      "demandMW": 8720,
+      "netGenerationMW": 9741,
+      "totalInterchangeMW": 1021,
+      "consumedIntensityLbsPerKWh": 0.9207368257830193,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T01:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 19,
+      "timeZone": "Mountain",
+      "demandMW": 8710,
+      "netGenerationMW": 10215,
+      "totalInterchangeMW": 1505,
+      "consumedIntensityLbsPerKWh": 0.9962335974810619,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T02:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 20,
+      "timeZone": "Mountain",
+      "demandMW": 8489,
+      "netGenerationMW": 9230,
+      "totalInterchangeMW": 741,
+      "consumedIntensityLbsPerKWh": 1.1510519115923654,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T03:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 21,
+      "timeZone": "Mountain",
+      "demandMW": 7992,
+      "netGenerationMW": 7300,
+      "totalInterchangeMW": -692,
+      "consumedIntensityLbsPerKWh": 1.4182926061644623,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T04:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 22,
+      "timeZone": "Mountain",
+      "demandMW": 7601,
+      "netGenerationMW": 7499,
+      "totalInterchangeMW": -102,
+      "consumedIntensityLbsPerKWh": 1.4231749908039142,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T05:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 23,
+      "timeZone": "Mountain",
+      "demandMW": 7172,
+      "netGenerationMW": 7611,
+      "totalInterchangeMW": 439,
+      "consumedIntensityLbsPerKWh": 1.4546032108833982,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T06:00:00.000Z",
+      "localDate": "2025-08-01",
+      "localHour": 24,
+      "timeZone": "Mountain",
+      "demandMW": 6656,
+      "netGenerationMW": 7408,
+      "totalInterchangeMW": 752,
+      "consumedIntensityLbsPerKWh": 1.5273906369525236,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T07:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 1,
+      "timeZone": "Mountain",
+      "demandMW": 6194,
+      "netGenerationMW": 6945,
+      "totalInterchangeMW": 751,
+      "consumedIntensityLbsPerKWh": 1.5905089241915236,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T08:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 2,
+      "timeZone": "Mountain",
+      "demandMW": 5771,
+      "netGenerationMW": 6372,
+      "totalInterchangeMW": 601,
+      "consumedIntensityLbsPerKWh": 1.653899812780055,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T09:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 3,
+      "timeZone": "Mountain",
+      "demandMW": 5514,
+      "netGenerationMW": 5978,
+      "totalInterchangeMW": 464,
+      "consumedIntensityLbsPerKWh": 1.7003685563029884,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T10:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 4,
+      "timeZone": "Mountain",
+      "demandMW": 5292,
+      "netGenerationMW": 5508,
+      "totalInterchangeMW": 216,
+      "consumedIntensityLbsPerKWh": 1.699427559038677,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T11:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 5,
+      "timeZone": "Mountain",
+      "demandMW": 5259,
+      "netGenerationMW": 5054,
+      "totalInterchangeMW": -205,
+      "consumedIntensityLbsPerKWh": 1.6678821803236485,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T12:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 6,
+      "timeZone": "Mountain",
+      "demandMW": 5387,
+      "netGenerationMW": 4822,
+      "totalInterchangeMW": -565,
+      "consumedIntensityLbsPerKWh": 1.6245301686272184,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T13:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 7,
+      "timeZone": "Mountain",
+      "demandMW": 5423,
+      "netGenerationMW": 4806,
+      "totalInterchangeMW": -617,
+      "consumedIntensityLbsPerKWh": 1.591070266173682,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T14:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 8,
+      "timeZone": "Mountain",
+      "demandMW": 5599,
+      "netGenerationMW": 5347,
+      "totalInterchangeMW": -252,
+      "consumedIntensityLbsPerKWh": 1.320655948438546,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T15:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 9,
+      "timeZone": "Mountain",
+      "demandMW": 6080,
+      "netGenerationMW": 5861,
+      "totalInterchangeMW": -219,
+      "consumedIntensityLbsPerKWh": 0.8937881070357359,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T16:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 10,
+      "timeZone": "Mountain",
+      "demandMW": 6588,
+      "netGenerationMW": 5873,
+      "totalInterchangeMW": -715,
+      "consumedIntensityLbsPerKWh": 0.8134956200573076,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T17:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 11,
+      "timeZone": "Mountain",
+      "demandMW": 6956,
+      "netGenerationMW": 6241,
+      "totalInterchangeMW": -715,
+      "consumedIntensityLbsPerKWh": 0.8621549616740115,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T18:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 12,
+      "timeZone": "Mountain",
+      "demandMW": 7393,
+      "netGenerationMW": 6812,
+      "totalInterchangeMW": -581,
+      "consumedIntensityLbsPerKWh": 0.9435114539863846,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T19:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 13,
+      "timeZone": "Mountain",
+      "demandMW": 7742,
+      "netGenerationMW": 7396,
+      "totalInterchangeMW": -346,
+      "consumedIntensityLbsPerKWh": 0.9756979781344193,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T20:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 14,
+      "timeZone": "Mountain",
+      "demandMW": 8043,
+      "netGenerationMW": 7915,
+      "totalInterchangeMW": -128,
+      "consumedIntensityLbsPerKWh": 0.8533406786627759,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T21:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 15,
+      "timeZone": "Mountain",
+      "demandMW": 8286,
+      "netGenerationMW": 7989,
+      "totalInterchangeMW": -297,
+      "consumedIntensityLbsPerKWh": 0.8675016225631001,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T22:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 16,
+      "timeZone": "Mountain",
+      "demandMW": 8456,
+      "netGenerationMW": 8069,
+      "totalInterchangeMW": -387,
+      "consumedIntensityLbsPerKWh": 0.8564690769050873,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-02T23:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 17,
+      "timeZone": "Mountain",
+      "demandMW": 8502,
+      "netGenerationMW": 7977,
+      "totalInterchangeMW": -525,
+      "consumedIntensityLbsPerKWh": 0.854477168067614,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T00:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 18,
+      "timeZone": "Mountain",
+      "demandMW": 8559,
+      "netGenerationMW": 8842,
+      "totalInterchangeMW": 283,
+      "consumedIntensityLbsPerKWh": 0.809155761492182,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T01:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 19,
+      "timeZone": "Mountain",
+      "demandMW": 8473,
+      "netGenerationMW": 9748,
+      "totalInterchangeMW": 1275,
+      "consumedIntensityLbsPerKWh": 0.9707110249903114,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T02:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 20,
+      "timeZone": "Mountain",
+      "demandMW": 8095,
+      "netGenerationMW": 8949,
+      "totalInterchangeMW": 854,
+      "consumedIntensityLbsPerKWh": 1.2854695241903569,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T03:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 21,
+      "timeZone": "Mountain",
+      "demandMW": 7578,
+      "netGenerationMW": 7808,
+      "totalInterchangeMW": 230,
+      "consumedIntensityLbsPerKWh": 1.517823782114885,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T04:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 22,
+      "timeZone": "Mountain",
+      "demandMW": 7293,
+      "netGenerationMW": 7168,
+      "totalInterchangeMW": -125,
+      "consumedIntensityLbsPerKWh": 1.5240131661050025,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T05:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 23,
+      "timeZone": "Mountain",
+      "demandMW": 7032,
+      "netGenerationMW": 6842,
+      "totalInterchangeMW": -190,
+      "consumedIntensityLbsPerKWh": 1.5001620362061887,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T06:00:00.000Z",
+      "localDate": "2025-08-02",
+      "localHour": 24,
+      "timeZone": "Mountain",
+      "demandMW": 6553,
+      "netGenerationMW": 6699,
+      "totalInterchangeMW": 146,
+      "consumedIntensityLbsPerKWh": 1.6140890226670581,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T07:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 1,
+      "timeZone": "Mountain",
+      "demandMW": 6195,
+      "netGenerationMW": 6209,
+      "totalInterchangeMW": 14,
+      "consumedIntensityLbsPerKWh": 1.6569016156998462,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T08:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 2,
+      "timeZone": "Mountain",
+      "demandMW": 5870,
+      "netGenerationMW": 5980,
+      "totalInterchangeMW": 110,
+      "consumedIntensityLbsPerKWh": 1.607593414241693,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T09:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 3,
+      "timeZone": "Mountain",
+      "demandMW": 5623,
+      "netGenerationMW": 5077,
+      "totalInterchangeMW": -546,
+      "consumedIntensityLbsPerKWh": 1.509871311111778,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T10:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 4,
+      "timeZone": "Mountain",
+      "demandMW": 5527,
+      "netGenerationMW": 4437,
+      "totalInterchangeMW": -1090,
+      "consumedIntensityLbsPerKWh": 1.4677785977439053,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T11:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 5,
+      "timeZone": "Mountain",
+      "demandMW": 5501,
+      "netGenerationMW": 3814,
+      "totalInterchangeMW": -1687,
+      "consumedIntensityLbsPerKWh": 1.3713184483317293,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T12:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 6,
+      "timeZone": "Mountain",
+      "demandMW": 5445,
+      "netGenerationMW": 3876,
+      "totalInterchangeMW": -1569,
+      "consumedIntensityLbsPerKWh": 1.3999584615772418,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T13:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 7,
+      "timeZone": "Mountain",
+      "demandMW": 5362,
+      "netGenerationMW": 3797,
+      "totalInterchangeMW": -1565,
+      "consumedIntensityLbsPerKWh": 1.4136830259143407,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T14:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 8,
+      "timeZone": "Mountain",
+      "demandMW": 5374,
+      "netGenerationMW": 4577,
+      "totalInterchangeMW": -797,
+      "consumedIntensityLbsPerKWh": 1.1897089482286667,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T15:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 9,
+      "timeZone": "Mountain",
+      "demandMW": 5648,
+      "netGenerationMW": 5625,
+      "totalInterchangeMW": -23,
+      "consumedIntensityLbsPerKWh": 0.8720232873155874,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T16:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 10,
+      "timeZone": "Mountain",
+      "demandMW": 6025,
+      "netGenerationMW": 5914,
+      "totalInterchangeMW": -111,
+      "consumedIntensityLbsPerKWh": 0.7899648784356045,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T17:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 11,
+      "timeZone": "Mountain",
+      "demandMW": 6383,
+      "netGenerationMW": 5987,
+      "totalInterchangeMW": -396,
+      "consumedIntensityLbsPerKWh": 0.7754990278478785,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T18:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 12,
+      "timeZone": "Mountain",
+      "demandMW": 6804,
+      "netGenerationMW": 6395,
+      "totalInterchangeMW": -409,
+      "consumedIntensityLbsPerKWh": 0.808429677175401,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T19:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 13,
+      "timeZone": "Mountain",
+      "demandMW": 7209,
+      "netGenerationMW": 7215,
+      "totalInterchangeMW": 6,
+      "consumedIntensityLbsPerKWh": 0.9275830729496883,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T20:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 14,
+      "timeZone": "Mountain",
+      "demandMW": 7613,
+      "netGenerationMW": 7835,
+      "totalInterchangeMW": 222,
+      "consumedIntensityLbsPerKWh": 0.9478274888518922,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T21:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 15,
+      "timeZone": "Mountain",
+      "demandMW": 7964,
+      "netGenerationMW": 7846,
+      "totalInterchangeMW": -118,
+      "consumedIntensityLbsPerKWh": 0.9566185708284298,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T22:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 16,
+      "timeZone": "Mountain",
+      "demandMW": 8337,
+      "netGenerationMW": 8129,
+      "totalInterchangeMW": -208,
+      "consumedIntensityLbsPerKWh": 0.9908816205649562,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-03T23:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 17,
+      "timeZone": "Mountain",
+      "demandMW": 8608,
+      "netGenerationMW": 8855,
+      "totalInterchangeMW": 247,
+      "consumedIntensityLbsPerKWh": 1.1205404612148575,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T00:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 18,
+      "timeZone": "Mountain",
+      "demandMW": 8757,
+      "netGenerationMW": 8964,
+      "totalInterchangeMW": 207,
+      "consumedIntensityLbsPerKWh": 1.1433671748685543,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T01:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 19,
+      "timeZone": "Mountain",
+      "demandMW": 8592,
+      "netGenerationMW": 9042,
+      "totalInterchangeMW": 450,
+      "consumedIntensityLbsPerKWh": 1.2313713727563975,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T02:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 20,
+      "timeZone": "Mountain",
+      "demandMW": 8294,
+      "netGenerationMW": 8147,
+      "totalInterchangeMW": -147,
+      "consumedIntensityLbsPerKWh": 1.4473050837753243,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T03:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 21,
+      "timeZone": "Mountain",
+      "demandMW": 7962,
+      "netGenerationMW": 7336,
+      "totalInterchangeMW": -626,
+      "consumedIntensityLbsPerKWh": 1.5252958950692534,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T04:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 22,
+      "timeZone": "Mountain",
+      "demandMW": 7660,
+      "netGenerationMW": 7570,
+      "totalInterchangeMW": -90,
+      "consumedIntensityLbsPerKWh": 1.5157666119865922,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T05:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 23,
+      "timeZone": "Mountain",
+      "demandMW": 7216,
+      "netGenerationMW": 7656,
+      "totalInterchangeMW": 440,
+      "consumedIntensityLbsPerKWh": 1.4483224252811888,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T06:00:00.000Z",
+      "localDate": "2025-08-03",
+      "localHour": 24,
+      "timeZone": "Mountain",
+      "demandMW": 6711,
+      "netGenerationMW": 7208,
+      "totalInterchangeMW": 497,
+      "consumedIntensityLbsPerKWh": 1.4005803844028313,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T07:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 1,
+      "timeZone": "Mountain",
+      "demandMW": 6320,
+      "netGenerationMW": 6326,
+      "totalInterchangeMW": 6,
+      "consumedIntensityLbsPerKWh": 1.3814223068358724,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T08:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 2,
+      "timeZone": "Mountain",
+      "demandMW": 5974,
+      "netGenerationMW": 6602,
+      "totalInterchangeMW": 628,
+      "consumedIntensityLbsPerKWh": 1.3711212595239681,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T09:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 3,
+      "timeZone": "Mountain",
+      "demandMW": 5791,
+      "netGenerationMW": 5658,
+      "totalInterchangeMW": -133,
+      "consumedIntensityLbsPerKWh": 1.3540437605705498,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T10:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 4,
+      "timeZone": "Mountain",
+      "demandMW": 5677,
+      "netGenerationMW": 5074,
+      "totalInterchangeMW": -603,
+      "consumedIntensityLbsPerKWh": 1.3218192147037904,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T11:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 5,
+      "timeZone": "Mountain",
+      "demandMW": 5624,
+      "netGenerationMW": 4947,
+      "totalInterchangeMW": -677,
+      "consumedIntensityLbsPerKWh": 1.2612786407215613,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T12:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 6,
+      "timeZone": "Mountain",
+      "demandMW": 5741,
+      "netGenerationMW": 4451,
+      "totalInterchangeMW": -1290,
+      "consumedIntensityLbsPerKWh": 1.369450783675949,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T13:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 7,
+      "timeZone": "Mountain",
+      "demandMW": 5867,
+      "netGenerationMW": 4701,
+      "totalInterchangeMW": -1166,
+      "consumedIntensityLbsPerKWh": 1.5721426069176503,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T14:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 8,
+      "timeZone": "Mountain",
+      "demandMW": 6059,
+      "netGenerationMW": 5343,
+      "totalInterchangeMW": -716,
+      "consumedIntensityLbsPerKWh": 1.42813936162461,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T15:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 9,
+      "timeZone": "Mountain",
+      "demandMW": 6551,
+      "netGenerationMW": 5939,
+      "totalInterchangeMW": -612,
+      "consumedIntensityLbsPerKWh": 1.0411221249979306,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T16:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 10,
+      "timeZone": "Mountain",
+      "demandMW": 6957,
+      "netGenerationMW": 6382,
+      "totalInterchangeMW": -575,
+      "consumedIntensityLbsPerKWh": 0.9590829182191788,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T17:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 11,
+      "timeZone": "Mountain",
+      "demandMW": 7393,
+      "netGenerationMW": 6610,
+      "totalInterchangeMW": -783,
+      "consumedIntensityLbsPerKWh": 0.9510673365120252,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T18:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 12,
+      "timeZone": "Mountain",
+      "demandMW": 7711,
+      "netGenerationMW": 6956,
+      "totalInterchangeMW": -755,
+      "consumedIntensityLbsPerKWh": 0.974777671030024,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T19:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 13,
+      "timeZone": "Mountain",
+      "demandMW": 8072,
+      "netGenerationMW": 7108,
+      "totalInterchangeMW": -964,
+      "consumedIntensityLbsPerKWh": 0.9663636688460497,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T20:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 14,
+      "timeZone": "Mountain",
+      "demandMW": 8333,
+      "netGenerationMW": 7393,
+      "totalInterchangeMW": -940,
+      "consumedIntensityLbsPerKWh": 0.9739134951622122,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T21:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 15,
+      "timeZone": "Mountain",
+      "demandMW": 8686,
+      "netGenerationMW": 7447,
+      "totalInterchangeMW": -1239,
+      "consumedIntensityLbsPerKWh": 0.936686607073762,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T22:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 16,
+      "timeZone": "Mountain",
+      "demandMW": 8800,
+      "netGenerationMW": 7668,
+      "totalInterchangeMW": -1132,
+      "consumedIntensityLbsPerKWh": 0.9948192361379593,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-04T23:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 17,
+      "timeZone": "Mountain",
+      "demandMW": 8775,
+      "netGenerationMW": 8325,
+      "totalInterchangeMW": -450,
+      "consumedIntensityLbsPerKWh": 1.1093991208492984,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T00:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 18,
+      "timeZone": "Mountain",
+      "demandMW": 8899,
+      "netGenerationMW": 8656,
+      "totalInterchangeMW": -243,
+      "consumedIntensityLbsPerKWh": 1.1670040236225196,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T01:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 19,
+      "timeZone": "Mountain",
+      "demandMW": 8820,
+      "netGenerationMW": 8733,
+      "totalInterchangeMW": -87,
+      "consumedIntensityLbsPerKWh": 1.2762849912731689,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T02:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 20,
+      "timeZone": "Mountain",
+      "demandMW": 8607,
+      "netGenerationMW": 8619,
+      "totalInterchangeMW": 12,
+      "consumedIntensityLbsPerKWh": 1.399699371889168,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T03:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 21,
+      "timeZone": "Mountain",
+      "demandMW": 8414,
+      "netGenerationMW": 8438,
+      "totalInterchangeMW": 24,
+      "consumedIntensityLbsPerKWh": 1.3858136001074217,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T04:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 22,
+      "timeZone": "Mountain",
+      "demandMW": 8109,
+      "netGenerationMW": 8221,
+      "totalInterchangeMW": 112,
+      "consumedIntensityLbsPerKWh": 1.346676784142535,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T05:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 23,
+      "timeZone": "Mountain",
+      "demandMW": 7465,
+      "netGenerationMW": 8095,
+      "totalInterchangeMW": 630,
+      "consumedIntensityLbsPerKWh": 1.338617161091923,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T06:00:00.000Z",
+      "localDate": "2025-08-04",
+      "localHour": 24,
+      "timeZone": "Mountain",
+      "demandMW": 6855,
+      "netGenerationMW": 7686,
+      "totalInterchangeMW": 831,
+      "consumedIntensityLbsPerKWh": 1.3010875428341837,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T07:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 1,
+      "timeZone": "Mountain",
+      "demandMW": 6424,
+      "netGenerationMW": 7049,
+      "totalInterchangeMW": 625,
+      "consumedIntensityLbsPerKWh": 1.247520701029322,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T08:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 2,
+      "timeZone": "Mountain",
+      "demandMW": 6041,
+      "netGenerationMW": 6561,
+      "totalInterchangeMW": 520,
+      "consumedIntensityLbsPerKWh": 1.1407541493635545,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T09:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 3,
+      "timeZone": "Mountain",
+      "demandMW": 5910,
+      "netGenerationMW": 6188,
+      "totalInterchangeMW": 278,
+      "consumedIntensityLbsPerKWh": 1.118838788134071,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T10:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 4,
+      "timeZone": "Mountain",
+      "demandMW": 5760,
+      "netGenerationMW": 6105,
+      "totalInterchangeMW": 345,
+      "consumedIntensityLbsPerKWh": 1.1551448177148798,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T11:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 5,
+      "timeZone": "Mountain",
+      "demandMW": 5715,
+      "netGenerationMW": 6199,
+      "totalInterchangeMW": 484,
+      "consumedIntensityLbsPerKWh": 1.2410250942261045,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T12:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 6,
+      "timeZone": "Mountain",
+      "demandMW": 5821,
+      "netGenerationMW": 6069,
+      "totalInterchangeMW": 248,
+      "consumedIntensityLbsPerKWh": 1.310685015509936,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T13:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 7,
+      "timeZone": "Mountain",
+      "demandMW": 5959,
+      "netGenerationMW": 6235,
+      "totalInterchangeMW": 276,
+      "consumedIntensityLbsPerKWh": 1.440797475759682,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T14:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 8,
+      "timeZone": "Mountain",
+      "demandMW": 6168,
+      "netGenerationMW": 6662,
+      "totalInterchangeMW": 494,
+      "consumedIntensityLbsPerKWh": 1.3957100741108248,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T15:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 9,
+      "timeZone": "Mountain",
+      "demandMW": 6471,
+      "netGenerationMW": 7130,
+      "totalInterchangeMW": 659,
+      "consumedIntensityLbsPerKWh": 1.025305696445203,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T16:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 10,
+      "timeZone": "Mountain",
+      "demandMW": 6816,
+      "netGenerationMW": 7225,
+      "totalInterchangeMW": 409,
+      "consumedIntensityLbsPerKWh": 0.8487938503713413,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T17:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 11,
+      "timeZone": "Mountain",
+      "demandMW": 7000,
+      "netGenerationMW": 7386,
+      "totalInterchangeMW": 386,
+      "consumedIntensityLbsPerKWh": 0.7871575801578274,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T18:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 12,
+      "timeZone": "Mountain",
+      "demandMW": 7532,
+      "netGenerationMW": 7870,
+      "totalInterchangeMW": 338,
+      "consumedIntensityLbsPerKWh": 0.8017521779599288,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T19:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 13,
+      "timeZone": "Mountain",
+      "demandMW": 7863,
+      "netGenerationMW": 8783,
+      "totalInterchangeMW": 920,
+      "consumedIntensityLbsPerKWh": 0.8758994486999994,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T20:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 14,
+      "timeZone": "Mountain",
+      "demandMW": 8095,
+      "netGenerationMW": 9296,
+      "totalInterchangeMW": 1201,
+      "consumedIntensityLbsPerKWh": 0.9350359407953008,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T21:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 15,
+      "timeZone": "Mountain",
+      "demandMW": 8288,
+      "netGenerationMW": 9453,
+      "totalInterchangeMW": 1165,
+      "consumedIntensityLbsPerKWh": 0.9322259147795826,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T22:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 16,
+      "timeZone": "Mountain",
+      "demandMW": 8594,
+      "netGenerationMW": 9367,
+      "totalInterchangeMW": 773,
+      "consumedIntensityLbsPerKWh": 0.9711693365936941,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-05T23:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 17,
+      "timeZone": "Mountain",
+      "demandMW": 8748,
+      "netGenerationMW": 9586,
+      "totalInterchangeMW": 838,
+      "consumedIntensityLbsPerKWh": 1.0278024711692946,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T00:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 18,
+      "timeZone": "Mountain",
+      "demandMW": 8884,
+      "netGenerationMW": 9486,
+      "totalInterchangeMW": 602,
+      "consumedIntensityLbsPerKWh": 1.0472266399190873,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T01:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 19,
+      "timeZone": "Mountain",
+      "demandMW": 8864,
+      "netGenerationMW": 9677,
+      "totalInterchangeMW": 813,
+      "consumedIntensityLbsPerKWh": 1.119704326915819,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T02:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 20,
+      "timeZone": "Mountain",
+      "demandMW": 8678,
+      "netGenerationMW": 8990,
+      "totalInterchangeMW": 312,
+      "consumedIntensityLbsPerKWh": 1.312033316516507,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T03:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 21,
+      "timeZone": "Mountain",
+      "demandMW": 8188,
+      "netGenerationMW": 7980,
+      "totalInterchangeMW": -208,
+      "consumedIntensityLbsPerKWh": 1.4763335054525297,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T04:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 22,
+      "timeZone": "Mountain",
+      "demandMW": 7820,
+      "netGenerationMW": 7602,
+      "totalInterchangeMW": -218,
+      "consumedIntensityLbsPerKWh": 1.558116736478305,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T05:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 23,
+      "timeZone": "Mountain",
+      "demandMW": 7225,
+      "netGenerationMW": 7083,
+      "totalInterchangeMW": -142,
+      "consumedIntensityLbsPerKWh": 1.650487238304408,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T06:00:00.000Z",
+      "localDate": "2025-08-05",
+      "localHour": 24,
+      "timeZone": "Mountain",
+      "demandMW": 6696,
+      "netGenerationMW": 6806,
+      "totalInterchangeMW": 110,
+      "consumedIntensityLbsPerKWh": 1.7485408770296544,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T07:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 1,
+      "timeZone": "Mountain",
+      "demandMW": 6243,
+      "netGenerationMW": 6529,
+      "totalInterchangeMW": 286,
+      "consumedIntensityLbsPerKWh": 1.7590618174566393,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T08:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 2,
+      "timeZone": "Mountain",
+      "demandMW": 6006,
+      "netGenerationMW": 6909,
+      "totalInterchangeMW": 903,
+      "consumedIntensityLbsPerKWh": 1.6810644552126222,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T09:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 3,
+      "timeZone": "Mountain",
+      "demandMW": 5873,
+      "netGenerationMW": 6776,
+      "totalInterchangeMW": 903,
+      "consumedIntensityLbsPerKWh": 1.7037895375497392,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T10:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 4,
+      "timeZone": "Mountain",
+      "demandMW": 5658,
+      "netGenerationMW": 6366,
+      "totalInterchangeMW": 708,
+      "consumedIntensityLbsPerKWh": 1.7078532410531169,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T11:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 5,
+      "timeZone": "Mountain",
+      "demandMW": 5558,
+      "netGenerationMW": 5939,
+      "totalInterchangeMW": 381,
+      "consumedIntensityLbsPerKWh": 1.7015390484040347,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T12:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 6,
+      "timeZone": "Mountain",
+      "demandMW": 5651,
+      "netGenerationMW": 5934,
+      "totalInterchangeMW": 283,
+      "consumedIntensityLbsPerKWh": 1.69695463173287,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T13:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 7,
+      "timeZone": "Mountain",
+      "demandMW": 5805,
+      "netGenerationMW": 6093,
+      "totalInterchangeMW": 288,
+      "consumedIntensityLbsPerKWh": 1.703778365899598,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T14:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 8,
+      "timeZone": "Mountain",
+      "demandMW": 6114,
+      "netGenerationMW": 6680,
+      "totalInterchangeMW": 566,
+      "consumedIntensityLbsPerKWh": 1.514337745095089,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T15:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 9,
+      "timeZone": "Mountain",
+      "demandMW": 6586,
+      "netGenerationMW": 7027,
+      "totalInterchangeMW": 441,
+      "consumedIntensityLbsPerKWh": 1.0730392494431724,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T16:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 10,
+      "timeZone": "Mountain",
+      "demandMW": 7112,
+      "netGenerationMW": 7595,
+      "totalInterchangeMW": 483,
+      "consumedIntensityLbsPerKWh": 0.9979150924859,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T17:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 11,
+      "timeZone": "Mountain",
+      "demandMW": 7444,
+      "netGenerationMW": 7773,
+      "totalInterchangeMW": 329,
+      "consumedIntensityLbsPerKWh": 1.0233402571988177,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T18:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 12,
+      "timeZone": "Mountain",
+      "demandMW": 7800,
+      "netGenerationMW": 8241,
+      "totalInterchangeMW": 441,
+      "consumedIntensityLbsPerKWh": 1.1225935503743798,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T19:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 13,
+      "timeZone": "Mountain",
+      "demandMW": 8043,
+      "netGenerationMW": 8442,
+      "totalInterchangeMW": 399,
+      "consumedIntensityLbsPerKWh": 1.1369260230062406,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T20:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 14,
+      "timeZone": "Mountain",
+      "demandMW": 8371,
+      "netGenerationMW": 8858,
+      "totalInterchangeMW": 487,
+      "consumedIntensityLbsPerKWh": 1.1270985243866034,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T21:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 15,
+      "timeZone": "Mountain",
+      "demandMW": 8628,
+      "netGenerationMW": 9109,
+      "totalInterchangeMW": 481,
+      "consumedIntensityLbsPerKWh": 1.0664862671659336,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T22:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 16,
+      "timeZone": "Mountain",
+      "demandMW": 8849,
+      "netGenerationMW": 9497,
+      "totalInterchangeMW": 648,
+      "consumedIntensityLbsPerKWh": 1.0459947785680912,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-06T23:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 17,
+      "timeZone": "Mountain",
+      "demandMW": 9130,
+      "netGenerationMW": 9833,
+      "totalInterchangeMW": 703,
+      "consumedIntensityLbsPerKWh": 1.1151079250469855,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-07T00:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 18,
+      "timeZone": "Mountain",
+      "demandMW": 9243,
+      "netGenerationMW": 9810,
+      "totalInterchangeMW": 567,
+      "consumedIntensityLbsPerKWh": 1.2043867996495878,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-07T01:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 19,
+      "timeZone": "Mountain",
+      "demandMW": 9175,
+      "netGenerationMW": 9543,
+      "totalInterchangeMW": 368,
+      "consumedIntensityLbsPerKWh": 1.265745457186451,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-07T02:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 20,
+      "timeZone": "Mountain",
+      "demandMW": 8845,
+      "netGenerationMW": 8484,
+      "totalInterchangeMW": -361,
+      "consumedIntensityLbsPerKWh": 1.328838688400125,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-07T03:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 21,
+      "timeZone": "Mountain",
+      "demandMW": 8430,
+      "netGenerationMW": 7934,
+      "totalInterchangeMW": -496,
+      "consumedIntensityLbsPerKWh": 1.3944292955412514,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-07T04:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 22,
+      "timeZone": "Mountain",
+      "demandMW": 8138,
+      "netGenerationMW": 7739,
+      "totalInterchangeMW": -399,
+      "consumedIntensityLbsPerKWh": 1.4301021460799979,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    },
+    {
+      "utcHourEnding": "2025-08-07T05:00:00.000Z",
+      "localDate": "2025-08-06",
+      "localHour": 23,
+      "timeZone": "Mountain",
+      "demandMW": 7645,
+      "netGenerationMW": 7616,
+      "totalInterchangeMW": -29,
+      "consumedIntensityLbsPerKWh": 1.4205515729763465,
+      "imputed": {
+        "demand": false,
+        "netGeneration": false,
+        "totalInterchange": false,
+        "generationBySource": false
+      }
+    }
+  ]
+}
