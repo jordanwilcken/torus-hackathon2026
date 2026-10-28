@@ -1,4 +1,5 @@
 import type { FeedState } from './FeedState.type';
+import { publicFeedCadence } from './publicFeedCadence';
 
 export type BrowserFeed<T> = Readonly<FeedState<T> & { loading: boolean }>;
 export type FeedClient<T> = {
@@ -13,7 +14,7 @@ export type FeedClient<T> = {
 export function createFeedClient<T>(url: string, options: {
   fetcher?: typeof fetch; pollMs?: number; now?: () => number;
 } = {}): FeedClient<T> {
-  const { fetcher = fetch, pollMs = 60_000, now = Date.now } = options;
+  const { fetcher = fetch, pollMs = publicFeedCadence.browserPollMs, now = Date.now } = options;
   if (!Number.isFinite(pollMs) || pollMs <= 0) throw new RangeError('pollMs must be positive.');
   let state: BrowserFeed<T> = Object.freeze({ status: 'unavailable', snapshot: null, revision: null,
     lastAttemptAt: null, nextRefreshAt: null, loading: true });

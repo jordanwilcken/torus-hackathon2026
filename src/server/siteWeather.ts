@@ -1,4 +1,5 @@
 import type { SiteWeatherSnapshot, SiteWeatherSelection, SiteWeatherVariable, SiteWeatherCoverage } from '../data/SiteWeather.type.ts';
+import { publicFeedCadence } from '../data/publicFeedCadence.ts';
 import type { FeedState } from '../data/FeedState.type.ts';
 import type { SnapshotStore, SourceEvidence } from './SnapshotStore.type.ts';
 import { createCachedFeed, FeedError } from './cachedFeed.ts';
@@ -7,7 +8,7 @@ import { selectSiteWeather, matchesWeatherSelection, weatherVariables } from './
 export type { SiteWeatherSelection, SiteWeatherVariable } from '../data/SiteWeather.type.ts';
 
 const hour = 3_600_000;
-const refreshMs = 30 * 60_000;
+const refreshMs = publicFeedCadence.weather;
 const sourceUrl = 'https://api.open-meteo.com/v1/forecast';
 export type SiteWeatherFeed = { read(): Promise<FeedState<SiteWeatherSnapshot>> };
 export type SiteWeatherOptions = { fetcher?: typeof fetch; now?: () => number; offline?: boolean; recorded?: boolean;

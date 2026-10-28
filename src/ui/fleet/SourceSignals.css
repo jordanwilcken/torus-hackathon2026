@@ -55,3 +55,16 @@
 .source-signals .source-signals-button { padding:6px 9px; gap:2px; border-radius:7px; }
 .source-signals-status { font-size:8px; }
 .source-signals-strip { gap:5px; }
+
+.source-signals-caption { margin:0 0 4px; color:#738276; font-size:8px; text-transform:uppercase; letter-spacing:.07em; }
+.source-signals .source-signals-button { min-width:125px; padding:5px 8px; }
+.source-signals-name svg { width:12px; height:12px; }
+.source-signals-status { font-size:9px; color:#617466; font-variant-numeric:tabular-nums; }
+.source-signals-cadence { color:#798476; font-size:8px; line-height:1.4; }
+.source-signals-cadence b { color:#957440; font-weight:500; }
+.source-signals [data-state='unavailable'] .source-signals-name i { background:#aa796f; }
+.source-signals [data-state='saved'] .source-signals-name i { background:#8c9299; }
+.source-signals-timing { display:grid; gap:4px; margin:0 0 13px; padding:9px 10px; background:#f4f6ef; border-radius:6px; font-size:10px; color:#687961; }
+.source-signals-timing strong { color:#4d6954; font-weight:600; }
+.source-signals-timing small { font-size:9px; color:#838975; }
+@media(max-width:540px) { .source-signals .source-signals-button { min-width:0; padding:5px 6px; }.source-signals-status { font-size:8px; }.source-signals-name svg { width:11px; height:11px; } }

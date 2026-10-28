@@ -20,7 +20,7 @@ export function FleetSummary({ progress }: { progress: ReplayProgress }) {
   return <section className="fleet-summary" aria-label="Modeled fleet summary">
     <div className="fleet-summary-main">
       <div className="fleet-carbon-outcome" data-outcome={outcome.status} data-tone={outcome.tone} data-reduction-kg={outcome.reductionKg ?? undefined}>
-        <p className="fleet-summary-eyebrow">MODELED CARBON</p>
+        <p className="fleet-summary-eyebrow">ESTIMATED CARBON · ASSUMED FACTORS</p>
         <h3>{outcome.headline}{outcome.percent !== null && <span className="fleet-carbon-percent">{outcome.percent}% {outcome.reductionKg === 0 ? 'change' : outcome.tone === 'lower' ? 'less' : 'more'}</span>}</h3>
         <p className="fleet-carbon-totals">Baseline <strong>{outcome.baselineLabel}</strong><span>·</span>Scheduled <strong>{outcome.selectedLabel}</strong></p>
         <p className="fleet-carbon-qualification">{outcome.detail}</p>

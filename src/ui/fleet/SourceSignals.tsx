@@ -1,4 +1,5 @@
 import { useId, useRef, useState } from 'react';
+import { publicFeedCadence } from '../../data/publicFeedCadence';
 import type { EiaApiSnapshot } from '../../core/energy/data/eiaApi';
 import type { TimeWindow } from '../../core/TimeWindow.type';
 import type { FleetCapture } from '../../data/captureLiveFleet';
@@ -39,6 +40,23 @@ function receivedAge(retrievedAt: string | undefined, now: number): string {
   return `Received ${minutes < 60 ? `${minutes}m` : minutes < 1_440 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${Math.floor(minutes / 1_440)}d`} ago`;
 }
 
+function sourceAge(signal: Signal, now: number): string {
+  if (!signal.feed.snapshot) return 'No reading';
+  if (signal.id === 'weather') return receivedAge(signal.feed.snapshot.retrievedAt, now).replace('Received', 'Fetched');
+  if (!signal.reading.available || !signal.reading.window) return 'No reading';
+  const elapsed = now - Date.parse(signal.reading.window.endAt);
+  if (!Number.isFinite(elapsed)) return 'Age unknown';
+  if (elapsed <= 0) return 'Current interval';
+  return receivedAge(signal.reading.window.endAt, now).replace('Received just now', 'Less than 1m old').replace('Received ', '').replace(' ago', ' old');
+}
+
+function collectionSchedule(signal: Signal, now: number): string {
+  const next = signal.feed.nextRefreshAt;
+  if (!next) return 'No refresh scheduled';
+  const minutes = Math.ceil((Date.parse(next) - now) / 60_000);
+  return minutes > 0 ? 'Next attempt in ' + minutes + 'm' : 'Due at next browser check';
+}
+
 function weatherReading(snapshot: SiteWeatherSnapshot | null, at: number): Reading {
   const sites = snapshot?.sites ?? [];
   const site = sites.find(item => item.locationId === 'A');
@@ -72,7 +90,8 @@ function eiaReading(snapshot: EiaApiSnapshot | null, now: number): Reading {
 function signalStatus(signal: Signal, now: number): { state: string; label: string } {
   const { feed, reading } = signal;
   if (!feed.snapshot || feed.status === 'unavailable') return { state: 'unavailable', label: 'Unavailable' };
-  if (feed.status === 'stale') return { state: 'stale', label: 'Refresh failed' };
+  if (feed.status === 'stale') return { state: 'stale', label: feed.error ? 'Refresh failed' : 'Retained data' };
+  if (!feed.lastAttemptAt && !feed.nextRefreshAt) return { state: 'saved', label: 'Saved snapshot' };
   const age = now - Date.parse(feed.snapshot.retrievedAt);
   if (!reading.available || !reading.window || !feed.revision || !Number.isFinite(age) || age < -60_000)
     return { state: 'unknown', label: 'Incomplete' };
@@ -133,6 +152,7 @@ export function SourceSignals({ weather, market, eia, capture, now, onRefresh }:
     { id: 'eia', name: 'EIA', role: 'Observed', url: eia.snapshot?.sourceUrl ?? 'https://www.eia.gov/opendata/', feed: eia, reading: eiaReading(eia.snapshot, now) },
   ];
   const active = signals.find(signal => signal.id === selected);
+  const minutes = (source: SourceId) => publicFeedCadence[source] / 60_000;
   async function refresh() {
     setRefreshing(true); setRefreshResult('');
     try { await onRefresh(); setRefreshResult('Refresh finished. Source status shown above.'); }
@@ -144,27 +164,37 @@ export function SourceSignals({ weather, market, eia, capture, now, onRefresh }:
     if (selected) buttons.current[selected]?.focus();
   }
   return <div className="source-signals" onKeyDown={event => { if (event.key === 'Escape' && selected) { event.stopPropagation(); dismiss(); } }}>
+    <div className="source-signals-caption">Public inputs</div>
     <div className="source-signals-strip" aria-label="Public data sources">
       {signals.map(signal => {
         const status = signalStatus(signal, now);
         return <button key={signal.id} ref={node => { buttons.current[signal.id] = node; }} type="button"
           className="source-signals-button" data-state={status.state} aria-label={`${signal.name} source`}
-          aria-expanded={selected === signal.id} aria-controls={`${id}-details`} title={`${signal.reading.note} · ${receivedAge(signal.feed.snapshot?.retrievedAt, now)}`}
+          aria-expanded={selected === signal.id} aria-controls={`${id}-details`} title={`${signal.reading.note} · ${sourceAge(signal, now)} · Normal collection every ${minutes(signal.id)}m while open. ${collectionSchedule(signal, now)}.`}
           onClick={() => setSelected(value => value === signal.id ? null : signal.id)}>
           <span className="source-signals-name"><SourceIcon source={signal.id} />{signal.name}<i aria-hidden="true" /></span>
 
-          <span className="source-signals-status">{status.state === 'ready' ? signal.id === 'weather' ? 'Site weather' : signal.id === 'market' ? 'Reference price' : 'Grid context' : status.label}</span>
+          <span className="source-signals-status">{signal.id === 'weather' ? 'Forecast' : signal.id === 'market' ? 'Reference price' : 'Grid demand'} · {sourceAge(signal, now)}</span>
+          <span className="source-signals-cadence">{status.state !== 'ready' && <b>{status.label} · </b>}{status.state === 'saved' ? 'No refresh scheduled' : '↻ Collect ~' + minutes(signal.id) + 'm'}</span>
         </button>;
       })}
     </div>
     {active && <section id={`${id}-details`} className="source-signals-details" aria-label="Source details">
       <header><div><SourceIcon source={active.id} /><h3>{active.name}</h3><span className="source-signals-role">{active.role}</span></div>
         <button type="button" className="source-signals-close" aria-label="Close source details" onClick={dismiss}>×</button></header>
+      <div className="source-signals-timing">
+        <strong>{signalStatus(active, now).label} · {sourceAge(active, now)}</strong>
+        <span>{active.id === 'market' ? '5-minute market intervals' : active.id === 'eia' ? 'Hourly reported demand' : 'Hourly site forecasts'} · normally collected every {minutes(active.id)}m while open</span>
+        <span>{collectionSchedule(active, now)} · browser checks every {publicFeedCadence.browserPollMs / 1000}s</span>
+        <small>Collection runs when requested and due; provider delays can extend this. Refresh inputs checks the cache without bypassing its schedule.</small>
+        <small>{active.id === 'weather' ? 'Fetch age is not forecast issue age; the provider issue time is not supplied.' : 'Reading age is measured from the interval end. A new fetch can return the same old reading.'}</small>
+      </div>
       <div className="source-signals-publications">
         {active.pinned && <Publication title="Used by this run" snapshot={active.pinned.snapshot} revision={active.pinned.revision} reading={active.pinned.reading} pinned />}
         <Publication title="Latest received" snapshot={active.feed.snapshot} revision={active.feed.revision} reading={active.reading} />
       </div>
-      {active.pinned && <p className="source-signals-separation">{active.pinned.revision === active.feed.revision ? 'Latest revision matches this run.' : 'New readings do not change this run’s pinned inputs.'}</p>}
+      {active.pinned && <p className="source-signals-separation">Run inputs fixed at {capture ? utc(capture.capturedAt) : 'capture'}. {active.pinned.revision === active.feed.revision ? 'Latest revision matches this run.' : 'New readings do not change this run’s pinned inputs.'}</p>}
+      {active.id === 'eia' && <p className="source-signals-separation">Regional context only; this demand reading does not drive job routing or site capacity.</p>}
       {active.feed.error && <p className="source-signals-error">{active.feed.error}</p>}
       <footer><a href={active.url} aria-label={`${active.name} source`} target="_blank" rel="noreferrer" title={active.url}>{active.url}</a>
         <button type="button" aria-label="Refresh inputs" disabled={refreshing} onClick={() => void refresh()}>{refreshing ? 'Refreshing…' : 'Refresh inputs'}</button></footer>

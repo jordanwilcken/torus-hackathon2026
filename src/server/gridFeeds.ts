@@ -1,3 +1,4 @@
+import { publicFeedCadence } from '../data/publicFeedCadence.ts';
 import { createCachedFeed, FeedError } from './cachedFeed.ts';
 import { collectEiaPublication } from './eia.ts';
 import { collectCaisoPublication, type CaisoSnapshot } from './caiso.ts';
@@ -31,8 +32,8 @@ export function createGridFeeds(apiKey: string, stores: GridSnapshotStores, opti
     }, snapshot => Date.parse(snapshot.retrievedAt));
   }
   return {
-    eia: feed(stores.eia, () => collectEiaPublication(apiKey, fetcher, now), 15 * 60_000),
-    caiso: feed(stores.caiso, () => collectCaisoPublication(fetcher, now), 5 * 60_000),
+    eia: feed(stores.eia, () => collectEiaPublication(apiKey, fetcher, now), publicFeedCadence.eia),
+    caiso: feed(stores.caiso, () => collectCaisoPublication(fetcher, now), publicFeedCadence.market),
   };
 }
 

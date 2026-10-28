@@ -68,6 +68,7 @@ export function LiveFleet({ grid }: { grid: PublicGridClient }) {
     <div className="fleet-heading"><div className="fleet-heading-label"><h2>Compute fleet</h2><span className="fleet-mode">Modeled execution</span></div>
       <SourceSignals weather={weather} market={market} eia={eia} capture={capture} now={now} onRefresh={() => Promise.allSettled([weatherClient.refresh(), grid.caiso.refresh(), grid.eia.refresh()])} />
     </div>
+    <div className="fleet-data-basis" aria-label="Real inputs and modeled outputs"><span><i />Public forecasts & reference price</span><b aria-hidden="true">→</b><span>Simulated jobs · estimated energy, cost & carbon</span></div>
     {capture?.runInputs.caiso?.status === 'stale' && <p className="fleet-source-notice" role="status">
       This run uses the captured CAISO price. It met the one-hour age limit at capture, when refreshing was delayed.
     </p>}
@@ -204,10 +205,10 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
     finally { setPreparingDisruption(false); }
   }
   return <>
-    <div className="fleet-livebar"><div className="fleet-clock"><span className={playback.playing ? 'clock-pulse' : ''} />
+    <div className="fleet-livebar"><div className="fleet-clock"><em className="fleet-clock-label">Simulation clock</em><span className={playback.playing ? 'clock-pulse' : ''} />
       <strong>{failure ? 'Stopped' : progress.done ? 'Model complete' : playback.playing ? 'Running model' : 'Paused model'}</strong>
       <output aria-label="Fleet model hour" data-hour={progress.hour}>{progress.hour} / {progress.totalHours} h</output>
-      <small>{time(currentAt)} · 1 model hour ≈ {number(5.8 / playback.speed)} s</small></div>
+      <small className="fleet-clock-rate">1 simulated hour ≈ {number(5.8 / playback.speed)}s</small><time className="fleet-clock-time" dateTime={currentAt}>{time(currentAt)}</time></div>
       <button className="fleet-monkey" aria-label="Chaos monkey" aria-expanded={monkey} onClick={() => void openDisruption()}>🐒 <span>Disrupt</span></button></div>
     <FleetMapKey />
     <FleetSummary progress={progress} />

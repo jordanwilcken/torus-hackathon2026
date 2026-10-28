@@ -19,12 +19,30 @@ type Props = {
 const color = (site: FleetSiteVisual, completed: boolean) => completed ? '#7c929c' : site.unknown ? '#89969a' : site.availableGpus <= 0 ? '#d16f63'
   : site.availableGpus < site.capacity / 2 ? '#d7af5e' : '#53ad83';
 
+const glyphPaths = {
+  packet: 'M6 3h8l4 4v14H6Z M14 3v4h4 M10 10l-2 3 2 3 M14 10l2 3-2 3',
+  compute: 'M6 6h12v12H6Z M10 10h4v4h-4Z M9 3v3 M15 3v3 M9 18v3 M15 18v3 M3 9h3 M3 15h3 M18 9h3 M18 15h3',
+};
+type GlyphKind = keyof typeof glyphPaths;
+function MapGlyph({ kind }: { kind: GlyphKind }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false"><path d={glyphPaths[kind]} /></svg>;
+}
+function createMapGlyph(kind: GlyphKind) {
+  const namespace = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(namespace, 'svg');
+  for (const [name, value] of Object.entries({ viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.7', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true', focusable: 'false' })) svg.setAttribute(name, value);
+  const path = document.createElementNS(namespace, 'path');
+  path.setAttribute('d', glyphPaths[kind]);
+  svg.append(path);
+  return svg;
+}
+
 export function FleetMapKey() {
   return <div className="fleet-map-key" role="group" aria-label="Modeled job flow">
       <div className="fleet-map-key-flow">
-        <span><i className="fleet-map-key-origin" aria-hidden="true">JOB</i>Simulated jobs</span>
+        <span><i className="fleet-map-key-origin" aria-hidden="true"><MapGlyph kind="packet" /></i>Simulated jobs</span>
         <b aria-hidden="true">→</b>
-        <span><i className="fleet-map-key-compute" aria-hidden="true">▦</i>Modeled compute</span>
+        <span><i className="fleet-map-key-compute" aria-hidden="true"><MapGlyph kind="compute" /></i>Modeled compute</span>
         <b aria-hidden="true">→</b>
         <span><i className="fleet-map-key-done" aria-hidden="true">✓</i>Results</span>
       </div>
@@ -97,7 +115,8 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
       element.dataset.state = completed ? 'complete' : site.unknown ? 'unknown' : site.activeJobs ? 'working' : site.availableGpus > 0 ? 'available' : 'constrained';
       element.setAttribute('aria-label', `Inspect ${site.name}`);
       element.setAttribute('aria-pressed', String(selected === site.id));
-      element.innerHTML = '<span class="fleet-node-halo"></span><span class="fleet-node-body"><span class="fleet-node-glyph">▦</span></span><span class="fleet-node-orbit"></span><span class="fleet-node-name"></span>';
+      element.innerHTML = '<span class="fleet-node-halo"></span><span class="fleet-node-body"><span class="fleet-node-glyph"></span></span><span class="fleet-node-orbit"></span><span class="fleet-node-name"></span>';
+      element.querySelector('.fleet-node-glyph')!.append(createMapGlyph('compute'));
       element.querySelector('.fleet-node-name')!.textContent = site.name;
       element.addEventListener('click', event => { event.stopPropagation(); callbacks.current.onInspect(site.id); });
       const marker = L.marker([site.latitude, site.longitude], { keyboard: false,
@@ -154,7 +173,8 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
       const element = document.createElement('button');
       element.className = 'fleet-datacenter';
       element.setAttribute('aria-label', `Inspect data center ${source.name}`);
-      element.innerHTML = '<span aria-hidden="true">↗</span><small>JOB</small>';
+      element.innerHTML = '<span class="fleet-origin-body" aria-hidden="true"></span>';
+      element.querySelector('.fleet-origin-body')!.append(createMapGlyph('packet'));
       element.addEventListener('click', () => callbacks.current.onOrigin?.(source.id));
       const marker = L.marker([source.latitude, source.longitude], { keyboard: false,
         icon: L.divIcon({ html: element, className: 'fleet-marker', iconSize: [30, 30], iconAnchor: [-23, 15] }) }).addTo(layer);
@@ -197,9 +217,9 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
   return <div className="fleet-geography compact-energy-map" data-playing={playing}>
     <div className="fleet-canvas" ref={container} role="region" aria-label="Continuous fleet map" />
     <div className="fleet-camera"><button onClick={() => zoom(false)}>Show US</button><button onClick={() => zoom(true)}>Explore Utah</button></div>
-    <div className="fleet-legend">
+    <div className="fleet-legend"><strong className="fleet-legend-title">Modeled GPU availability</strong>
       {completed ? <span><i style={{ background: '#7c929c' }} />Model complete · inspect results</span> : <>
-        <span><i style={{ background: '#53ad83' }} />Available compute</span><span><i style={{ background: '#d7af5e' }} />Limited</span>
+        <span><i style={{ background: '#53ad83' }} />Open</span><span><i style={{ background: '#d7af5e' }} />Limited</span>
         <span><i style={{ background: '#d16f63' }} />No slot</span><span><i style={{ background: '#89969a' }} />Unknown</span>
       </>}
       <small className="fleet-activity-key"><span><i style={{ background: '#2563eb' }} />New job</span><span><i style={{ background: '#0d9488' }} />Site move</span></small>
