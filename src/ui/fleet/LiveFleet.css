@@ -140,3 +140,10 @@
 @media(max-width:760px) { .fleet-heading { padding:9px 12px; gap:7px; }.fleet-livebar { padding:7px 12px; flex-wrap:wrap; }.fleet-clock-label { width:auto; }.fleet-clock .fleet-clock-rate { font-size:10px; }.fleet-play-actions { margin-left:auto; }.fleet-monkey span { display:inline; }.fleet-footer { padding:6px 12px; } }
 .fleet-inspector .fleet-decision { position:static; width:100%; max-width:none; margin-top:10px; box-shadow:none; }
 @media(max-width:650px) { .fleet-stage>.fleet-decision { top:62px; width:260px; }.fleet-inspector .fleet-decision { position:static; } }
+
+.fleet-clock[data-playing='false']>span { background:#a3ada5; }
+.fleet-clock .fleet-finish { font-size:10px; color:#6b7c6e; }
+.fleet-capacity-bar i { background:#e1e7e1; }
+.fleet-capacity-bar i[data-free='true'] { background:#71b38e; }
+.fleet-provenance form { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.fleet-provenance form label { min-width:0; max-width:100%; }

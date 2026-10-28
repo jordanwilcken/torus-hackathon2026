@@ -21,8 +21,12 @@ export function CapacityHorizon({ plan, locationId }: { plan?: HourlyCapacityPla
       </span>)}
     </div>
     <div className="fleet-cap-labels"><small>{slots[0]?.window.startAt.slice(11,16)} UTC</small><small>{slots.at(-1)?.window.endAt.slice(11,16)} UTC</small></div>
-    <p title={plan.reasons.join(' ') || 'A shared-capacity schedule fits the remaining deadlines; future inputs and execution must be rechecked.'}>
-      <i data-warning={plan.mode === 'degraded'} />{covered}/{jobs.length} jobs fit · {Math.round(plan.safetyMargin * 100)}% margin target
+    <p title={plan.reasons.join(' ') || (jobs.length
+      ? 'A shared-capacity schedule fits the remaining deadlines; future inputs and execution must be rechecked.'
+      : 'No jobs are assigned to this site in the current plan. Hourly capacity is shown above.')}>
+      <i data-warning={plan.mode === 'degraded'} />{jobs.length
+        ? <>{covered}/{jobs.length} jobs fit · {Math.round(plan.safetyMargin * 100)}% margin target</>
+        : "No pending work in this site's plan"}
     </p>
     <small>Green: allowed GPUs · pale: site limit</small>
   </section>;

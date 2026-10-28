@@ -73,6 +73,9 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
     const padding = L.point(40, 55);
     // Layers need a finite camera even when the CPU pane initially hides this map.
     view.setView(initialBounds.getCenter(), 3);
+    const updateLabelDetail = () => { element.dataset.detailLabels = String(view.getZoom() >= 5); };
+    updateLabelDetail();
+    view.on('zoomend', updateLabelDetail);
     L.control.zoom({ position: 'bottomleft' }).addTo(view);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -104,7 +107,7 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
       }
     });
     resize.observe(element);
-    return () => { disposed = true; resize.disconnect(); view.off('tooltipopen', showInspection); view.off('movestart zoomstart', closeInspection); closeInspection(); activity.current?.clear(); view.remove(); map.current = null; activity.current = null; };
+    return () => { disposed = true; resize.disconnect(); view.off('zoomend', updateLabelDetail); view.off('tooltipopen', showInspection); view.off('movestart zoomstart', closeInspection); closeInspection(); activity.current?.clear(); view.remove(); map.current = null; activity.current = null; };
   }, []);
   useEffect(() => {
     const layer = L.layerGroup().addTo(map.current!);

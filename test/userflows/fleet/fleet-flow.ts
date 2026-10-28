@@ -80,11 +80,13 @@ export class FleetFlow {
   }
 
   async step(): Promise<void> {
+    const returnToInspection = await this.panel.locator('.fleet-inspector').isVisible();
     await this.openControls();
     const before = await this.modelHour();
     await this.panel.getByRole('button', { name: 'Step', exact: true }).click();
     await this.page.clock.runFor(2_000);
     await expect(this.panel.getByLabel('Fleet model hour', { exact: true })).toHaveAttribute('data-hour', String(before + 1));
+    if (returnToInspection) await this.panel.getByRole('button', { name: 'Close controls', exact: true }).click();
   }
 
   async showGeography(name: 'Show US' | 'Explore Utah'): Promise<void> {

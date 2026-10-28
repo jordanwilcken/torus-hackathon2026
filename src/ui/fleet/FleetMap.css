@@ -46,3 +46,9 @@
 .fleet-geography .fleet-legend .fleet-activity-key { padding-top:4px; }
 .fleet-geography .fleet-route-history { border-left:1px solid #dde6de; border-radius:0 5px 5px 0; }
 .fleet-geography .fleet-route-history[aria-pressed='true'] { background:#e3eee7; color:#245942; }
+
+/* The key has its own row, outside the Leaflet canvas and its controls. */
+.fleet-geography .fleet-legend { position:static; max-width:none; width:100%; z-index:auto; border-width:1px 0 0; border-radius:0; background:#f8faf5; }
+@media(max-width:600px) {
+  .fleet-geography .fleet-canvas[data-detail-labels='false'] .fleet-node-name { display:none; }
+}

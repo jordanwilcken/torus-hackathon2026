@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { publicFeedCadence } from '../../data/publicFeedCadence';
 import type { EiaApiSnapshot } from '../../core/energy/data/eiaApi';
 import type { TimeWindow } from '../../core/TimeWindow.type';
@@ -25,6 +25,7 @@ export type SourceSignalsProps = {
   capture?: FleetCapture;
   now: number;
   onRefresh: () => void | Promise<unknown>;
+  onOpenChange?: (open: boolean) => void;
 };
 const hour = 3_600_000;
 const formatNumber = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -134,11 +135,23 @@ function DetailedGridEvidence({ eia, market, now }: Pick<SourceSignalsProps, 'ei
   </details>;
 }
 /** Inspection only: subscriptions, refreshes and run capture belong to the caller. */
-export function SourceSignals({ weather, market, eia, capture, now, onRefresh }: SourceSignalsProps) {
+export function SourceSignals({ weather, market, eia, capture, now, onRefresh, onOpenChange }: SourceSignalsProps) {
   const [selected, setSelected] = useState<SourceId | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshResult, setRefreshResult] = useState('');
   const id = useId();
+  const container = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!selected) return;
+    function dismissOutside(event: PointerEvent) {
+      if (event.target instanceof Node && !container.current?.contains(event.target)) {
+        setSelected(null);
+        onOpenChange?.(false);
+      }
+    }
+    document.addEventListener('pointerdown', dismissOutside);
+    return () => document.removeEventListener('pointerdown', dismissOutside);
+  }, [selected, onOpenChange]);
   const buttons = useRef<Partial<Record<SourceId, HTMLButtonElement | null>>>({});
   const pinnedWeather = capture?.runInputs.weather;
   const pinnedMarket = capture?.runInputs.caiso;
@@ -161,9 +174,10 @@ export function SourceSignals({ weather, market, eia, capture, now, onRefresh }:
   }
   function dismiss() {
     setSelected(null);
+    onOpenChange?.(false);
     if (selected) buttons.current[selected]?.focus();
   }
-  return <div className="source-signals" onKeyDown={event => { if (event.key === 'Escape' && selected) { event.stopPropagation(); dismiss(); } }}>
+  return <div ref={container} className="source-signals" onKeyDown={event => { if (event.key === 'Escape' && selected) { event.stopPropagation(); dismiss(); } }}>
     <div className="source-signals-caption">Public inputs</div>
     <div className="source-signals-strip" aria-label="Public data sources">
       {signals.map(signal => {
@@ -171,7 +185,11 @@ export function SourceSignals({ weather, market, eia, capture, now, onRefresh }:
         return <button key={signal.id} ref={node => { buttons.current[signal.id] = node; }} type="button"
           className="source-signals-button" data-state={status.state} aria-label={`${signal.name} source`}
           aria-expanded={selected === signal.id} aria-controls={`${id}-details`} title={`${signal.reading.note} · ${sourceAge(signal, now)} · Normal collection every ${minutes(signal.id)}m while open. ${collectionSchedule(signal, now)}.`}
-          onClick={() => setSelected(value => value === signal.id ? null : signal.id)}>
+          onClick={() => {
+            const next = selected === signal.id ? null : signal.id;
+            setSelected(next);
+            onOpenChange?.(next !== null);
+          }}>
           <span className="source-signals-name"><SourceIcon source={signal.id} />{signal.name}<i aria-hidden="true" /></span>
 
           <span className="source-signals-status">{sourceAge(signal, now)}</span>

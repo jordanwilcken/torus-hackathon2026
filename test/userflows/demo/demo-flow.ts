@@ -58,6 +58,9 @@ export class DemoFlow {
       await expect(section === 'Run CPU work' ? this.cpuPanel : this.replay).toBeInViewport();
     }
     await this.expectNavigationAvailable();
+    // Checking the optional navigation dismisses outside source inspection; return to the requested section.
+    if (section === 'Public inputs' && !await this.publicInputs.isVisible())
+      await this.page.getByRole('button', { name: 'EIA source', exact: true }).click();
   }
 
   async expectPublicInputs(demand: string, sources: { eia: string; caiso: string }): Promise<void> {

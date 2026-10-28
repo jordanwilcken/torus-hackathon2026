@@ -36,6 +36,7 @@ export function LiveFleet({ grid }: { grid: PublicGridClient }) {
   const [requestedCapture] = useState(() => new URLSearchParams(location.search).get('capture'));
   const [loadingMoment, setLoadingMoment] = useState(Boolean(requestedCapture));
   const [loadError, setLoadError] = useState('');
+  const [sourcePanelOpen, setSourcePanelOpen] = useState(false);
   const [momentId, setMomentId] = useState(requestedCapture ?? '');
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(timer); }, []);
   const candidate = useMemo(() => captureLiveFleet(weather, market, now), [weather, market, now]);
@@ -66,6 +67,14 @@ export function LiveFleet({ grid }: { grid: PublicGridClient }) {
       .finally(() => { if (active) setLoadingMoment(false); });
     return () => { active = false; };
   }, [requestedCapture]);
+  async function retrieveMoment() {
+    if (loadingMoment) return;
+    setLoadingMoment(true);
+    setLoadError('');
+    try { await restoreSaved(await loadFleetMoment(momentId)); }
+    catch (error) { setLoadError(error instanceof Error ? error.message : String(error)); }
+    finally { setLoadingMoment(false); }
+  }
   function latestSources(): FleetSourceBundle {
     const publication = <T,>(feed: { getSnapshot(): { snapshot: T | null; revision: string | null; status: string } }) => {
       const state = feed.getSnapshot();
@@ -76,12 +85,12 @@ export function LiveFleet({ grid }: { grid: PublicGridClient }) {
   }
   return <section className="live-fleet" aria-label="Live input fleet">
     <div className="fleet-heading"><div className="fleet-heading-label"><h2>24-hour fleet</h2><span className="fleet-mode">Modeled execution</span></div>
-      <SourceSignals weather={weather} market={market} eia={eia} capture={capture} now={now} onRefresh={() => Promise.allSettled([weatherClient.refresh(), grid.caiso.refresh(), grid.eia.refresh()])} />
+      <SourceSignals onOpenChange={setSourcePanelOpen} weather={weather} market={market} eia={eia} capture={capture} now={now} onRefresh={() => Promise.allSettled([weatherClient.refresh(), grid.caiso.refresh(), grid.eia.refresh()])} />
     </div>
     {capture?.runInputs.caiso?.status === 'stale' && <p className="fleet-source-notice" role="status">
       This run uses the captured CAISO price. It met the one-hour age limit at capture, when refreshing was delayed.
     </p>}
-    {capture ? <FleetSession key={generation} capture={capture} restored={restored} freezeAnchor={freezeAnchor} latestSources={latestSources} onRestore={restoreSaved} /> : <>
+    {capture ? <FleetSession key={generation} sourcePanelOpen={sourcePanelOpen} capture={capture} restored={restored} freezeAnchor={freezeAnchor} latestSources={latestSources} onRestore={restoreSaved} /> : <>
       <FleetMap sites={unconnected} transfers={[]} playing={false} onInspect={() => {}} onJob={() => {}} />
       <p className="fleet-empty" role="status">{loadingMoment ? 'Retrieving the frozen moment…' : loadError || (candidate.available ? 'Preparing the fleet…' : candidate.reason)}</p>
       {loadError && !loadingMoment && <div className="fleet-new-input">
@@ -92,9 +101,11 @@ export function LiveFleet({ grid }: { grid: PublicGridClient }) {
     </>}
     {changed && <div className="fleet-new-input"><span>New public inputs available</span><button onClick={startLatest}>Start with latest inputs</button></div>}
     <details className="fleet-provenance"><summary>Retrieve a frozen moment</summary>
-      <label>Capture ID <input aria-label="Frozen capture ID" value={momentId} onChange={event => setMomentId(event.target.value)} /></label>
-      <button disabled={loadingMoment} onClick={async () => { setLoadingMoment(true); try { await restoreSaved(await loadFleetMoment(momentId)); }
-        catch (error) { setLoadError(error instanceof Error ? error.message : String(error)); } finally { setLoadingMoment(false); } }}>Retrieve frozen moment</button>
+      <form onSubmit={event => { event.preventDefault(); void retrieveMoment(); }}>
+        <label>Capture ID <input aria-label="Frozen capture ID" value={momentId} onChange={event => setMomentId(event.target.value)} /></label>
+        <button type="submit" disabled={loadingMoment}>Retrieve frozen moment</button>
+      </form>
+      <p>Paste the ID from Disrupt → Save frozen moment.</p>
       {loadError && <p role="alert">{loadError}</p>}<p>Retrieves the exact public input bundle and replays it to the saved paused state. New source readings stay separate.</p>
     </details>
     <details className="fleet-provenance"><summary>Sources & model assumptions</summary>
@@ -128,8 +139,8 @@ function nextSolarDisruption(progress: ReplayProgress, locationId: string) {
   const input = site.observations[atHour];
   return { atHour, solarKW: input.supply!.solarKW, startAt: input.window.startAt };
 }
-function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestore }: {
-  capture: FleetCapture; restored?: ReturnType<typeof createPairedReplaySession>; freezeAnchor?: SavedFleetMoment;
+function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestore, sourcePanelOpen }: {
+  sourcePanelOpen: boolean; capture: FleetCapture; restored?: ReturnType<typeof createPairedReplaySession>; freezeAnchor?: SavedFleetMoment;
   latestSources: () => FleetSourceBundle; onRestore: (saved: SavedFleetMoment) => Promise<void>;
 }) {
   const playback = useReplayPlayback(capture.scenario, { session: restored, autoPlay: !restored, tickMs: 4000, routedDwellMs: 1800 });
@@ -183,7 +194,22 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
   }));
   const disruption = disruptionOptions.find(option => option.id === eventSite)?.next;
   const failure = progress.selected.run.ticks.find(tick => !tick.feasible);
-  function inspect(id: string) { setOriginId(undefined); setSelected(id); setJobId(undefined); setEventSite(id); }
+  function closeInspection() { setSelected(undefined); setJobId(undefined); setOriginId(undefined); }
+  function inspect(id: string) { setMonkey(false); setOriginId(undefined); setSelected(id); setJobId(undefined); setEventSite(id); }
+  function inspectJob(id: string) { setMonkey(false); setOriginId(undefined); setSelected(undefined); setJobId(id); }
+  function inspectOrigin(id: string) { setMonkey(false); setJobId(undefined); setSelected(undefined); setOriginId(id); }
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') { closeInspection(); setMonkey(false); }
+    }
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, []);
+  useEffect(() => {
+    if (sourcePanelOpen) { closeInspection(); setMonkey(false); }
+  }, [sourcePanelOpen]);
+  const remainingSeconds = Math.ceil((progress.totalHours - progress.hour) * 5.8 / playback.speed);
+  const timeToResult = Math.floor(remainingSeconds / 60) + 'm ' + remainingSeconds % 60 + 's';
   async function freezeMoment() {
     setSaving(true);
     try {
@@ -204,8 +230,8 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
       const settled = playback.read();
       const choices = settled.scenario.sites.map(site => ({ id: site.configuration.locationId,
         next: nextSolarDisruption(settled, site.configuration.locationId) }));
-      const preferred = choices.find(option => option.id === eventSite && option.next?.atHour === settled.hour)
-        ?? choices.filter(option => option.next).toSorted((a, b) => a.next!.atHour - b.next!.atHour)[0];
+      const preferred = choices.filter(option => option.next).toSorted((a, b) =>
+        a.next!.atHour - b.next!.atHour || b.next!.solarKW - a.next!.solarKW)[0];
       if (preferred) setEventSite(preferred.id);
     } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
     finally { setPreparingDisruption(false); }
@@ -222,29 +248,30 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
     finally { setPreparingDisruption(false); }
   }
   return <>
-    <div className="fleet-livebar"><div className="fleet-clock"><em className="fleet-clock-label">Simulation clock</em><span className={playback.playing ? 'clock-pulse' : ''} />
+    <div className="fleet-livebar"><div className="fleet-clock" data-playing={playback.playing}><em className="fleet-clock-label">Simulation clock</em><span className={playback.playing ? 'clock-pulse' : ''} />
       {(failure || progress.done || !playback.playing) && <strong>{failure ? 'Stopped' : progress.done ? 'Complete' : 'Paused'}</strong>}
       <output aria-label="Fleet model hour" data-hour={progress.hour}>{progress.hour} / {progress.totalHours} h</output>
-      <small className="fleet-clock-rate" title={time(currentAt)}>1 simulated hour ≈ {number(5.8 / playback.speed)}s</small></div>
+      <small className="fleet-clock-rate" title={time(currentAt)}>1 simulated hour ≈ {number(5.8 / playback.speed)}s</small>
+      {!progress.done && !failure && <small className="fleet-finish">{playback.playing ? 'Final result in ~' : 'Playback remaining ~'}{timeToResult}</small>}</div>
       <div className="fleet-play-actions">{!progress.done && <button className="fleet-pause" aria-label={playback.playing ? 'Pause fleet simulation' : 'Resume fleet simulation'} disabled={saving || preparingDisruption} onClick={() => { if (playback.playing) void actions.pause(); else actions.play(); }}>{playback.playing ? 'Ⅱ Pause' : '▷ Resume'}</button>}<button className="fleet-monkey" aria-label="Chaos monkey" aria-expanded={monkey} onClick={() => void openDisruption()}>🐒 <span>Disrupt</span></button></div></div>
     <FleetSummary progress={progress} />
     <div className="fleet-stage">
-      {!active && !origin && !job && <FleetDecision progress={progress} onInspect={id => { setOriginId(undefined); setSelected(undefined); setJobId(id); }} />}
+      {!sourcePanelOpen && !monkey && !active && !origin && !job && <FleetDecision progress={progress} onInspect={inspectJob} />}
       <FleetMap selectedJob={jobId} completed={progress.done && !failure} activityEpoch={activityEpoch} sites={sites} transfers={progress.selected.run.transfers} playing={playback.playing}
-        admissions={admissions} onOrigin={id => { setOriginId(id); setSelected(undefined); setJobId(undefined); }} selected={selected} onInspect={inspect} onJob={id => { setOriginId(undefined); setJobId(id); setSelected(undefined); }} />
-      {(active || job || origin) && <aside className="fleet-inspector">
-        <button className="fleet-close" aria-label="Close activity" onClick={() => { setSelected(undefined); setJobId(undefined); setOriginId(undefined); }}>×</button>
+        admissions={admissions} onOrigin={inspectOrigin} selected={selected} onInspect={inspect} onJob={inspectJob} />
+      {!monkey && (active || job || origin) && <aside className="fleet-inspector">
+        <button className="fleet-close" aria-label="Close activity" onClick={closeInspection}>×</button>
         {origin && <section aria-label="Data center activity" data-origin-id={origin.id}><p className="eyebrow">SIMULATED JOB ORIGIN</p><h3>{origin.name}</h3>
           <p>{admissions.filter(job => originForJob(job.jobId).id === origin.id).length} generated {admissions.filter(job => originForJob(job.jobId).id === origin.id).length === 1 ? 'job' : 'jobs'}</p>
           <p className="fleet-origin-note">Blue routes submit synthetic jobs to their assigned home queues. The scheduler then chooses when to run or transfer them.</p>
           <a href={origin.sourceUrl} target="_blank" rel="noreferrer">Public location reference</a>
-          <div className="fleet-site-jobs">{arrived.filter(job => originForJob(job.id).id === origin.id).slice(-6).map(job => <button key={job.id} onClick={() => { setJobId(job.id); setOriginId(undefined); }}>{job.id}<span>{jobActivity(progress, job)}</span></button>)}</div>
+          <div className="fleet-site-jobs">{arrived.filter(job => originForJob(job.id).id === origin.id).slice(-6).map(job => <button key={job.id} onClick={() => inspectJob(job.id)}>{job.id}<span>{jobActivity(progress, job)}</span></button>)}</div>
           <small>Location is public. Jobs are simulated. No connection to this operator.</small>
         </section>}
         {active && <section aria-label="Location activity" data-location-id={active.id} data-hour={progress.hour}>
           <p className="eyebrow">COMPUTE SITE · MODELED</p><h3>{active.name}</h3><p className="fleet-inspect-time">{time(currentAt)} · Grid region {progress.scenario.sites.find(site => site.configuration.locationId === active.id)?.regionId}</p>
           <p className="fleet-section-label">Energy-supported GPUs · up to</p><div className="fleet-capacity"><strong data-testid="location-physical-gpus">{active.availableGpus ?? 'Unknown'}<small> / {active.capacity}</small></strong><span>GPUs available<br />for this hour</span></div>
-          <div className="fleet-capacity-bar">{Array.from({ length: active.capacity }, (_, index) => <i key={index} data-free={active.availableGpus !== null && index < active.availableGpus} />)}</div>
+          <div className="fleet-capacity-bar" role="meter" aria-label="Available modeled GPUs" aria-valuemin={0} aria-valuemax={active.capacity} aria-valuenow={active.availableGpus ?? undefined} aria-valuetext={active.availableGpus === null ? "Unknown" : undefined}>{Array.from({ length: active.capacity }, (_, index) => <i key={index} data-free={active.availableGpus !== null && index < active.availableGpus} />)}</div>
           <p className="fleet-capacity-note">{active.remainingEnergyKWh === null ? 'Modeled energy budget unknown.' : `${number(active.remainingEnergyKWh)} kWh modeled energy budget remaining.`} Runtime may be less than one hour. Colors show capacity, not carbon ranking.</p>
           <p className="fleet-active-count" data-testid="location-schedule">{active.plannedGpus === null ? 'No current plan' : `Scheduler opened ${active.plannedGpus} GPUs`} · {active.scheduledGpus} GPUs scheduled</p>
           <p className="fleet-capacity-note">The scheduler may leave supported capacity unused. {active.capacityState === 'allocated' && 'This hour’s offered capacity is committed to accepted work.'}</p>
@@ -252,14 +279,14 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
           <div className="fleet-power-heading"><span>Powering this compute site</span><small>This model hour</small></div>
           <dl className="fleet-metrics"><div><dt><i className="energy-key solar" />Solar power</dt><dd><span data-testid="location-solar-kw" data-value={active.solarKW}>{number(active.solarKW)}</span> kW</dd></div>
             <div><dt><i className="energy-key compute" />Work energy used</dt><dd><span data-testid="location-compute-kwh" data-value={activeMeter?.computeKWh ?? 0}>{activeMeter ? number(activeMeter.computeKWh) : 'Pending'}</span>{activeMeter && ' kWh'}</dd></div>
-            <div><dt><i className="energy-key battery" />Battery reserve</dt><dd><span data-testid="location-storage-kwh" data-value={active.storedKWh}>{number(active.storedKWh)}</span> / {number(active.storageCapacityKWh)} kWh</dd></div>
+            <div><dt><i className="energy-key battery" />Stored energy</dt><dd><span data-testid="location-storage-kwh" data-value={active.storedKWh}>{number(active.storedKWh)}</span> / {number(active.storageCapacityKWh)} kWh</dd></div>
             <div><dt><i className="energy-key grid" />Grid energy used</dt><dd>{activeMeter ? number(activeMeter.gridImportKWh) + ' kWh' : 'Pending dispatch'}</dd></div></dl>
           <div className="fleet-battery"><i style={{ width: Math.max(0, Math.min(100, active.storageCapacityKWh ? active.storedKWh / active.storageCapacityKWh * 100 : 0)) + '%' }} /></div>
           <div className="fleet-carbon-readout"><span>Estimated carbon · this hour</span><strong>{activeMeter ? activeMeter.carbonKg === undefined ? 'Unknown' : number(activeMeter.carbonKg * 1000) + ' g' : 'Pending'}</strong></div>
           <CapacityHorizon plan={progress.selected.plans?.at(-1)} locationId={active.id} />
           <small>Simulated GPUs + energy system · public weather inputs</small>
           <div className="fleet-site-jobs">{arrived.filter(job => job.currentLocation === active.id || job.transferToLocation === active.id).slice(-5).map(job =>
-            <button key={job.id} onClick={() => { setJobId(job.id); setSelected(undefined); setOriginId(undefined); }}>{job.id}<span>{jobActivity(progress, job)}</span></button>)}</div>
+            <button key={job.id} onClick={() => inspectJob(job.id)}>{job.id}<span>{jobActivity(progress, job)}</span></button>)}</div>
         </section>}
         {job && <section aria-label="Job activity" data-job-id={job.id}><p className="eyebrow">GPU BATCH · SYNTHETIC WORKLOAD</p><h3>{job.id}<span className="fleet-job-status">{jobActivity(progress, job)}</span></h3>
           <FleetDecision progress={progress} jobId={job.id} onInspect={setJobId} />
@@ -277,7 +304,7 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
         </section>}
       </aside>}
       {monkey && <section className="fleet-chaos" aria-label="Fleet simulation controls"><div><h3>Crash the party</h3><button aria-label="Close controls" onClick={() => setMonkey(false)}>×</button></div>
-        <p>Change model inputs. Watch the scheduler respond.</p><div className="fleet-control-row">
+        <p>Paused for editing. Press Play or Resume to continue.</p><div className="fleet-control-row">
           <button onClick={() => void actions.pause()} disabled={!playback.playing || saving}>Pause</button><button onClick={actions.play} disabled={playback.playing || progress.done || saving || preparingDisruption}>Play</button>
           <button onClick={() => { actions.pause(); void actions.step(); }} disabled={playback.busy || progress.done || saving || preparingDisruption}>Step</button>
           <select aria-label="Playback speed" value={playback.speed} onChange={event => actions.setSpeed(Number(event.target.value))}><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></div>
@@ -295,7 +322,7 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
       </section>}
     </div>
     <div className="fleet-footer"><details className="fleet-jobs-disclosure"><summary>Inspect jobs</summary><div className="fleet-work-strip" aria-label="Fleet jobs">{arrived.map(job => <button key={job.id} aria-label={`Inspect ${job.id}`} data-job-state={job.state}
-      aria-pressed={jobId === job.id} onClick={() => { setJobId(job.id); setSelected(undefined); setOriginId(undefined); }}><i /><strong>{job.id}</strong><span>{jobActivity(progress, job)}</span></button>)}</div></details><button aria-label="Download model evidence" onClick={() => download(progress)}>Export evidence</button></div>
+      aria-pressed={jobId === job.id} onClick={() => inspectJob(job.id)}><i /><strong>{job.id}</strong><span>{jobActivity(progress, job)}</span></button>)}</div></details><button aria-label="Download model evidence" onClick={() => download(progress)}>Export evidence</button></div>
     {failure && <p role="alert">Model stopped: {failure.explanation} Partial receipts retained.</p>}
   </>;
 }
