@@ -53,15 +53,28 @@ function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
     return value;
 }
 
+// Inputs are deep-frozen and shared by both arms; Map, Date or class payloads would stay mutable behind the freeze.
+function assertPlainData(value: unknown, path: string): void {
+    if (value === null || typeof value === "string" || typeof value === "boolean") return;
+    if (typeof value === "number" && Number.isFinite(value)) return;
+    if (Array.isArray(value)) return value.forEach((item, index) => assertPlainData(item, `${path}[${index}]`));
+    if (typeof value === "object" && [Object.prototype, null].includes(Object.getPrototypeOf(value))) {
+        for (const [key, child] of Object.entries(value)) assertPlainData(child, `${path}.${key}`);
+        return;
+    }
+    throw new RangeError(`Event ${path} must be plain JSON-like data.`);
+}
+
 function validateEvent(event: InputEvent, earliest: number, hours: number): void {
     if (!Number.isInteger(event.atHour) || event.atHour < earliest || event.atHour >= hours)
         throw new RangeError(`Event hour must be an integer in [${earliest}, ${hours}): ${event.atHour}`);
+    if (event.payload !== undefined) assertPlainData(event.payload, "payload");
 }
 
 function prepareInputs(config: SimulationConfig): SimulationInputs {
     assertHourAligned(config.startAt, config.hours);
+    for (const event of config.events ?? []) validateEvent(event, 0, config.hours);
     const { seed, snapshotId, startAt, hours, syntheticForecast, workload, events = [] } = structuredClone(config);
-    for (const event of events) validateEvent(event, 0, hours);
     const jobs = workload.kind === "fixture" ? workload.jobs : generateWorkload(seed, startAt, hours, workload.settings);
     const ids = new Set<string>();
     for (const job of jobs) {
@@ -77,7 +90,9 @@ function prepareInputs(config: SimulationConfig): SimulationInputs {
 const terminal = (job: Job): boolean => job.state === "done" || job.state === "missed";
 const compareIds = (a: Job, b: Job): number => a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 
-function createPreparedSimulation(initial: SimulationInputs, { energy, createPhases }: SimulationComponents): Simulation {
+type PreparedSimulation = Simulation & { checkSchedule(event: InputEvent): void };
+
+function createPreparedSimulation(initial: SimulationInputs, { energy, createPhases }: SimulationComponents): PreparedSimulation {
     let hour = 0;
     let running = false;
     let broken = false;
@@ -106,6 +121,22 @@ function createPreparedSimulation(initial: SimulationInputs, { energy, createPha
                 }
                 const events = inputs.events.filter(event => event.atHour === hour);
                 for (const event of events) log.push({ hour, type: "input", event });
+                const changes: ScoreContext["changes"] = [];
+                const changeState = (job: Job, state: JobState, by: "executor" | "deadline") => {
+                    if (job.state === state) return;
+                    job.state = state;
+                    const entry = { hour, type: "state", jobId: job.id, state, by } as const;
+                    changes.push(entry);
+                    log.push(entry);
+                };
+                const sweep = (deadline: number) => {
+                    for (const job of jobs) {
+                        if (arrived.has(job.id) && !terminal(job) && Date.parse(job.window.endAt) <= deadline)
+                            changeState(job, "missed", "deadline");
+                    }
+                };
+                // A job that expired before this tick (e.g. a fixture older than the start) can no longer finish on time.
+                sweep(Date.parse(tick.startAt));
                 const context = (view: EnergyMap): PhaseContext => ({
                     hour, tick: { ...tick }, asOf: tick.startAt,
                     jobs: structuredClone(jobs.filter(job => arrived.has(job.id) && !terminal(job))
@@ -123,23 +154,12 @@ function createPreparedSimulation(initial: SimulationInputs, { energy, createPha
                         throw new Error(`Executor reported unknown or not-yet-arrived job: ${report.jobId}`);
                     return { job, report };
                 });
-                const changes: ScoreContext["changes"] = [];
-                const changeState = (job: Job, state: JobState, by: "executor" | "deadline") => {
-                    if (job.state === state) return;
-                    job.state = state;
-                    const entry = { hour, type: "state", jobId: job.id, state, by } as const;
-                    changes.push(entry);
-                    log.push(entry);
-                };
                 for (const { job, report } of reports) {
                     if (terminal(job)) continue;
                     job.remainingGpuH = report.remainingGpuH;
                     changeState(job, report.state, "executor");
                 }
-                for (const job of jobs) {
-                    if (arrived.has(job.id) && !terminal(job) && Date.parse(job.window.endAt) <= end)
-                        changeState(job, "missed", "deadline");
-                }
+                sweep(end);
                 await phases.score?.({ ...context(energy), observation, changes: structuredClone(changes) });
                 const result: StepResult = { done: false, hour, tick };
                 hour += 1;
@@ -163,6 +183,9 @@ function createPreparedSimulation(initial: SimulationInputs, { energy, createPha
             phases = createPhases(inputs);
             broken = false;
         },
+        checkSchedule(event) {
+            validateEvent(event, hour + (running ? 1 : 0), initial.hours);
+        },
         schedule(event) {
             validateEvent(event, hour + (running ? 1 : 0), initial.hours);
             inputs = deepFreeze({ ...inputs, events: [...inputs.events, structuredClone(event)] });
@@ -180,8 +203,17 @@ export function createSimulation(config: SimulationConfig, components: Simulatio
 export function createPolicyArms(config: SimulationConfig, energy: EnergyMap,
     factories: { baseline: SimulationComponents["createPhases"]; selected: SimulationComponents["createPhases"] }) {
     const inputs = prepareInputs(config);
+    const baseline = createPreparedSimulation(inputs, { energy, createPhases: factories.baseline });
+    const selected = createPreparedSimulation(inputs, { energy, createPhases: factories.selected });
     return {
-        baseline: createPreparedSimulation(inputs, { energy, createPhases: factories.baseline }),
-        selected: createPreparedSimulation(inputs, { energy, createPhases: factories.selected }),
+        baseline: baseline as Simulation,
+        selected: selected as Simulation,
+        /** Chaos input for both arms: checked against both first, so it lands in both or neither. */
+        schedule(event: InputEvent) {
+            baseline.checkSchedule(event);
+            selected.checkSchedule(event);
+            baseline.schedule(event);
+            selected.schedule(event);
+        },
     };
 }

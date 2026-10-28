@@ -73,15 +73,18 @@ function validate(settings: WorkloadSettings, hours: number): void {
     const fail = (message: string) => { throw new RangeError(message); };
     if (!Number.isInteger(settings.jobCount) || settings.jobCount < 0) fail("jobCount must be a nonnegative integer.");
     if (!(min > 0 && max >= min)) fail("Job sizes need 0 < sizeMinGpuH <= sizeMaxGpuH.");
-    if (!(settings.sizeParetoShape > 0)) fail("sizeParetoShape must be positive.");
+    if (!(settings.sizeParetoShape > 0 && Number.isFinite(settings.sizeParetoShape))) fail("sizeParetoShape must be positive and finite.");
     if (!Number.isInteger(settings.maxGpus) || settings.maxGpus < 1) fail("maxGpus must be a positive integer.");
     if (!(settings.diurnalAmplitude >= 0 && settings.diurnalAmplitude < 1)) fail("diurnalAmplitude must be in [0, 1).");
+    if (!(settings.arrivalPeakHourUtc >= 0 && settings.arrivalPeakHourUtc < 24)) fail("arrivalPeakHourUtc must be in [0, 24).");
+    if (!(Number.isFinite(settings.dataGB) && settings.dataGB >= 0)) fail("dataGB must be finite and nonnegative.");
     if (!(settings.urgentShare >= 0 && settings.urgentShare <= 1)) fail("urgentShare must be in [0, 1].");
     if (!Number.isInteger(settings.urgentMaxSlackHours) || settings.urgentMaxSlackHours < 0) fail("urgentMaxSlackHours must be a nonnegative integer.");
     if (!Number.isInteger(flexible.min) || !Number.isInteger(flexible.max) ||
         flexible.min <= settings.urgentMaxSlackHours || flexible.max < flexible.min)
         fail("Flexible slack must be whole hours above the urgent limit.");
-    if (settings.locations.length === 0) fail("At least one location is required.");
+    if (settings.locations.length === 0 || settings.locations.some(location => typeof location !== "string" || location.length === 0))
+        fail("At least one location is required, and every location needs a name.");
     if (runHours({ workGpuH: max, maxGpus: settings.maxGpus }) + flexible.max > hours)
         fail("The largest job plus the largest slack must fit inside the simulation horizon.");
 }

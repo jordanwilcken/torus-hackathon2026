@@ -483,3 +483,64 @@ test.each([
     energy: recordedEnergy, createPhases: () => ({}),
   })).toThrow(RangeError);
 });
+
+test('scheduling through the arm pair reaches both arms, or neither when one arm is already past that hour', async () => {
+  const arms = createPolicyArms(fixtureConfig([], 3), recordedEnergy, { baseline: () => ({}), selected: () => ({}) });
+
+  arms.schedule({ atHour: 1, kind: 'region-outage', payload: { locationId: 'A' } });
+  await arms.selected.step();
+  await arms.selected.step();
+  expect(() => arms.schedule({ atHour: 1, kind: 'too-late-for-selected' })).toThrow(RangeError);
+  await arms.baseline.step();
+  await arms.baseline.step();
+
+  const outage = { atHour: 1, kind: 'region-outage', payload: { locationId: 'A' } };
+  expect(arms.baseline.inputs().events).toEqual([outage]);
+  expect(arms.selected.inputs().events).toEqual([outage]);
+  expect(arms.baseline.log()).toEqual([{ hour: 1, type: 'input', event: outage }]);
+  expect(arms.selected.log()).toEqual(arms.baseline.log());
+});
+
+test.each([
+  ['a Map', new Map([['factor', 1]])], ['a Date', new Date(0)], ['a function', () => 1], ['NaN', Number.NaN],
+])('event payloads must be plain JSON-like data so frozen inputs stay immutable: %s', (_label, payload) => {
+  expect(() => createSimulation(fixtureConfig([], 2, { events: [{ atHour: 0, kind: 'bad', payload }] }), {
+    energy: recordedEnergy, createPhases: () => ({}),
+  })).toThrow(RangeError);
+  const sim = createSimulation(fixtureConfig([], 2), { energy: recordedEnergy, createPhases: () => ({}) });
+  expect(() => sim.schedule({ atHour: 1, kind: 'bad', payload })).toThrow(RangeError);
+  expect(sim.inputs().events).toEqual([]);
+});
+
+test('a job whose deadline passed before the tick starts is missed before any phase sees it', async () => {
+  const expired = { ...fixtureJob('expired', 0, 1), readyAt: at(-2), window: { startAt: at(-2), endAt: '2026-10-27T11:30:00Z' } };
+  const seen: Array<string> = [];
+  const sim = createSimulation(fixtureConfig([expired], 1), {
+    energy: recordedEnergy,
+    createPhases: () => ({
+      plan: ctx => { seen.push(ctx.jobs.map(job => job.id).join(',')); },
+      execute: () => ({ feasible: true, meters: [], executions: [execution(expired, 0, 0, 'done')] }),
+    }),
+  });
+
+  await sim.step();
+
+  expect(seen).toEqual(['']);
+  expect(sim.jobs()[0].state).toBe('missed');
+  expect(sim.log()).toEqual([
+    { hour: 0, type: 'arrival', jobId: 'expired' },
+    { hour: 0, type: 'state', jobId: 'expired', state: 'missed', by: 'deadline' },
+  ]);
+});
+
+test('generated jobs arrive in the log at the hour their readyAt names', async () => {
+  const sim = createSimulation({
+    ...fixtureConfig([], 72), workload: { kind: 'generated', settings: { ...DEFAULT_WORKLOAD_SETTINGS, jobCount: 6, sizeMaxGpuH: 64 } },
+  }, { energy: recordedEnergy, createPhases: () => ({}) });
+  for (let hour = 0; hour < 72; hour += 1) await sim.step();
+
+  const expected = sim.inputs().jobs.map(job => ({ hour: (Date.parse(job.readyAt) - Date.parse(T0)) / 3_600_000, jobId: job.id }));
+  const logged = sim.log().filter(entry => entry.type === 'arrival').map(entry => ({ hour: entry.hour, jobId: entry.jobId }));
+  expect(expected.every(arrival => Number.isInteger(arrival.hour) && arrival.hour > 0)).toBe(true);
+  expect(logged).toEqual(expected);
+});

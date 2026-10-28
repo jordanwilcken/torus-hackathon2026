@@ -86,19 +86,35 @@ test('job sizes are heavy-tailed: the largest tenth of jobs carries much of the 
   expect(total / sizes.length).toBeGreaterThan(2 * median);
 });
 
-test('arrivals follow the configured daily peak rather than spreading evenly', () => {
-  const jobs = generateWorkload(9, startAt, week, settings({ jobCount: 2000, arrivalPeakHourUtc: 18, diurnalAmplitude: 0.8 }));
+test('arrivals follow the configured daily peak and amplitude rather than spreading evenly', () => {
+  const jobs = generateWorkload(9, startAt, week, settings({ jobCount: 2000, arrivalPeakHourUtc: 4, diurnalAmplitude: 0.8 }));
   const hourOfDay = (job: Job) => new Date(job.readyAt).getUTCHours();
   const near = (centre: number) => jobs.filter(job => {
     const distance = Math.abs(hourOfDay(job) - centre);
     return Math.min(distance, 24 - distance) <= 3;
   }).length;
 
-  expect(near(18)).toBeGreaterThan(2.5 * near(6));
+  // Expected ratio is about (1 + 0.8·0.84) / (1 − 0.8·0.84) ≈ 5 at amplitude 0.8, but only about 3 at the 0.6 default.
+  expect(near(4)).toBeGreaterThan(4 * near(16));
 });
 
 test('settings that cannot fit the largest job inside the horizon are rejected', () => {
   expect(() => generateWorkload(1, startAt, 24, settings())).toThrow(RangeError);
   expect(() => generateWorkload(1, startAt, week, settings({ urgentShare: 1.2 }))).toThrow(RangeError);
   expect(() => generateWorkload(1, '2026-10-26T00:30:00Z', week, settings())).toThrow(RangeError);
+});
+
+test.each([
+  ['a non-finite peak hour', { arrivalPeakHourUtc: Number.NaN }],
+  ['a peak hour outside the day', { arrivalPeakHourUtc: 24 }],
+  ['an infinite Pareto shape', { sizeParetoShape: Number.POSITIVE_INFINITY }],
+  ['non-finite data size', { dataGB: Number.NaN }],
+  ['negative data size', { dataGB: -3 }],
+  ['an empty location name', { locations: ['A', ''] }],
+])('settings with %s are rejected', (_label, overrides) => {
+  expect(() => generateWorkload(1, startAt, week, settings(overrides as Partial<WorkloadSettings>))).toThrow(RangeError);
+});
+
+test.each([-1, 2 ** 32, 1.5])('seed %d outside the 32-bit unsigned range is rejected instead of aliasing another seed', seed => {
+  expect(() => generateWorkload(seed, startAt, week, settings())).toThrow(RangeError);
 });

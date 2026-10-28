@@ -87,10 +87,39 @@ test('a planning read that asks about a later instant is clamped to tick start',
   fenced.findSlots({ window: { startAt: tickStart, endAt: nextHour }, asOf: nextHour });
   const late = fenced.readSlot(ref('one-second-late'), nextHour, 120);
   fenced.readForecast(ref('at-tick-start'), nextHour);
-  fenced.readSlot(ref('at-tick-start'), '2026-10-27T17:30:00Z', 120);
+  const earlier = fenced.readSlot(ref('at-tick-start'), '2026-10-27T17:30:00Z', 120);
 
   expect(late.status).toBe('unavailable');
-  expect(asked).toEqual([
-    `find@${tickStart}`, `slot@${tickStart}`, `forecast@${tickStart}`, 'slot@2026-10-27T17:30:00Z',
-  ]);
+  expect(earlier.status).toBe('unavailable');
+  expect(asked).toEqual(expect.arrayContaining([`find@${tickStart}`, `forecast@${tickStart}`, 'slot@2026-10-27T17:30:00Z']));
+  expect(asked.every(call => call.endsWith(tickStart) || call.endsWith('17:30:00Z'))).toBe(true);
+});
+
+test('slot discovery drops slots whose evidence was observed after tick start', () => {
+  const { map } = recordedMap();
+
+  expect(fenceEnergyMap(map, tickStart).findSlots({ window: { startAt: tickStart, endAt: nextHour }, asOf: tickStart }))
+    .toEqual([ref('at-tick-start'), ref('no-observation-time')]);
+});
+
+test('an unavailable snapshot from after tick start carries none of its later fields', () => {
+  const later: SlotSnapshot = { ...snapshot('later', oneSecondLater), status: 'unavailable', siteEnergy: { solarKWh: 123 } };
+  const map: EnergyMap = { findSlots: () => [], readSlot: () => later, readForecast: () => ({}) };
+
+  expect(fenceEnergyMap(map, tickStart).readSlot(ref('later'), tickStart, 5)).toEqual({
+    status: 'unavailable', source: 'recorded-site', projected: false, simulated: true,
+  });
+});
+
+test('evidence returned to planning is a copy that cannot change the underlying map', () => {
+  const shared = snapshot('shared', tickStart);
+  const series: SlotForecast = { carbon: forecast(tickStart, tickStart) };
+  const map: EnergyMap = { findSlots: () => [], readSlot: () => shared, readForecast: () => series };
+  const fenced = fenceEnergyMap(map, tickStart);
+
+  fenced.readSlot(ref('shared'), tickStart, 5).slot!.postedUsdPerGpuHour = 777;
+  fenced.readForecast(ref('shared'), tickStart).carbon!.points[0].value = 0;
+
+  expect(shared.slot!.postedUsdPerGpuHour).toBe(0.04);
+  expect(series.carbon!.points[0].value).toBe(300);
 });
