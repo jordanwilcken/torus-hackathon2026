@@ -1,0 +1,73 @@
+name: Public demo access
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/demo-public-access.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  external-access:
+    name: Read the public demo from outside the home network
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      DEMO_ORIGIN: https://norman-conduct-locator-extensions.trycloudflare.com
+    steps:
+      - name: Check page, assets and public APIs
+        run: |
+          python3 - <<'PY'
+          import json, os, re, urllib.request, urllib.error
+
+          origin = os.environ["DEMO_ORIGIN"]
+          if not re.fullmatch(r"https://[a-z0-9-]+\.trycloudflare\.com", origin):
+              raise SystemExit("Expected the configured public demo hostname")
+          evidence = []
+
+          def read(path):
+              request = urllib.request.Request(origin + path, headers={
+                  "User-Agent": "Sunchaser-External-Access-Check/1.0",
+                  "Accept": "*/*"
+              })
+              try:
+                  with urllib.request.urlopen(request, timeout=25) as response:
+                      body = response.read(2_000_001)
+                      if len(body) > 2_000_000:
+                          raise RuntimeError("Unexpectedly large public response")
+                      result = {"path": path, "status": response.status,
+                          "type": response.headers.get("Content-Type"),
+                          "edge": response.headers.get("CF-Ray")}
+                      evidence.append(result)
+                      print(json.dumps(result), flush=True)
+                      return body
+              except urllib.error.HTTPError as error:
+                  print(json.dumps({"path": path, "status": error.code,
+                      "server": error.headers.get("Server"),
+                      "edge": error.headers.get("CF-Ray"),
+                      "message": error.read(200).decode("utf-8", "replace")}), flush=True)
+                  raise
+
+          html = read("/").decode("utf-8")
+          assert "<title>Sunchaser</title>" in html, "The public response is not the demo application"
+          assets = re.findall(r'(?:src|href)="(/assets/[a-zA-Z0-9_-]+\.(?:js|css))"', html)
+          assert any(asset.endswith(".js") for asset in assets), "Built application script missing"
+          for path in assets:
+              read(path)
+
+          status = json.loads(read("/__demo/status"))
+          assert re.fullmatch(r"[a-f0-9]{40}", status.get("activeCommit") or ""), "No active public deployment"
+          print(json.dumps({"deployment": status}), flush=True)
+          for path in ["/api/weather/sites", "/api/grid/eia", "/api/grid/caiso"]:
+              feed = json.loads(read(path))
+              assert feed.get("status") in ["ready", "stale", "unavailable"], "Invalid feed response"
+              print(json.dumps({"feed": path, "status": feed["status"],
+                  "retrievedAt": (feed.get("snapshot") or {}).get("retrievedAt")}), flush=True)
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write("Public page, built assets and API responses were reachable from a GitHub-hosted runner.\n\n")
+              summary.write("This is an external HTTP check, not a browser-rendering or capacity test.\n\n")
+              summary.write("Active deployment: " + status["activeCommit"] + "\n")
+          PY
