@@ -143,3 +143,20 @@ test("computed cost overflow remains unavailable for otherwise finite supplied n
     deliveredKWh: 4, supplyKWh: 1e308, usdPerMWh: 1e308, gramsCO2PerKWh: 0,
   }] }).status).toBe("unavailable");
 });
+
+test("grid demand is divided before scaling the energy rate for very large finite demand", () => {
+  const result = posted(postSitePrice({ ...input(), sources: [{
+    ...grid(4), gridDemand: { demandMW: 1e308, averageDemandMW: 1e308 },
+  }] }));
+
+  expect(result.postedUsdPerGpuHour).toBeCloseTo(0.09, 12);
+  expect(result.electricityUsd).toBeCloseTo(0.20, 12);
+});
+
+test("each source is converted to dollars before summing large finite burdens", () => {
+  const source = { deliveredKWh: 2, supplyKWh: 1e308, usdPerMWh: 1, gramsCO2PerKWh: 0 };
+  const result = posted(postSitePrice({ ...input(), sources: [source, source] }));
+
+  expect(result.electricityUsd).toBe(2e305);
+  expect(result.postedUsdPerGpuHour).toBe(5e304);
+});

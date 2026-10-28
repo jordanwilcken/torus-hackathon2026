@@ -10,6 +10,7 @@ export type PricedEnergySource = {
 
 /** Prepared numeric inputs: finite nonnegative values, positive average demand,
  * and supply energy including all delivered energy and attributed losses.
+ * Work, required energy and the mix describe the same complete assessed capacity.
  * The caller owns freshness, slot/version identity, physical limits and metadata. */
 export type SitePriceInput = {
   remainingGpuHours: number;
