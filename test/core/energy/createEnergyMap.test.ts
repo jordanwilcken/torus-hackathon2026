@@ -3,18 +3,24 @@ import { createEnergyMap } from "../../../src/core/energy/map/createEnergyMap.js
 import { getEnergyMap } from "../../../src/core/energy/getEnergyMap.js";
 import type { SlotSnapshot } from "../../../src/core/energy/SlotSnapshot.type.js";
 import type { SlotForecast } from "../../../src/core/energy/SlotForecast.type.js";
+import type { SlotQuery } from "../../../src/core/energy/SlotQuery.interface.js";
+import type { SlotReference } from "../../../src/core/energy/SlotReference.type.js";
+import type { TimeWindow } from "../../../src/core/TimeWindow.type.js";
+import type { GridContext } from "../../../src/core/energy/GridContext.type.js";
+import type { EnergyMapScope } from "../../../src/core/energy/map/EnergyMapScope.type.js";
+import type { EnergyMapProviders } from "../../../src/core/energy/map/EnergyMapProviders.type.js";
 
-const window = { startAt: "2026-10-27T12:00:00Z", endAt: "2026-10-27T13:00:00Z" };
+const window: TimeWindow = { startAt: "2026-10-27T12:00:00Z", endAt: "2026-10-27T13:00:00Z" };
 const asOf = "2026-10-27T12:06:00Z";
-const reference = { locationId: "A", slotId: "A-noon" };
+const reference: SlotReference = { locationId: "A", slotId: "A-noon" };
 
-function expectUnavailable(snapshot: SlotSnapshot) {
+function expectUnavailable(snapshot: SlotSnapshot): void {
     expect(snapshot.status).toBe("unavailable");
     expect(snapshot.slot).toBeUndefined();
     expect(snapshot.siteEnergy).toBeUndefined();
 }
 
-function reading(locationId = "A", observedAt = "2026-10-27T12:05:00Z"): SlotSnapshot {
+function reading(locationId: string = "A", observedAt: string = "2026-10-27T12:05:00Z"): SlotSnapshot {
     return {
         status: "current", source: `local-${locationId}`, version: "revision-1", observedAt,
         projected: false, simulated: true,
@@ -44,16 +50,18 @@ function forecast(): SlotForecast {
 }
 
 function scenario(readings: Record<string, SlotSnapshot[]> = { A: [reading()] }, forecasts: SlotForecast = {}) {
-    const sites = [
-        { locationId: "A", regionId: "PACE", computeProfile: "H100" },
-        { locationId: "B", regionId: "PACE", computeProfile: "L4" },
-    ];
-    const options = {
-        window: { ...window }, sites,
-        siteEnergy: { slots: (locationId: string) => readings[locationId] ?? [] },
-        regionalGrid: { read: () => ({ observations: [], forecast: forecasts }) },
+    const scope: EnergyMapScope = {
+        window: { ...window },
+        sites: [
+            { locationId: "A", regionId: "PACE", computeProfile: "H100" },
+            { locationId: "B", regionId: "PACE", computeProfile: "L4" },
+        ],
     };
-    return { map: createEnergyMap(options), options, readings, forecasts };
+    const providers: EnergyMapProviders = {
+        siteEnergy: { slots: (locationId: string): SlotSnapshot[] => readings[locationId] ?? [] },
+        regionalGrid: { read: (): GridContext => ({ observations: [], forecast: forecasts }) },
+    };
+    return { map: createEnergyMap(scope, providers), scope, providers, readings, forecasts };
 }
 
 describe("versioned energy lookup over supplied providers", () => {
@@ -81,7 +89,7 @@ describe("versioned energy lookup over supplied providers", () => {
 
     it("discovers overlapping slots by location and profile without clipping their quantities", () => {
         const { map } = scenario({ A: [reading()], B: [reading("B")] });
-        const query = { window: { startAt: "2026-10-27T12:30:00Z", endAt: window.endAt }, asOf, computeProfile: "H100" };
+        const query: SlotQuery = { window: { startAt: "2026-10-27T12:30:00Z", endAt: window.endAt }, asOf, computeProfile: "H100" };
         expect(map.findSlots(query)).toEqual([reference]);
         expect(map.findSlots({ ...query, locations: ["B"] })).toEqual([]);
         expect(map.findSlots({ window: { startAt: window.endAt, endAt: "2026-10-27T14:00:00Z" }, asOf })).toEqual([]);
@@ -92,10 +100,10 @@ describe("versioned energy lookup over supplied providers", () => {
         const current = reading(), future = reading();
         future.slot = { ...future.slot!, id: "A-next-hour", window: { startAt: window.endAt, endAt: "2026-10-27T14:00:00Z" } };
         future.projected = true;
-        const { options } = scenario({ A: [current, future] });
-        options.window.endAt = "2026-10-27T14:00:00Z";
-        const map = createEnergyMap(options);
-        expect(map.findSlots({ window: options.window, asOf })).toEqual([reference, { locationId: "A", slotId: "A-next-hour" }]);
+        const { scope, providers } = scenario({ A: [current, future] });
+        scope.window.endAt = "2026-10-27T14:00:00Z";
+        const map = createEnergyMap(scope, providers);
+        expect(map.findSlots({ window: scope.window, asOf })).toEqual([reference, { locationId: "A", slotId: "A-next-hour" }]);
         expect(map.readSlot({ locationId: "A", slotId: "A-next-hour" }, asOf, 5)).toEqual(future);
     });
 
@@ -189,46 +197,46 @@ describe("versioned energy lookup over supplied providers", () => {
     });
 
     it("uses the configured region and original slot period for forecast lookup", () => {
-        const { options } = scenario();
+        const { scope, providers } = scenario();
         const supplied = forecast();
-        options.regionalGrid.read = (...args: unknown[]) => {
-            expect(args).toEqual(["PACE", window]);
+        providers.regionalGrid.read = (regionId: string, requestedWindow: TimeWindow): GridContext => {
+            expect([regionId, requestedWindow]).toEqual(["PACE", window]);
             return { observations: [], forecast: supplied };
         };
-        expect(createEnergyMap(options).readForecast(reference, asOf)).toEqual(supplied);
+        expect(createEnergyMap(scope, providers).readForecast(reference, asOf)).toEqual(supplied);
     });
 
     it("returns detached snapshots and forecasts without changing provider data or configuration", () => {
-        const { map, readings, forecasts, options } = scenario(undefined, forecast());
-        const before = structuredClone({ readings, forecasts, window: options.window, sites: options.sites });
+        const { map, readings, forecasts, scope } = scenario(undefined, forecast());
+        const before = structuredClone({ readings, forecasts, window: scope.window, sites: scope.sites });
         map.findSlots({ window, asOf });
         const snapshot = map.readSlot(reference, asOf, 5);
         snapshot.slot!.usedGpus = 2;
         snapshot.siteEnergy!.storedKWh = 0;
         const result = map.readForecast(reference, asOf);
         result.carbon!.points[0].value = 999;
-        expect({ readings, forecasts, window: options.window, sites: options.sites }).toEqual(before);
+        expect({ readings, forecasts, window: scope.window, sites: scope.sites }).toEqual(before);
         expect(map.readSlot(reference, asOf, 5).slot!.usedGpus).toBe(0);
         expect(map.readForecast(reference, asOf).carbon!.points[0].value).toBe(200);
     });
 
     it("captures its catalog and horizon while continuing to read provider updates", () => {
-        const { map, options, readings } = scenario();
-        options.sites[0].locationId = "changed";
-        options.window.endAt = options.window.startAt;
+        const { map, scope, readings } = scenario();
+        scope.sites[0].locationId = "changed";
+        scope.window.endAt = scope.window.startAt;
         readings.A[0].slot!.usedGpus = 1;
         expect(map.findSlots({ window, asOf })).toEqual([reference]);
         expect(map.readSlot(reference, asOf, 5).slot!.usedGpus).toBe(1);
     });
 
     it("rejects invalid caller times, freshness limits and ambiguous configuration", () => {
-        const { map, options } = scenario();
+        const { map, scope, providers } = scenario();
         expect(() => map.readSlot(reference, "invalid", 5)).toThrow(RangeError);
         expect(() => map.readSlot(reference, asOf, -1)).toThrow(RangeError);
         expect(() => map.readSlot(reference, asOf, Infinity)).toThrow(RangeError);
         expect(() => map.readForecast(reference, "invalid")).toThrow(RangeError);
         expect(() => map.findSlots({ window: { startAt: asOf, endAt: asOf }, asOf })).toThrow(RangeError);
-        expect(() => createEnergyMap({ ...options, sites: [...options.sites, options.sites[0]] })).toThrow(RangeError);
-        expect(() => createEnergyMap({ ...options, window: { startAt: asOf, endAt: asOf } })).toThrow(RangeError);
+        expect(() => createEnergyMap({ ...scope, sites: [...scope.sites, scope.sites[0]] }, providers)).toThrow(RangeError);
+        expect(() => createEnergyMap({ ...scope, window: { startAt: asOf, endAt: asOf } }, providers)).toThrow(RangeError);
     });
 });

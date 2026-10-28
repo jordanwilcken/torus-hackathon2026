@@ -1,9 +1,11 @@
 import type { EnergyMap } from "../EnergyMap.interface.js";
-import type { SiteEnergy } from "../SiteEnergy.interface.js";
-import type { RegionalGrid } from "../RegionalGrid.interface.js";
 import type { TimeWindow } from "../../TimeWindow.type.js";
 import type { SlotSnapshot } from "../SlotSnapshot.type.js";
 import type { SlotForecast } from "../SlotForecast.type.js";
+import type { SlotQuery } from "../SlotQuery.interface.js";
+import type { SlotReference } from "../SlotReference.type.js";
+import type { EnergyMapScope } from "./EnergyMapScope.type.js";
+import type { EnergyMapProviders } from "./EnergyMapProviders.type.js";
 
 /**
  * Read-only EnergyMap over the existing site and regional providers.
@@ -14,26 +16,21 @@ import type { SlotForecast } from "../SlotForecast.type.js";
  * Forecast lookup requires an identifiable local slot window, even when capacity is unavailable.
  * Provider errors propagate to the caller rather than becoming fabricated capacity.
  */
-export function createEnergyMap(options: {
-    window: TimeWindow;
-    sites: readonly { locationId: string; regionId: string; computeProfile: string }[];
-    siteEnergy: SiteEnergy;
-    regionalGrid: RegionalGrid;
-}): EnergyMap {
-    const { siteEnergy, regionalGrid } = options;
-    const horizon = { ...options.window };
+export function createEnergyMap(scope: EnergyMapScope, providers: EnergyMapProviders): EnergyMap {
+    const { siteEnergy, regionalGrid } = providers;
+    const horizon = { ...scope.window };
     const [horizonStart, horizonEnd] = period(horizon);
-    const sites = options.sites.map(site => ({ ...site }));
+    const sites = scope.sites.map(site => ({ ...site }));
     if (sites.some(site => !site.locationId || !site.regionId || !site.computeProfile) ||
         new Set(sites.map(site => site.locationId)).size !== sites.length)
         throw new RangeError("Sites require a region and compute profile for each unique location ID.");
 
-    const snapshots = (locationId: string) => siteEnergy.slots(locationId, { ...horizon });
-    const resolve = (locationId: string, slotId: string, at: number) => {
-        if (!sites.some(site => site.locationId === locationId)) return undefined;
-        return latest(snapshots(locationId).filter(value => value.slot?.id === slotId), at);
+    const snapshots = (locationId: string): SlotSnapshot[] => siteEnergy.slots(locationId, { ...horizon });
+    const resolve = (reference: SlotReference, at: number): SlotSnapshot | undefined => {
+        if (!sites.some(site => site.locationId === reference.locationId)) return undefined;
+        return latest(snapshots(reference.locationId).filter(value => value.slot?.id === reference.slotId), at);
     };
-    const withinHorizon = (snapshot: SlotSnapshot | undefined, locationId: string) => {
+    const withinHorizon = (snapshot: SlotSnapshot | undefined, locationId: string): boolean => {
         const slot = snapshot?.slot;
         return slot !== undefined && slot.locationId === locationId &&
             Date.parse(slot.window.startAt) < Date.parse(slot.window.endAt) &&
@@ -41,7 +38,8 @@ export function createEnergyMap(options: {
     };
 
     return {
-        findSlots(query) {
+        /** Find candidates in the requested window using evidence known by query.asOf. */
+        findSlots(query: SlotQuery): SlotReference[] {
             const [start, end] = period(query.window);
             const at = instant(query.asOf);
             if (start >= horizonEnd || end <= horizonStart) return [];
@@ -58,21 +56,21 @@ export function createEnergyMap(options: {
                     });
                 });
         },
-        readSlot(reference, asOf, maximumAgeMinutes) {
+        readSlot(reference: SlotReference, asOf: string, maximumAgeMinutes: number): SlotSnapshot {
             const at = instant(asOf);
             if (!Number.isFinite(maximumAgeMinutes) || maximumAgeMinutes < 0)
                 throw new RangeError("maximumAgeMinutes must be finite and nonnegative.");
-            const value = resolve(reference.locationId, reference.slotId, at);
+            const value = resolve(reference, at);
             if (!withinHorizon(value, reference.locationId) || !value || !valid(value)) return unavailable(value);
             const snapshot = structuredClone(value);
             if (snapshot.status === "current" &&
                 (at - Date.parse(snapshot.observedAt!)) / 60_000 > maximumAgeMinutes) snapshot.status = "stale";
             return snapshot;
         },
-        readForecast(reference, asOf) {
+        readForecast(reference: SlotReference, asOf: string): SlotForecast {
             const at = instant(asOf);
             const site = sites.find(site => site.locationId === reference.locationId);
-            const snapshot = resolve(reference.locationId, reference.slotId, at);
+            const snapshot = resolve(reference, at);
             if (!site || !withinHorizon(snapshot, reference.locationId)) return {};
             const supplied = regionalGrid.read(site.regionId, { ...snapshot!.slot!.window }).forecast;
             const result: SlotForecast = {};
@@ -87,13 +85,13 @@ export function createEnergyMap(options: {
     };
 }
 
-function instant(value: string) {
+function instant(value: string): number {
     const at = Date.parse(value);
     if (!Number.isFinite(at)) throw new RangeError(`Invalid timestamp: ${value}`);
     return at;
 }
 
-function period(window: TimeWindow) {
+function period(window: TimeWindow): readonly [number, number] {
     const start = instant(window.startAt), end = instant(window.endAt);
     if (start >= end) throw new RangeError("The window must have positive duration.");
     return [start, end] as const;
@@ -108,7 +106,7 @@ function latest(values: SlotSnapshot[], at: number): SlotSnapshot | undefined {
     return matches.length === 1 ? matches[0] : undefined;
 }
 
-function valid(snapshot: SlotSnapshot) {
+function valid(snapshot: SlotSnapshot): boolean {
     const slot = snapshot.slot!;
     return (snapshot.status === "current" || snapshot.status === "stale") &&
         Boolean(snapshot.source && snapshot.version && slot.id && slot.priceBasis) &&
