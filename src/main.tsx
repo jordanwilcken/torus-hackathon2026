@@ -13,6 +13,7 @@ import type { ExecutionRun } from './core/reporting/ExecutionEvidence.type';
 import { summarizeExecution } from './core/reporting/impact/summarizeExecution';
 import { LiveGridInputs } from './ui/energy/LiveGridInputs';
 import { createPublicGridClient } from './data/createPublicGridClient';
+import { LocalExecution } from './ui/jobs/LocalExecution';
 import './style.css';
 
 const publicGrid = createPublicGridClient();
@@ -47,6 +48,7 @@ createRoot(root).render(
       <h1>Sunchaser</h1>
       <p>Compute coordinated with Torus energy.</p>
       <LiveGridInputs feeds={publicGrid} />
+      <LocalExecution />
       <StarterFlow stream={stream} jobSource={jobSource} queryEnergy={queryEnergy}
         previewLabel={recorded ? 'Supplied simulation records — this application has not executed the work.' : undefined}
         reportSource={{ fake: true, label: recorded ? recordedInputs.label : 'Observed Fake job flow — no work has executed.' }} />

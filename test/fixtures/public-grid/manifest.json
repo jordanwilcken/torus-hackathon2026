@@ -1,0 +1,17 @@
+{
+  "asOf": "2026-10-28T11:38:00.000Z",
+  "description": "Actual public EIA and CAISO snapshots captured locally; timestamps and values are unchanged.",
+  "mode": "recorded",
+  "feeds": {
+    "caiso": {
+      "retrievedAt": "2026-10-28T11:37:59.616Z",
+      "revision": "0596a2acb1d89f6eb840a693f8a7fa124ff14cc02494a7e61d4f0cb24bb664b7",
+      "sourceUrl": "https://oasis.caiso.com/oasisapi/SingleZip?queryname=PRC_INTVL_LMP&version=3&market_run_id=RTM&node=ELAP_PACE-APND&resultformat=6"
+    },
+    "eia": {
+      "retrievedAt": "2026-10-28T11:37:59.08Z",
+      "revision": "76e0e93f5004d0bcac3b591ccbe8174bfffb8cf19b0c8bd0f19858ad14d68b44",
+      "sourceUrl": "https://api.eia.gov/v2/electricity/rto/region-data/data/"
+    }
+  }
+}

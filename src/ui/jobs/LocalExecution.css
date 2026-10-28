@@ -1,0 +1,15 @@
+.local-execution { margin: 2rem 0; padding: 1.5rem; border: 1px solid #3d6964; border-radius: 12px; background: #102b2a; color: #eefaf6; }
+.local-execution header p { color: #add5c9; }
+.local-execution form { display: grid; gap: 1rem; max-width: 850px; }
+.local-execution label { display: grid; gap: .35rem; }
+.local-execution input, .local-execution select { padding: .6rem; background: #071d1b; color: #eefaf6; border: 1px solid #658c7f; border-radius: 5px; }
+.local-execution fieldset { display: grid; gap: .8rem; border: 1px solid #658c7f; border-radius: 5px; }
+.local-execution button { padding: .7rem 1rem; cursor: pointer; }
+.local-execution button:disabled { opacity: .5; cursor: default; }
+.local-execution a { color: #9fe7cf; overflow-wrap: anywhere; }
+.local-execution pre { padding: 1rem; background: #071d1b; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 28rem; overflow-y: auto; }
+.local-execution .input-revisions { font-size: .8rem; overflow-wrap: anywhere; }
+.local-execution .input-mode { padding: .7rem; background: #1d4640; }
+.local-execution article { margin-top: 1.5rem; border-top: 1px solid #658c7f; padding-top: 1rem; }
+.local-execution dd { margin: .3rem 0 1rem; }
+.local-execution dt { font-weight: bold; text-transform: capitalize; }

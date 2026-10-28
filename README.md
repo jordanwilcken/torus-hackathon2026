@@ -121,9 +121,9 @@ With the pinned Node/npm versions, copy `.env.example` to `.env.local` and set `
 
 The page polls these independent server caches each minute. Failed refreshes preserve the original reading and retrieval timestamps, expose the failure, and back off (including Retry-After). No Fake values replace an unavailable live feed. Each successful collection is saved before publication. On restart, the server restores the last verified snapshot and attempts a live refresh; a failed refresh leaves the saved revision visibly stale. Public source values and UTC validity intervals stay distinct from retrieval time. EIA demand is delayed; generation/interchange generally arrive later. This API connection has no carbon series: the existing workbook adapter remains the separate source for delayed carbon history.
 
-`ApiRegionalGrid` implements the existing synchronous `RegionalGrid.read` contract over a normalized EIA snapshot. The visible live-input panel consumes that provider. The existing illustrative map/job preview remains explicitly simulated; wiring real worker execution is a separate tracked requirement. A static `dist/` upload alone cannot serve the APIs: deployment must retain the server routes and server environment secret.
+`ApiRegionalGrid` implements the existing synchronous `RegionalGrid.read` contract over a normalized EIA snapshot. The visible live-input panel consumes that provider. The existing illustrative map/job preview remains explicitly simulated; the real local CPU execution panel below it has a separate, explicit dispatch policy. A static `dist/` upload alone cannot serve the APIs: deployment must retain the server routes and server environment secret.
 
-Browser CI uses `GRID_FEEDS_OFFLINE=1` on its owned test server and controlled endpoint fixtures; parser/collector tests cover raw provider payloads, normalization, caching and failures without credentials. Live connectivity is verified separately. Business requirement LIVE-01 is reported outside the unchanged 100-point readiness rubric and remains unimplemented until a real application worker returns actual output with linked input/decision evidence and a separately labeled Torus model comparison.
+Browser CI uses an owned server seeded from sanitized real public captures, with their original timestamps and an explicit historical evaluation time. Provider parsers, revision archives, the actual application, local policy, child process and durable job store all run. No EIA credential or live upstream request is needed. Live connectivity and a current-data run are checked separately. LIVE-01 is reported outside the unchanged 100-point readiness rubric and now verifies the local CPU execution chain with a separately labeled storage model; the other unfinished GPU/map requirements remain visible.
 
 ### Consume the live feeds
 
@@ -172,13 +172,13 @@ const recordedGrid = new ApiRegionalGrid(snapshot);
 
 The same endpoint is available for `/api/grid/caiso`. Replay never calls an upstream service or substitutes the latest data. It returns 404 for an absent revision, 400 for an invalid or repeated revision parameter, and 503 for unreadable or corrupt evidence. Responses contain normalized snapshots, not the server's source archive. `GRID_FEEDS_OFFLINE=1` disables both upstream collection and archive access for the owned CI server.
 
-There is no automatic archive pruning yet. Keep the archive directory on the same persistent volume across restarts and retain revisions referenced by recorded decisions. Wiring that revision through the application map, scheduler, and worker receipt remains a separate integration task.
+There is no automatic archive pruning yet. Keep the archive directory on the same persistent volume across restarts and retain revisions referenced by recorded decisions. The local CPU run receipt now retains those exact revisions. Wiring them through the illustrative map and GPU scheduler remains a separate integration task.
 
 ### Replace the storage backend
 
 The backend-independent `SnapshotStore<T>` contract is in `src/server/SnapshotStore.type.ts`. It supplies `save(snapshot, evidence)`, `latest()`, and `read(revision)`. Each instance owns one feed; consumers receive only its revision, normalized snapshot, and source evidence. File paths, disk schema, checksums, database connections, and remote credentials belong to the implementation.
 
-Choose stores once in server assembly (`vite.config.ts`), then inject them:
+Choose stores once in server assembly (`vite.config.ts` and `src/server/applicationPlugin.ts`), then inject them:
 
 ```ts
 const stores = {
@@ -194,3 +194,21 @@ The collector, cache, replay endpoint, and browser client do not select a storag
 Replacement stores must preserve immutable snapshot/evidence pairs, the shared `snapshotRevision` identity, original timestamps, and missing-versus-corrupt behavior. `save` resolves only after durable publication and must leave the previous latest value intact on failure. Preserve the normalized JSON serialization used for the revision hash, including object-key order, rather than allowing a backend to silently rewrite it. Exact replay must return the requested revision. HTTP tests verify substitution through a test-only store; separate real-filesystem tests verify the concrete backend's persistence.
 
 New collections update the current publication by saving a new immutable revision. History search and retention/deletion operations are not part of this initial contract; they can be added around concrete consumer needs without exposing arbitrary filesystem or database operations to the browser.
+
+### Real local jobs and saved results
+
+The **Run real work on this computer** panel captures the displayed EIA and CAISO revision IDs, evaluates an explicit policy, and runs an allowlisted Node child process only when admitted. It offers a demand-statistics workload using the captured EIA observations and an integer-sum workload. Change the demand or wholesale-price threshold to observe a genuine run-versus-wait decision using the same data. The policy also checks original observation and retrieval ages and the availability of its single owned worker.
+
+The reference region is PACE. The actual worker is this computer; its physical grid region is unverified. This CPU admission policy does not reinterpret the existing GPU chooser's units, claim Utah GPU execution, infer site capacity from regional demand, or invent carbon intensity. The existing GPU/map simulation remains labeled separately.
+
+`JobRunStore<T>` in `src/server/jobs/JobRunStore.type.ts` provides `create`, `read`, and version-checked `update`. The shipped SQLite adapter uses Node 24's built-in database module; no external database service or new package is required. `JOB_RUN_DIRECTORY` selects its directory (default `.cache/jobs`). Server assembly chooses this adapter, just as it chooses `SnapshotStore` implementations. A replacement must preserve durable create, atomic version checks, and independent returned values.
+
+The application records the request, pinned input revisions and decision before launch, then records real process events, exit status and the output SHA-256. Reloading `?run=<request-id>` retrieves the stored receipt. Repeating an identical request ID returns the same run; a changed payload cannot replace it. A persisted in-flight run after restart becomes interrupted and is never silently executed again. Failed workers and failed durable writes cannot become successful results.
+
+Run one application server per job directory. Worker ownership is local to that server; concurrent dev/preview servers must use distinct `JOB_RUN_DIRECTORY` values. The current endpoint is intended for the local application, not an unauthenticated public execution service. It accepts fixed structured workloads, never arbitrary code, shell commands or filesystem paths; workers receive no inherited EIA key or application secrets.
+
+The storage comparison is a hypothetical energy-cycle estimate: both cases deliver the same assumed compute energy, and the battery case requires `energy / round-trip efficiency` while restoring its initial inventory. It uses the captured wholesale reference price for both cases, preserves negative differences, and labels the changed dispatch and sufficient-capacity assumptions. It is not the GPU routing comparison or a measured electricity bill. Actual energy, carbon and electricity cost stay unknown.
+
+The LIVE-01 browser flow proves captured source values/revisions → public-input policy → actual process → downloaded output/hash → saved receipt. Separate cases prove threshold refusal, actual numeric-overflow failure, reload without a new POST, and analysis of 72 captured demand observations. A real two-process server test stops Vite, opens the same database in a fresh Vite process, and verifies the original receipt/output plus duplicate-request idempotency. Captures are under `test/fixtures/public-grid`; source values and timestamps are preserved and replay is labeled.
+
+The repository workflow does not reference `EIA_API_KEY`. Keep personal keys in ignored server environment files. Teammates can register their own keys. A future credentialed live CI check should use an explicitly approved secret on trusted code; a normal GitHub variable is not secret storage. The ordinary suite needs no personal key.
