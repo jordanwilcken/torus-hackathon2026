@@ -7,12 +7,15 @@ import type { Job } from '../../core/jobs/Job.type';
 import type { JobOutcome } from '../../core/scheduling/JobOutcome.type';
 import type { TransferObservation } from '../../core/execution/TransferObservation.type';
 import regions from './regions.json';
+import { showMapActivity } from './mapActivity';
+import './EnergyBasemap.compact.css';
 
 const chipIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="3"/><path d="M9 1v4m6-4v4M9 19v4m6-4v4M1 9h4m-4 6h4m14-6h4m-4 6h4"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>';
 
 type JobPlacement = {
   job: Job;
   outcome?: JobOutcome;
+  /** Advance for a new routing event; inspection and feed refreshes are not new activity. */
   routeAttempt: number;
   transfers?: TransferObservation[];
   executionObserved?: boolean;
@@ -28,6 +31,8 @@ type MapInspection = {
 };
 
 type EnergyBasemapProps = {
+  /** Compact markers and transient activity; omission preserves the existing map presentation. */
+  appearance?: 'compact';
   sites: ReturnType<typeof getEnergyMap>['sites'];
   placement: JobPlacement;
   inspection: MapInspection;
@@ -38,7 +43,7 @@ type EnergyBasemapProps = {
   children?: ReactNode;
 };
 
-export function EnergyBasemap({ sites, placement, inspection, detailCard, children }: EnergyBasemapProps) {
+export function EnergyBasemap({ sites, placement, inspection, detailCard, children, appearance }: EnergyBasemapProps) {
   const { job, outcome, routeAttempt, transfers, executionObserved } = placement;
   const { inspectedSlot, focusSlot, onInspect, onPreview, onRegion, onDismiss } = inspection;
   const { content: details, location: detailLocation } = detailCard;
@@ -49,6 +54,8 @@ export function EnergyBasemap({ sites, placement, inspection, detailCard, childr
   const restoringFocus = useRef(false);
   const detailTrigger = useRef<string | null>(null);
   const animatedAttempt = useRef(0);
+  const compactActivities = useRef(new Set<string>());
+  const seenTransfers = useRef(new Set<string>());
   const selectedSlot = outcome?.selected ? outcome.allocation.slot : undefined;
   const origin = sites.get(job.currentLocation);
   const destination = selectedSlot && sites.get(selectedSlot.locationId);
@@ -127,10 +134,18 @@ export function EnergyBasemap({ sites, placement, inspection, detailCard, childr
       for (const [name, value] of Object.entries({ 'data-selected': 'true',
         'data-origin-location-id': job.currentLocation, 'data-location-id': selectedSlot!.locationId, pathLength: '1' }))
         line.getElement()!.setAttribute(name, value);
+      if (appearance === 'compact') {
+        const identity = [job.id, routeAttempt, selectedSlot!.locationId, selectedSlot!.slotId].join('\0');
+        if (!compactActivities.current.has(identity)) {
+          compactActivities.current.add(identity);
+          showMapActivity(view, points);
+        }
+      }
     }
     return () => { layer.remove(); renderer.remove(); };
   }, [job.id, job.currentLocation, outcome?.selected, routeAttempt, executionObserved, selectedSlot?.locationId,
-    origin?.latitude, origin?.longitude, origin?.name, destination?.latitude, destination?.longitude, destination?.name]);
+    origin?.latitude, origin?.longitude, origin?.name, destination?.latitude, destination?.longitude, destination?.name,
+    selectedSlot?.slotId, appearance]);
 
   useEffect(() => {
     const view = map.current!;
@@ -145,27 +160,34 @@ export function EnergyBasemap({ sites, placement, inspection, detailCard, childr
       path.setAttribute('data-transfer-id', transfer.id);
       path.setAttribute('role', 'img');
       path.setAttribute('aria-label', 'Recorded transfer: ' + transfer.jobId + ' from ' + transfer.fromLocation + ' to ' + transfer.toLocation);
+      if (appearance === 'compact' && !seenTransfers.current.has(transfer.id)) {
+        seenTransfers.current.add(transfer.id);
+        showMapActivity(view, [[from!.latitude!, from!.longitude!], [to!.latitude!, to!.longitude!]], '#679ec2');
+      }
     }
     return () => { layer.remove(); };
-  }, [sites, transfers]);
+  }, [sites, transfers, appearance]);
 
   useEffect(() => {
-    if (!details || !card.current) return;
+    const element = card.current;
+    if (!details || !element) return;
     const view = map.current!;
-    if (document.activeElement?.tagName === 'BUTTON' && document.activeElement.hasAttribute('aria-label') && !card.current.contains(document.activeElement))
+    let active = true;
+    if (document.activeElement?.tagName === 'BUTTON' && document.activeElement.hasAttribute('aria-label') && !element.contains(document.activeElement))
       detailTrigger.current = document.activeElement.getAttribute('aria-label');
-    function positionCard() {
-      const size = view.getSize(), element = card.current!;
+    const positionCard = () => {
+      if (!active || !element.isConnected) return;
+      const size = view.getSize();
       const point = Number.isFinite(detailLocation?.latitude) && Number.isFinite(detailLocation?.longitude)
         ? view.latLngToContainerPoint([detailLocation!.latitude!, detailLocation!.longitude!]) : L.point(12, 90);
       element.style.left = Math.max(12, Math.min(point.x + 95, size.x - element.offsetWidth - 12)) + 'px';
       element.style.top = Math.max(76, Math.min(point.y - 35, size.y - element.offsetHeight - 20)) + 'px';
-    }
+    };
     positionCard();
     view.on('move zoom resize', positionCard);
     const resize = new ResizeObserver(positionCard);
-    resize.observe(card.current);
-    return () => { view.off('move zoom resize', positionCard); resize.disconnect(); };
+    resize.observe(element);
+    return () => { active = false; view.off('move zoom resize', positionCard); resize.disconnect(); };
   }, [details, detailLocation]);
 
   useEffect(() => {
@@ -181,6 +203,7 @@ export function EnergyBasemap({ sites, placement, inspection, detailCard, childr
       const selected = reference?.locationId === selectedSlot?.locationId && reference !== undefined;
       const viewing = reference?.locationId === inspectedSlot?.locationId && reference !== undefined;
       button.type = 'button'; button.className = 'map-pin ' + className;
+      button.title = title;
       button.setAttribute('aria-label', label); button.setAttribute('aria-pressed', String(viewing));
       button.dataset.selected = String(selected); button.dataset.origin = String(isOrigin);
       if (reference) button.dataset.locationId = reference.locationId;
@@ -215,7 +238,8 @@ export function EnergyBasemap({ sites, placement, inspection, detailCard, childr
       const reading = site.slots.find(item => item.reference.slotId === inspectedSlot?.slotId) ?? site.slots[0];
       pin(site.latitude!, site.longitude!, 'Inspect ' + (site.name ?? site.id), site.name ?? site.id,
         reading.snapshot.status + ' evidence · ' + (reading.snapshot.simulated ? 'Fake data' : 'source data'),
-        'site-pin', () => onPreview(reading.reference), () => onInspect(reading.reference), reading.reference);
+        'site-pin is-' + reading.snapshot.status + (reading.snapshot.projected ? ' is-projected' : ''),
+        () => onPreview(reading.reference), () => onInspect(reading.reference), reading.reference);
     }
     const focusedButton = [...container.current!.querySelectorAll<HTMLButtonElement>('.map-pin')]
       .find(button => button.getAttribute('aria-label') === focusedMarker.current);
@@ -231,7 +255,7 @@ export function EnergyBasemap({ sites, placement, inspection, detailCard, childr
     };
   }, [sites, job, inspectedSlot, selectedSlot, localView, onInspect, onPreview, onRegion]);
 
-  return <div className="basemap" role="region" aria-label="US energy map"
+  return <div className={'basemap' + (appearance === 'compact' ? ' compact-energy-map' : '')} role="region" aria-label="US energy map"
     onPointerLeave={event => { if (!event.currentTarget.contains(document.activeElement)) onDismiss(); }}
     onBlur={event => { if (!restoringFocus.current && !event.currentTarget.contains(event.relatedTarget as Node | null)) onDismiss(); }}
     onKeyDown={event => { if (event.key === 'Escape') closeDetails(); }}>

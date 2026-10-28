@@ -1,0 +1,54 @@
+.compact-energy-map .map-pin {
+  display: grid; place-items: center; width: 36px; height: 36px; padding: 0;
+  transform: translate(-50%, -50%); border: 0; border-radius: 50%;
+  background: transparent; box-shadow: none; color: #31654b;
+}
+.compact-energy-map .map-pin > strong,
+.compact-energy-map .map-pin > span:not(.job-assignment),
+.compact-energy-map .map-pin > small { display: none; }
+.compact-energy-map .map-pin::after {
+  position: static; width: 9px; height: 9px; border: 1.5px solid #fff; border-radius: 50%;
+  transform: none; background: #7a9786; box-shadow: 0 1px 5px #21443545;
+}
+.compact-energy-map .site-pin::after { width: 13px; height: 13px; border-radius: 4px; background: #608b77; }
+.compact-energy-map .site-pin.is-stale::after,
+.compact-energy-map .site-pin.is-unavailable::after { background: #a7987f; }
+.compact-energy-map .map-pin .job-assignment {
+  position: static; display: block; width: 19px; height: 19px; padding: 3px;
+  border-radius: 5px; box-shadow: 0 1px 5px #244d3540;
+}
+.compact-energy-map .map-pin:has(.job-assignment)::after { display: none; }
+.compact-energy-map .site-pin.is-current:not(.is-projected)::before {
+  content: ''; position: absolute; inset: 11px; border: 1px solid #5b9e79;
+  border-radius: 5px; pointer-events: none; animation: map-site-pulse 3.2s ease-out infinite;
+}
+.compact-energy-map .map-pin[aria-pressed='true'] { outline: 1px solid #5c8977; outline-offset: -5px; }
+.compact-energy-map .map-pin:hover > strong,
+.compact-energy-map .map-pin:focus-visible > strong {
+  display: block; position: absolute; inset-block-end: 100%; left: 50%; transform: translateX(-50%);
+  margin: 0; padding: 4px 7px; border: 1px solid #d3dfd3; border-radius: 5px;
+  background: #fffffff5; color: #365a45; font-size: 10px; font-weight: 600; white-space: nowrap;
+  box-shadow: 0 2px 8px #26442d12; pointer-events: none;
+}
+.compact-energy-map path.job-route,
+.compact-energy-map path.observed-transfer { visibility: hidden; opacity: 0; animation: none; }
+.compact-energy-map path.map-comet {
+  stroke-dasharray: var(--trail-start) 1.3; stroke-dashoffset: var(--trail-start);
+  opacity: 0; animation: map-shooting-star 1.45s cubic-bezier(.25, .3, .5, 1) both;
+  filter: drop-shadow(0 0 2px #66cda788);
+}
+.compact-energy-map path.map-comet-head { stroke: #f6fff5; filter: drop-shadow(0 0 2px #5abe8b) drop-shadow(0 0 4px #88d7a5); }
+@keyframes map-shooting-star {
+  0% { stroke-dashoffset: var(--trail-start); opacity: 0; }
+  12% { opacity: var(--trail-strength); }
+  70% { opacity: var(--trail-strength); }
+  100% { stroke-dashoffset: var(--trail-end); opacity: 0; }
+}
+@keyframes map-site-pulse {
+  0% { transform: scale(.75); opacity: .55; }
+  75%, 100% { transform: scale(2.1); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .compact-energy-map .site-pin::before, .compact-energy-map path.map-comet { animation: none !important; }
+  .compact-energy-map .site-pin::before { opacity: 0; }
+}

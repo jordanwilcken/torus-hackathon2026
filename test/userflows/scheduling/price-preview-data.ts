@@ -1,7 +1,7 @@
 import type { PriceHour } from '../../../src/ui/scheduling/PostedPrices.type';
 import type { JobOutcome } from '../../../src/core/scheduling/JobOutcome.type';
 
-export type Scene = 'selected' | 'waiting' | 'stale' | 'unknown' | 'revised' | 'empty' | 'no-estimate' | 'zero' | 'tiny' | 'overnight';
+export type Scene = 'selected' | 'waiting' | 'stale' | 'unknown' | 'revised' | 'empty' | 'no-estimate' | 'zero' | 'tiny' | 'overnight' | 'no-forecast' | 'job-b' | 'normalized-forecast';
 export const at = '2026-10-28T12:00:00Z';
 export const siteNames = { lehi: 'Lehi', provo: 'Provo' };
 function hour(site: string, start: number, rate: number, projected = false): PriceHour {
@@ -58,6 +58,13 @@ export function scenario(scene: Scene) {
     outcome = { selected: false, explanation: scene === 'stale' ? 'Current site evidence is stale. Waiting for a refreshed offer.' : 'No usable site readings were supplied.' };
   }
   if (scene === 'revised') sites[0].hours[0].snapshot.version = 'lehi-v2';
+  if (scene === 'no-forecast') sites.forEach(site => site.hours.forEach(hour => { hour.forecast = undefined; }));
+  if (scene === 'job-b' && outcome.selected) outcome.allocation.jobId = 'training-batch-b';
+  if (scene === 'normalized-forecast') sites.forEach(site => site.hours.forEach(hour => {
+    hour.forecast?.carbon?.points.forEach(point => {
+      point.window = { startAt: new Date(point.window.startAt).toISOString(), endAt: new Date(point.window.endAt).toISOString() };
+    });
+  }));
   if (scene === 'no-estimate' && outcome.selected) outcome.allocation.energy = [];
   if ((scene === 'zero' || scene === 'tiny') && outcome.selected) {
     const rate = scene === 'zero' ? 0 : .0000001;

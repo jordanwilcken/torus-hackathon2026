@@ -64,6 +64,18 @@
 .price-history time { color: #8a9878; font-size: 9px; font-variant-numeric: tabular-nums; }
 .price-history p { margin-top: 4px; color: #657953; font-size: 11px; line-height: 1.6; }
 .posted-prices .price-empty { margin-top: 12px; color: #8c997f; font-size: 11px; }
+.site-forecast { padding: 16px; border: 1px solid #dce4d6; border-radius: 12px; background: #fafcf7; }
+.site-forecast > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.site-forecast h3 { font-size: 12px; font-weight: 600; }
+.site-forecast .forecast-date { display: block; margin-top: 3px; color: #819073; font-size: 9px; font-weight: 400; }
+.site-forecast header > span { color: #819073; font-size: 9px; }
+.forecast-metric { margin-top: 14px; }
+.forecast-metric > p { color: #6b805e; font-size: 10px; }
+.forecast-hours { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(62px, 1fr); gap: 8px; overflow-x: auto; padding: 7px 2px 3px; }
+.forecast-hours button { display: grid; gap: 4px; padding: 9px 8px; border: 1px solid #e2e8db; border-radius: 7px; color: #56744e; background: #f0f5eb; font: inherit; cursor: pointer; text-align: left; }
+.forecast-hours time { color: #7b8b70; font-size: 10px; }
+.forecast-hours strong { font-size: 17px; font-weight: 550; letter-spacing: -.035em; }
+.forecast-hours small { color: #8a987c; font-size: 9px; }
 @media (max-width: 480px) {
   .price-strip { padding: 16px 14px 13px; }
   .price-strip-hours { gap: 5px; }

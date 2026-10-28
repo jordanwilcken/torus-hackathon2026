@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-type PreviewState = 'selected' | 'waiting' | 'stale' | 'unknown' | 'revised' | 'empty' | 'no-estimate' | 'zero' | 'tiny' | 'overnight';
+type PreviewState = 'selected' | 'waiting' | 'stale' | 'unknown' | 'revised' | 'empty' | 'no-estimate' | 'zero' | 'tiny' | 'overnight' | 'no-forecast' | 'job-b' | 'normalized-forecast';
 type PreviewControl = { show(state: PreviewState): void; read(): unknown };
 declare global { interface Window { pricePreview: PreviewControl } }
 

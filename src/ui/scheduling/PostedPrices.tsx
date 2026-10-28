@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { SlotReference } from '../../core/energy/SlotReference.type';
-import type { PriceHour, PriceStripProps, PriceDetailsProps, JobPriceChoiceProps } from './PostedPrices.type';
+import type { PriceHour, PriceStripProps, PriceDetailsProps, JobPriceChoiceProps, ForecastStripProps } from './PostedPrices.type';
 import './PostedPrices.css';
 
 const time = (value: string) => new Intl.DateTimeFormat('en', {
@@ -119,5 +119,47 @@ export function JobPriceChoice({ jobName, outcome, siteNames, history = [] }: Jo
         <time dateTime={decision.at}>{time(decision.at)} UTC</time><p>{decision.reason}</p>
       </li>)}</ol> : <p className="price-empty">No decisions supplied yet.</p>}
     </details>
+  </section>;
+}
+
+/** Display supplied hourly forecast points; gaps remain gaps and each source keeps its own timestamps. */
+export function ForecastStrip({ siteName, hours, onInspect }: ForecastStripProps) {
+  const metrics = (['carbon', 'demand', 'solar'] as const).filter(metric => hours.some(hour => hour.forecast?.[metric]));
+  const synthetic = hours.some(hour => Object.values(hour.forecast ?? {}).some(forecast => forecast?.simulated));
+  return <section className="posted-prices site-forecast" aria-label={siteName + ' forecast'}>
+    <header><h3>{siteName} forecast{hours.length > 0 && <span className="forecast-date">{date(hours[0].window.startAt)}</span>}</h3>{metrics.length > 0 && <span>{synthetic ? 'Includes synthetic inputs' : 'Supplied forecast'}</span>}</header>
+    {metrics.length ? <>
+      {metrics.map(metric => {
+        const units = [...new Set(hours.flatMap(hour => hour.forecast?.[metric]?.unit ?? []))];
+        return <div className="forecast-metric" key={metric}>
+          <p>{metric[0].toUpperCase() + metric.slice(1)}{units.length === 1 ? ' · ' + units[0] : ' forecast'}</p>
+          <div className="forecast-hours">{hours.map((hour, index) => {
+            const forecast = hour.forecast?.[metric];
+            const start = Date.parse(hour.window.startAt), end = Date.parse(hour.window.endAt);
+            const point = forecast?.points.find(point => Date.parse(point.window.startAt) === start && Date.parse(point.window.endAt) === end);
+            return <button type="button" key={hour.reference.slotId} onClick={() => onInspect(hour)}
+              aria-label={`Inspect ${siteName} ${metric} forecast, ${time(hour.window.startAt)} UTC, ${date(hour.window.startAt)}`}
+              title={date(hour.window.startAt) + ' · ' + (point ? number(point.value) + ' ' + forecast!.unit : 'Unavailable')}>
+              <time dateTime={hour.window.startAt}>{time(hour.window.startAt)}</time>
+              <strong>{point ? number(point.value) : '—'}</strong><small>{point ? units.length > 1 ? forecast!.unit : 'Forecast' : 'Unavailable'}</small>
+              {index > 0 && date(hour.window.startAt) !== date(hours[index - 1].window.startAt) && <small>{date(hour.window.startAt)}</small>}
+            </button>;
+          })}</div>
+        </div>;
+      })}
+      <details className="price-disclosure"><summary>Forecast sources</summary>
+        {hours.map(hour => metrics.map(metric => {
+          const forecast = hour.forecast?.[metric];
+          return forecast && <div className="price-forecast" key={hour.reference.slotId + metric}>
+            <h4>{metric} · {date(hour.window.startAt)} {time(hour.window.startAt)} UTC</h4>
+            <dl className="price-facts"><div><dt>Source</dt><dd>{forecast.source}</dd></div>
+              <div><dt>Scope / basis</dt><dd>{forecast.scope} · {forecast.basis}</dd></div>
+              <div><dt>Evidence</dt><dd>{forecast.simulated ? 'Synthetic forecast' : 'Supplied forecast'}</dd></div>
+              <div><dt>Issued</dt><dd><Stamp value={forecast.issuedAt} /></dd></div>
+              <div><dt>Retrieved</dt><dd><Stamp value={forecast.retrievedAt} /></dd></div></dl>
+          </div>;
+        }))}
+      </details>
+    </> : <p className="price-empty">No forecast supplied.</p>}
   </section>;
 }

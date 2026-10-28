@@ -25,6 +25,7 @@ export type PriceStripProps = {
 };
 
 export type PriceDetailsProps = { siteName: string; hour?: PriceHour };
+export type ForecastStripProps = Pick<PriceStripProps, 'siteName' | 'hours' | 'onInspect'>;
 export type JobPriceChoiceProps = {
   jobName: string;
   outcome?: JobOutcome;
