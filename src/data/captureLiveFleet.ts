@@ -31,7 +31,8 @@ export function captureLiveFleet(weather: FeedState<SiteWeatherSnapshot>, market
   const weatherAge = now - Date.parse(weather.snapshot.retrievedAt);
   if (!Number.isFinite(weatherAge) || weatherAge < -60_000 || weatherAge > 2 * hour)
     return missing('Weather capture is too old to start a new live-input model. Refresh the public inputs.');
-  if (market.status !== 'ready' || !market.snapshot || !market.revision)
+  // A failed refresh does not invalidate a retained price within the age limit below.
+  if (market.status === 'unavailable' || !market.snapshot || !market.revision)
     return missing('Waiting for the CAISO reference price. No substitute price is used.');
   const price = market.snapshot.prices.filter(point => Date.parse(point.window.startAt) <= now)
     .toSorted((a, b) => a.window.startAt.localeCompare(b.window.startAt)).at(-1);
@@ -85,7 +86,7 @@ export function captureLiveFleet(weather: FeedState<SiteWeatherSnapshot>, market
       allowedLocations: modeledSites.map(site => site.id), homeLocation: home, currentLocation: home,
       readyAt: at(arrival), workGpuH: 3, remainingGpuH: 3, maxGpus: 2, dataGB: .1, state: 'queued' };
   });
-  return { available: true, capture: { runInputs: { capturedAt: new Date(now).toISOString(), weather: { revision: weather.revision, snapshot: structuredClone(weather.snapshot), status: 'ready' }, caiso: { revision: market.revision, snapshot: structuredClone(market.snapshot), status: 'ready' }, eia: null }, weatherRevision: weather.revision, priceRevision: market.revision,
+  return { available: true, capture: { runInputs: { capturedAt: new Date(now).toISOString(), weather: { revision: weather.revision, snapshot: structuredClone(weather.snapshot), status: 'ready' }, caiso: { revision: market.revision, snapshot: structuredClone(market.snapshot), status: market.status }, eia: null }, weatherRevision: weather.revision, priceRevision: market.revision,
     capturedAt: new Date(now).toISOString(), price,
     scenario: { schemaVersion: 1, id: `public-fleet-${start}`, inputRevision: revision,
       label: 'Public weather and reference market inputs; modeled sites, jobs, execution and energy',

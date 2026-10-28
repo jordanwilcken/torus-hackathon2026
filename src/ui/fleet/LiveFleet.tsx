@@ -68,6 +68,9 @@ export function LiveFleet({ grid }: { grid: PublicGridClient }) {
     <div className="fleet-heading"><div className="fleet-heading-label"><h2>Live fleet</h2><span className="fleet-mode">Modeled execution</span></div>
       <SourceSignals weather={weather} market={market} eia={eia} capture={capture} now={now} onRefresh={() => { void weatherClient.refresh(); void grid.caiso.refresh(); void grid.eia.refresh(); }} />
     </div>
+    {capture?.runInputs.caiso?.status === 'stale' && <p className="fleet-source-notice" role="status">
+      This run uses the captured CAISO price. It met the one-hour age limit at capture, when refreshing was delayed.
+    </p>}
     {capture ? <FleetSession key={generation} capture={capture} restored={restored} freezeAnchor={freezeAnchor} latestSources={latestSources} onRestore={restoreSaved} /> : <>
       <FleetMap sites={unconnected} transfers={[]} playing={false} onInspect={() => {}} onJob={() => {}} />
       <p className="fleet-empty" role="status">{loadingMoment ? 'Retrieving the frozen moment…' : loadError || (candidate.available ? 'Preparing the fleet…' : candidate.reason)}</p>

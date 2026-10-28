@@ -28,7 +28,7 @@ export class FleetFlow {
     this.activity = this.panel.getByRole('region', { name: 'Location activity', exact: true });
   }
 
-  async open(options: { weatherUnavailable?: boolean } = {}): Promise<void> {
+  async open(options: { weatherUnavailable?: boolean; marketRefreshFailed?: boolean } = {}): Promise<void> {
     // Original captures retain their retrieval times. Only browser time advances into their shared valid window.
     // The owned server parses/archives the real weather response; this route supplies a newer real market capture
     // without changing the older market fixture used by the existing actual-CPU acceptance examples.
@@ -36,8 +36,9 @@ export class FleetFlow {
     await this.page.clock.install({ time: new Date(captureTime) });
     await this.page.clock.pauseAt(new Date(captureTime + 1_000));
     await this.page.route('**/api/grid/caiso', route => route.fulfill({ json: {
-      status: 'ready', revision: caiso.revision, snapshot: caiso.snapshot,
-      lastAttemptAt: null, nextRefreshAt: null,
+      status: options.marketRefreshFailed ? 'stale' : 'ready', revision: caiso.revision, snapshot: caiso.snapshot,
+      lastAttemptAt: options.marketRefreshFailed ? new Date(captureTime).toISOString() : null, nextRefreshAt: null,
+      ...(options.marketRefreshFailed ? { error: 'CAISO request was throttled; retrying later.' } : {}),
     } }));
     if (options.weatherUnavailable) {
       await this.page.route('**/api/weather/sites', route => route.fulfill({ json: {

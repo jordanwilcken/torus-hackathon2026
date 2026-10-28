@@ -81,11 +81,11 @@ test('a null Salt Lake forecast hour cannot become zero solar or reuse Cedar Cit
     reason: expect.stringContaining('Missing forecast interval for Salt Lake City at 2026-10-28T17:00:00.000Z') });
 });
 
-test('missing, stale, expired or unsupported negative market inputs cannot acquire an invented reference price', () => {
+test.each(['ready', 'stale'] as const)('missing, expired or unsupported negative market inputs cannot acquire an invented reference price (%s)', status => {
   const { weather, market } = inputs();
   expect(captureLiveFleet(weather, { ...market, status: 'unavailable', snapshot: null, revision: null }, now))
     .toMatchObject({ available: false, reason: expect.stringMatching(/No substitute price/) });
-  expect(captureLiveFleet(weather, { ...market, status: 'stale' }, now)).toMatchObject({ available: false });
+  market.status = status;
   market.snapshot!.prices = [{ window: { startAt: '2026-10-28T15:20:00.000Z', endAt: '2026-10-28T15:25:00.000Z' }, usdPerMWh: 20 }];
   expect(captureLiveFleet(weather, market, now)).toMatchObject({ available: false, reason: expect.stringMatching(/over one hour old/) });
   market.snapshot!.prices = [{ window: { startAt: '2026-10-28T16:25:00.000Z', endAt: '2026-10-28T16:30:00.000Z' }, usdPerMWh: -1 }];
@@ -99,4 +99,42 @@ test('a weather retrieval 30 seconds ahead of the browser cannot create a future
   const capture = captured(captureLiveFleet(weather, market, Date.parse('2026-10-28T17:00:00.000Z')));
   expect(capture.scenario.startAt).toBe('2026-10-28T18:00:00.000Z');
   expect(createPairedReplaySession(capture.scenario).read().phase).toBe('ready');
+});
+
+test('a failed CAISO refresh can use its recent real price without rewriting the retained evidence', async () => {
+  const { weather, market } = inputs();
+  market.status = 'stale';
+  market.lastAttemptAt = '2026-10-28T16:26:19.000Z';
+  market.nextRefreshAt = '2026-10-28T16:31:19.000Z';
+  market.error = 'CAISO throttled this connection. Waiting before retrying.';
+  const retained = structuredClone(market);
+
+  const capture = captured(captureLiveFleet(weather, market, now));
+  expect(capture.price).toEqual({
+    window: { startAt: '2026-10-28T16:25:00.000Z', endAt: '2026-10-28T16:30:00.000Z' },
+    usdPerMWh: 22.26266,
+  });
+  expect(capture.priceRevision).toBe('7e55fed62e260bfd0cf7d94af18e965ffa2cb27263a632bcda8e4f3ffdb5c70f');
+  expect(capture.runInputs.caiso).toEqual({
+    status: 'stale', revision: retained.revision, snapshot: retained.snapshot,
+  });
+  expect(capture.runInputs.caiso?.snapshot.retrievedAt).toBe('2026-10-28T16:26:18.023Z');
+  expect(capture.runInputs.weather?.status).toBe('ready');
+  expect(capture.scenario.sites[0].forecast[0].accounting.gridUsdPerMWh).toBe(22.26266);
+  expect(market).toEqual(retained);
+
+  const progress = await createPairedReplaySession(capture.scenario).step();
+  expect(progress).toMatchObject({ hour: 1, phase: 'settled' });
+  expect(progress.selected.run.ticks).toHaveLength(1);
+  expect(progress.selected.run.ticks[0].executions.some(receipt => receipt.completedGpuH > 0)).toBe(true);
+});
+
+test('a retained stale CAISO price still expires one hour after its real source interval', () => {
+  const { weather, market } = inputs();
+  market.status = 'stale';
+  const atLimit = captured(captureLiveFleet(weather, market, Date.parse('2026-10-28T17:30:00.000Z')));
+  expect(atLimit.price.window.endAt).toBe('2026-10-28T16:30:00.000Z');
+  expect(atLimit.runInputs.caiso?.status).toBe('stale');
+  expect(captureLiveFleet(weather, market, Date.parse('2026-10-28T17:30:00.001Z')))
+    .toMatchObject({ available: false, reason: expect.stringMatching(/over one hour old/) });
 });

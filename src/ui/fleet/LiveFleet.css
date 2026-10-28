@@ -96,3 +96,5 @@
 @media(max-width:760px) { .fleet-heading h2 { font-size:13px; }.fleet-canvas { height:420px; }.fleet-footer>small { display:none; }.fleet-inspector { width:auto; padding:18px; }.fleet-metrics { grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }.fleet-metrics dd { font-size:12px; }.fleet-clock { font-size:10px; } }
 
 .fleet-disruption-target { display:grid; gap:5px; padding:10px 12px; margin:10px 0; border:1px solid #e5d8ba; border-radius:7px; background:#f7f0df; font-size:11px; color:#7a6845; }.fleet-disruption-target strong { color:#8c603b; font-size:17px; font-weight:600; }.fleet-disruption-target span { font-size:10px; }.fleet-chaos select { max-width:100%; }.fleet-chaos .fleet-drop:disabled { opacity:.5; }
+
+.fleet-source-notice { margin:0; padding:10px 16px; background:#fff8e6; color:#70551f; font-size:12px; line-height:1.5; }
