@@ -8,6 +8,7 @@
   },
   "packageManager": "npm@11.20.0",
   "scripts": {
+    "data:eia930": "node scripts/fetch-eia930-snapshot.ts",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
@@ -29,6 +30,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
+    "read-excel-file": "9.3.13",
     "typescript": "5.9.3",
     "vite": "8.3.3",
     "vitest": "5.0.2"
