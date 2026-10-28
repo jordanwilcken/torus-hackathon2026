@@ -33,10 +33,10 @@ The captured CAISO value is a shared wholesale reference, not a local tariff for
 [![Build and score reporting](https://github.com/jordanwilcken/torus-hackathon2026/actions/workflows/requirements.yml/badge.svg?branch=main)](https://github.com/jordanwilcken/torus-hackathon2026/actions/workflows/requirements.yml?query=branch%3Amain)
 
 <!-- scorecard:start -->
-<!-- scorecard:run 50 attempt 1 -->
-**[Open latest CI scorecard →](https://github.com/jordanwilcken/torus-hackathon2026/actions/runs/40761079911)** · **[Download scorecard + rubric](https://github.com/jordanwilcken/torus-hackathon2026/actions/runs/40761079911/artifacts/12848931249)** · [All runs](https://github.com/jordanwilcken/torus-hackathon2026/actions/workflows/requirements.yml?query=branch%3Amain)
+<!-- scorecard:run 51 attempt 1 -->
+**[Open latest CI scorecard →](https://github.com/jordanwilcken/torus-hackathon2026/actions/runs/40761484324)** · **[Download scorecard + rubric](https://github.com/jordanwilcken/torus-hackathon2026/actions/runs/40761484324/artifacts/12849810203)** · [All runs](https://github.com/jordanwilcken/torus-hackathon2026/actions/workflows/requirements.yml?query=branch%3Amain)
 
-Latest reported commit: [`e685f57`](https://github.com/jordanwilcken/torus-hackathon2026/commit/e685f57f7ef042e0f17df872f3295266bc227fc1) · Run 50, attempt 1.
+Latest reported commit: [`fb41d0b`](https://github.com/jordanwilcken/torus-hackathon2026/commit/fb41d0b61abe98d45d6ae3dc033a91a8fdacf32a) · Run 51, attempt 1.
 <!-- scorecard:end -->
 
 The links update automatically after main-branch CI. The run summary shows the numeric score,
