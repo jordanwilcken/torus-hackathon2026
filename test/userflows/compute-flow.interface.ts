@@ -14,5 +14,7 @@ export interface ImpactView {
   baselineModeledCostUsd: number | null;
   selectedModeledCostUsd: number | null;
   modeledCostReductionUsd: number | null;
+  baselineElectricityUsd: number | null;
+  selectedElectricityUsd: number | null;
   completedGpuH: number;
 }

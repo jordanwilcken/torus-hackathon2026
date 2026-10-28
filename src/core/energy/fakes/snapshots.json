@@ -35,6 +35,13 @@
           "usedGpus": 0,
           "postedUsdPerGpuHour": 0.09,
           "priceBasis": "Fake: $50/MWh grid energy + $100/tonne carbon; 1 kWh/GPU-hour"
+        },
+        "siteEnergy": {
+          "storedKWh": 0,
+          "capacityKWh": 0,
+          "gridImportLimitKW": 2,
+          "solarKWh": 0,
+          "protectedKWh": 0
         }
       }
     },
@@ -66,6 +73,13 @@
           "usedGpus": 0,
           "postedUsdPerGpuHour": 0,
           "priceBasis": "Fake: $50/MWh grid energy + $100/tonne carbon; 1 kWh/GPU-hour"
+        },
+        "siteEnergy": {
+          "storedKWh": 0,
+          "capacityKWh": 1,
+          "gridImportLimitKW": 2,
+          "solarKWh": 2,
+          "protectedKWh": 0
         }
       }
     }

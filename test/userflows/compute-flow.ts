@@ -1,27 +1,37 @@
 import type { Page } from '@playwright/test';
 import type { ImpactView, JobInput } from './compute-flow.interface';
 
-/**
- * Browser driver for the application that the team will implement.
- *
- * Scenario preparation must configure the real application with the matching
- * scenario inputs. Read methods must observe rendered application state. This
- * driver must not schedule work, calculate carbon, or supply expected results.
- * Each Playwright test has an isolated browser context; scenario setup must also
- * reset any state the eventual application keeps outside that context.
- *
- * These explicit failures keep the enabled flow tests RED until connected.
- * Only navigation is implemented; no product layout/selectors are prescribed.
- */
+function numberFromAttribute(value: string | null): number | null {
+  if (value === null || value.trim() === '') return null;
+  const number = Number(value);
+  if (!Number.isFinite(number)) throw new Error('Invalid numeric value rendered by the application: ' + value);
+  return number;
+}
+
+/** Supplies scenario inputs and observes rendered values; it does not calculate product results. */
 export class ComputeFlow {
+  private mapTilesMocked = false;
+
   constructor(private readonly page: Page) {}
 
+  private async mockMapTiles(): Promise<void> {
+    if (this.mapTilesMocked) return;
+    await this.page.route(/^https:\/\/(?:[a-z]\.)?tile\.openstreetmap\.org\//, route => route.fulfill({
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#e9efeb"/></svg>',
+    }));
+    this.mapTilesMocked = true;
+  }
+
   async open(): Promise<void> {
+    await this.mockMapTiles();
     await this.page.goto('/');
   }
 
-  async useScenario(name: 'curtailed-solar' | 'stale-site'): Promise<void> {
-    this.unimplemented(`configure the real ${name} scenario`);
+  async useScenario(name: 'curtailed-solar' | 'stale-site' | 'recorded-comparison'): Promise<void> {
+    if (name === 'curtailed-solar') this.unimplemented(`configure the real ${name} scenario`);
+    await this.mockMapTiles();
+    await this.page.goto('/?scenario=' + encodeURIComponent(name));
   }
 
   async submitJob(job: JobInput): Promise<void> {
@@ -41,19 +51,53 @@ export class ComputeFlow {
   }
 
   async completedGpuHours(): Promise<number> {
-    return this.unimplemented('read completed work');
+    const report = this.page.getByRole('region', { name: 'Job report', exact: true });
+    const completed = numberFromAttribute(await report.getAttribute('data-completed-gpu-h'));
+    if (completed === null) throw new Error('Completed work is unavailable in the rendered report.');
+    return completed;
   }
 
   async siteFreshness(site: string): Promise<'current' | 'stale' | 'unavailable'> {
-    return this.unimplemented(`read ${site}'s evidence freshness`);
+    const picker = this.page.locator('button[data-location-id=' + JSON.stringify(site) + '][data-site-freshness]');
+    const freshness = await picker.getAttribute('data-site-freshness');
+    if (freshness !== 'current' && freshness !== 'stale' && freshness !== 'unavailable') {
+      throw new Error('Missing site freshness for ' + site);
+    }
+    return freshness;
   }
 
   async recommendedNow(site: string): Promise<boolean> {
-    return this.unimplemented(`read whether ${site} is recommended now`);
+    const picker = this.page.locator('button[data-location-id=' + JSON.stringify(site) + '][data-available-now]');
+    const available = await picker.getAttribute('data-available-now');
+    if (available !== 'true' && available !== 'false') throw new Error('Missing current availability for ' + site);
+    return available === 'true';
   }
 
   async impactReport(): Promise<ImpactView> {
-    return this.unimplemented('read the displayed impact report');
+    const report = this.page.getByRole('region', { name: 'Job report', exact: true });
+    if (await report.locator('details.report-details').getAttribute('open') === null) {
+      await report.getByText('Report details', { exact: true }).click();
+    }
+    const table = report.getByRole('table', { name: 'Observed impact report' });
+    const values = async (measure: RegExp) => {
+      const cells = table.getByRole('row', { name: measure }).getByRole('cell');
+      return [numberFromAttribute(await cells.nth(0).getAttribute('data-value')),
+        numberFromAttribute(await cells.nth(1).getAttribute('data-value'))];
+    };
+    const [baselineCarbonKg, selectedCarbonKg] = await values(/Carbon/);
+    const [baselineModeledCostUsd, selectedModeledCostUsd] = await values(/Modeled cost/);
+    const [baselineElectricityUsd, selectedElectricityUsd] = await values(/Electricity/);
+    const differences = report.getByRole('region', { name: 'Impact differences', exact: true });
+    const difference = async (name: string) => numberFromAttribute(await differences.getByText(name, { exact: true })
+      .locator('..').locator('dd').getAttribute('data-value'));
+    return {
+      comparable: await report.getByText('Comparison: comparable', { exact: true }).count() === 1,
+      baselineCarbonKg, selectedCarbonKg, baselineModeledCostUsd, selectedModeledCostUsd,
+      baselineElectricityUsd, selectedElectricityUsd,
+      reductionKg: await difference('Carbon reduction'),
+      modeledCostReductionUsd: await difference('Modeled cost reduction'),
+      completedGpuH: await this.completedGpuHours(),
+    };
   }
 
   private unimplemented(operation: string): never {

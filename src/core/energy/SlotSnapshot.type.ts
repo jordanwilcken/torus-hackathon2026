@@ -5,6 +5,13 @@ export type SlotSnapshot = {
     source: string;
     /** Optional map metadata accompanying this location's reading. */
     location?: { name: string; latitude: number; longitude: number; regionId: string };
+    siteEnergy?: {
+        solarKWh?: number;
+        storedKWh?: number;
+        protectedKWh?: number;
+        capacityKWh?: number;
+        gridImportLimitKW?: number;
+    };
     version?: string | undefined;
     observedAt?: string | undefined;
     projected: boolean;

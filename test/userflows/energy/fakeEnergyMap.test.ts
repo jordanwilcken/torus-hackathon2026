@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import snapshots from '../../../src/core/energy/fakes/snapshots.json' with { type: 'json' };
+import recordedInputs from '../../../src/core/reporting/fakes/execution.json' with { type: 'json' };
+import type { TransferObservation } from '../../../src/core/execution/TransferObservation.type';
 import type { JobOutcome } from '../../../src/core/scheduling/JobOutcome.type';
 
 const tileRequests = /^https:\/\/(?:[a-z]\.)?tile\.openstreetmap\.org\//;
@@ -17,6 +19,98 @@ async function useFakeSnapshots(page: Page, data: unknown) {
     body: 'export default ' + JSON.stringify(data) + ';',
   }));
 }
+
+test('shows supplied local storage, forecast provenance and capacity on the energy timeline', async ({ page }) => {
+  const data = structuredClone(snapshots);
+  Object.assign(data.sites[0].snapshot, { siteEnergy: {
+    solarKWh: 2, storedKWh: 3, protectedKWh: 1, capacityKWh: 5, gridImportLimitKW: 4,
+  } });
+  await useFakeSnapshots(page, data);
+  await page.route('**/src/core/energy/fakes/forecasts.json*', route => route.fulfill({
+    contentType: 'text/javascript',
+    body: 'export default ' + JSON.stringify({ forecasts: { PACE: { carbon: {
+      source: 'supplied-carbon-series', scope: 'PACE', basis: 'Supplied average operational CO2', unit: 'gCO2/kWh',
+      issuedAt: '2026-10-27T17:55:00Z', retrievedAt: '2026-10-27T17:56:00Z', simulated: true,
+      points: [{ window: snapshots.window, value: 275 }],
+    } } } }) + ';',
+  }));
+  await page.goto('/');
+  const map = page.getByRole('region', { name: 'Energy sites' });
+  await map.getByRole('button', { name: 'Explore Utah', exact: true }).click();
+  await map.getByRole('button', { name: 'Inspect Utah grid example', exact: true }).click();
+  const details = map.getByRole('region', { name: 'Site details' });
+  await expect(details).toContainText('Solar supplied');
+  await expect(details).toContainText('2.00 kWh');
+  await expect(details).toContainText('Stored energy');
+  await expect(details).toContainText('3.00 kWh');
+  await expect(details).toContainText('Protected reserve');
+  await expect(details).toContainText('1.00 kWh');
+  await expect(details).toContainText('Storage capacity');
+  await expect(details).toContainText('5.00 kWh');
+  await expect(details).toContainText('Utility import limit');
+  await expect(details).toContainText('4.00 kW');
+  const timeline = map.getByRole('region', { name: 'Energy timeline' });
+  await expect(timeline.getByRole('button', { name: /18:00–19:00 UTC/ })).toContainText('Cap 1 GPU · reserved 0');
+  const forecast = timeline.getByRole('region', { name: 'Forecast evidence' });
+  await expect(forecast).toContainText('Carbon forecast');
+  await expect(forecast).toContainText('275.00 gCO2/kWh');
+  await expect(forecast).toContainText('Simulated forecast');
+  await expect(forecast.locator('[data-start-at="2026-10-27T18:00:00Z"]')).toHaveCount(1);
+  await forecast.getByText('Forecast sources', { exact: true }).click();
+  await expect(forecast).toContainText('supplied-carbon-series');
+  await expect(forecast).toContainText('2026-10-27T17:55:00Z');
+  await expect(forecast).toContainText('Supplied average operational CO2');
+});
+
+test('renders unavailable slot evidence without a zero or an available-now recommendation', async ({ page }) => {
+  const data = structuredClone(snapshots);
+  Object.assign(data.sites[0].snapshot, { status: 'unavailable' });
+  await useFakeSnapshots(page, data);
+  await page.goto('/');
+  const map = page.getByRole('region', { name: 'Energy sites' });
+  const site = map.getByRole('button', { name: 'View Utah grid example', exact: true });
+  await expect(site).toHaveAttribute('data-site-freshness', 'unavailable');
+  await expect(site).toHaveAttribute('data-available-now', 'false');
+  await site.click();
+  const details = map.getByRole('region', { name: 'Site details' });
+  await expect(details).toContainText('unavailable evidence');
+  await expect(details).toContainText('Not available now');
+  await expect(details.getByText('Unavailable', { exact: true })).toHaveCount(4);
+  await expect(map.getByRole('region', { name: 'Energy timeline' }).locator('button.energy-time-slot')).toHaveAttribute('data-evidence', 'unavailable');
+});
+
+test('shows recorded meter and work intervals with separate supplied transfer evidence', async ({ page }) => {
+  const data = structuredClone(recordedInputs);
+  const transfer: TransferObservation = {
+    id: 'recorded-transfer', jobId: 'recorded-training', fromLocation: 'fake-utah-grid', toLocation: 'fake-utah-solar',
+    window: { startAt: '2026-10-27T18:00:00Z', endAt: '2026-10-27T18:00:00Z' },
+    energyKWh: 0, carbonKg: 0, electricityUsd: 0, jobChargeUsd: 0, accountingBasis: data.selected.accountingBasis,
+  };
+  Object.assign(data.baseline, { transfers: [transfer] });
+  Object.assign(data.selected, { transfers: [transfer] });
+  await page.route('**/src/core/reporting/fakes/execution.json*', route => route.fulfill({
+    contentType: 'text/javascript', body: 'export default ' + JSON.stringify(data) + ';',
+  }));
+  await page.goto('/?scenario=recorded-comparison');
+  await expect(page.getByText('Supplied simulation records — this application has not executed the work.', { exact: true })).toBeVisible();
+  const map = page.getByRole('region', { name: 'Energy sites' });
+  await map.getByRole('button', { name: 'Inspect Utah solar example', exact: true }).click();
+  const actual = map.getByRole('region', { name: 'Actual usage evidence' });
+  await expect(actual).toContainText('1.00 kWh compute');
+  await expect(actual).toContainText('0.00 kWh grid');
+  await expect(actual).toContainText('1.00 GPU-hour completed');
+  await expect(actual).toContainText('0.00 remaining');
+  await expect(actual.locator('[data-start-at="2026-10-27T18:00:00Z"]')).toHaveCount(2);
+  await actual.getByText('Meter details', { exact: true }).click();
+  await expect(actual.getByRole('table', { name: 'Actual site meters' }).getByRole('row').last().getByRole('cell'))
+    .toHaveText(['18:00–19:00', '2.00', '1.00', '0.00', '0.00', '1.00']);
+  const transfers = map.getByRole('region', { name: 'Transfer evidence' });
+  await expect(transfers).toContainText('recorded-training: fake-utah-grid → fake-utah-solar');
+  await expect(transfers.locator('[data-transfer-id="recorded-transfer"]')).toContainText('18:00–18:00');
+  await expect(map.getByRole('img', { name: 'Recorded transfer: recorded-training from fake-utah-grid to fake-utah-solar', exact: true })).toBeVisible();
+  await expect(map.locator('path.observed-transfer')).toHaveAttribute('data-transfer-id', 'recorded-transfer');
+  await expect(map.getByRole('img', { name: /^Job placement:/ })).toHaveAccessibleName(/execution observations supplied$/);
+});
 
 test('drills from US regional references into Utah sites and keeps viewing separate from job selection', async ({ page }) => {
   await page.goto('/');
@@ -158,7 +252,7 @@ test('keeps site inspection and timeline usable on a narrow screen', async ({ pa
   await map.getByRole('button', { name: 'Explore Utah', exact: true }).click();
   await map.getByRole('button', { name: 'Inspect Utah solar example', exact: true }).click();
   await expect(map.getByRole('region', { name: 'Site details' })).toContainText('$0.00');
-  const slot = map.getByRole('region', { name: 'Energy timeline' }).getByRole('button');
+  const slot = map.getByRole('region', { name: 'Energy timeline' }).locator('button.energy-time-slot');
   await slot.click();
   await expect(slot).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -179,7 +273,7 @@ test('preserves missing coordinates, stale evidence, and supplied source provena
   await map.getByRole('button', { name: 'Inspect Utah grid example', exact: true }).click();
   await expect(map.getByText('coordinates unavailable', { exact: false }).first()).toBeVisible();
   await expect(map.getByRole('region', { name: 'Site details' })).toContainText('stale evidence');
-  await expect(map.getByRole('region', { name: 'Energy timeline' }).getByRole('button')).toHaveAttribute('data-evidence', 'stale');
+  await expect(map.getByRole('region', { name: 'Energy timeline' }).locator('button.energy-time-slot')).toHaveAttribute('data-evidence', 'stale');
   await expect(map.getByRole('img', { name: 'Assigned job fake-job', exact: true })).toHaveCount(0);
 
   const solarPin = map.getByRole('button', { name: 'Inspect Utah solar example', exact: true });
@@ -204,7 +298,7 @@ test('every supplied same-site interval is available to inspect in the timeline'
   await map.getByRole('button', { name: 'Explore Utah', exact: true }).click();
   await map.getByRole('button', { name: 'Inspect Utah grid example', exact: true }).click();
   const timeline = map.getByRole('region', { name: 'Energy timeline' });
-  await expect(timeline.getByRole('button')).toHaveCount(2);
+  await expect(timeline.locator('button.energy-time-slot')).toHaveCount(2);
   await expect(timeline.getByRole('button', { name: /18:00–18:30 UTC/ })).toContainText('0.50 kWh');
   await timeline.getByRole('button', { name: /18:30–19:00 UTC/ }).click();
   await expect(map.getByRole('region', { name: 'Site details' })).toContainText('0.25 kWh');

@@ -84,6 +84,8 @@ function matchingRunsUnavailableReason(baseline: ImpactObservation, selected: Im
         return "Both comparison arms need a declared evidence source.";
     }
     if (baseline.simulated !== selected.simulated) return "Measured and simulated evidence cannot be mixed.";
+    if (baseline.execution && !baseline.execution.complete) return baseline.execution.unavailableReason ?? "Baseline execution evidence is incomplete.";
+    if (selected.execution && !selected.execution.complete) return selected.execution.unavailableReason ?? "Selected execution evidence is incomplete.";
     if (!baseline.feasible || !selected.feasible) return "Both comparison runs must be feasible.";
 
     const baselineStart = Date.parse(baseline.horizon.startAt);

@@ -18,6 +18,8 @@ export function createJobReport(
         routingOutcome: structuredClone(routingOutcome),
         routingFailure,
         ...compareImpact(observations),
+        execution: baseline?.execution || selected?.execution
+            ? structuredClone({ baseline: baseline?.execution, selected: selected?.execution }) : undefined,
         scenario: baseline && selected
             ? "Supplied baseline and selected comparison observations."
             : submittedJob ? "Job flow observed; execution has not been observed." : "No job has been submitted.",

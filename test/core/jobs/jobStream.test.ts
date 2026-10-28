@@ -5,8 +5,31 @@ import type { Job } from '../../../src/core/jobs/Job.type.js';
 import type { JobOutcome } from '../../../src/core/scheduling/JobOutcome.type.js';
 import type { JobObservations } from '../../../src/core/reporting/JobObservations.type.js';
 import { createJobReport } from '../../../src/core/reporting/getJobReport.js';
+import type { ImpactObservation } from '../../../src/core/reporting/ImpactObservation.interface.js';
 
 const job = (id: string): Job => ({ ...getFakeJob(), id });
+
+test('supplied impact observations update only the submitted job and notify the stream', async () => {
+  const stream = new JobStream(async () => ({ selected: false, explanation: 'Recorded observation input.' }));
+  await stream.submit(job('training-a'));
+  await stream.submit(job('training-b'));
+  const evidence: ImpactObservation = {
+    comparisonId: 'recorded-run', inputRevision: 'v1', arm: 'baseline', jobId: 'training-a',
+    horizon: { startAt: '2026-10-27T18:00:00Z', endAt: '2026-10-27T19:00:00Z' },
+    accountingBasis: 'average operational CO2', source: 'supplied recorded meters', simulated: true,
+    feasible: true, carbonKg: .4, work: [{ jobId: 'training-a', requiredGpuH: 1, completedGpuH: 1 }],
+    inventory: [{ locationId: 'A', initialStoredKWh: 0, endingStoredKWh: 0 }], storageToleranceKWh: 0,
+  };
+  let updates = stream.read();
+  stream.subscribe(snapshot => { updates = snapshot; });
+  expect(stream.observe(evidence)).toBe(true);
+  expect(updates[0].baseline?.carbonKg).toBe(.4);
+  expect(updates[1].baseline).toBeUndefined();
+  evidence.carbonKg = 99;
+  expect(stream.read()[0].baseline?.carbonKg).toBe(.4);
+  expect(stream.observe({ ...evidence, jobId: 'not-submitted' })).toBe(false);
+  expect(stream.read()).toHaveLength(2);
+});
 
 function selected(submitted: Job, locationId: string): JobOutcome {
   return {

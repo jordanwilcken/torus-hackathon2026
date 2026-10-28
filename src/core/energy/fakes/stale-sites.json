@@ -1,0 +1,104 @@
+{
+  "fake": true,
+  "label": "Supplied stale/current map readings",
+  "asOf": "2026-10-27T12:06:00Z",
+  "job": {
+    "id": "stale-map-job",
+    "workloadRef": "fake-batch",
+    "computeProfile": "fake-1kWh-per-GPUh",
+    "window": {
+      "startAt": "2026-10-27T12:00:00Z",
+      "endAt": "2026-10-27T13:00:00Z"
+    },
+    "allowedLocations": [
+      "A",
+      "B"
+    ],
+    "homeLocation": "A",
+    "currentLocation": "A",
+    "readyAt": "2026-10-27T12:06:00Z",
+    "workGpuH": 1,
+    "remainingGpuH": 1,
+    "maxGpus": 1,
+    "dataGB": 0,
+    "state": "queued"
+  },
+  "sites": [
+    {
+      "id": "A",
+      "name": "A",
+      "latitude": 40.7608,
+      "longitude": -111.891,
+      "solarKWh": 0,
+      "regionId": "PACE",
+      "computeProfile": "fake-1kWh-per-GPUh",
+      "snapshot": {
+        "status": "current",
+        "source": "fake-local-energy",
+        "version": "fake-v1",
+        "observedAt": "2026-10-27T12:00:00Z",
+        "projected": false,
+        "simulated": true,
+        "slot": {
+          "id": "A-12",
+          "locationId": "A",
+          "window": {
+            "startAt": "2026-10-27T12:00:00Z",
+            "endAt": "2026-10-27T13:00:00Z"
+          },
+          "availablePowerKW": 1,
+          "availableEnergyKWh": 1,
+          "capGpus": 1,
+          "usedGpus": 0,
+          "postedUsdPerGpuHour": 0.09,
+          "priceBasis": "Fake: $50/MWh grid energy + $100/tonne carbon; 1 kWh/GPU-hour"
+        },
+        "siteEnergy": {
+          "storedKWh": 0,
+          "capacityKWh": 0,
+          "gridImportLimitKW": 2,
+          "solarKWh": 0,
+          "protectedKWh": 0
+        }
+      }
+    },
+    {
+      "id": "B",
+      "name": "B",
+      "latitude": 40.2338,
+      "longitude": -111.6585,
+      "solarKWh": 2,
+      "regionId": "PACE",
+      "computeProfile": "fake-1kWh-per-GPUh",
+      "snapshot": {
+        "status": "current",
+        "source": "fake-local-energy",
+        "version": "fake-v1",
+        "observedAt": "2026-10-27T12:05:00Z",
+        "projected": false,
+        "simulated": true,
+        "slot": {
+          "id": "B-12",
+          "locationId": "B",
+          "window": {
+            "startAt": "2026-10-27T12:00:00Z",
+            "endAt": "2026-10-27T13:00:00Z"
+          },
+          "availablePowerKW": 1,
+          "availableEnergyKWh": 1,
+          "capGpus": 1,
+          "usedGpus": 0,
+          "postedUsdPerGpuHour": 0,
+          "priceBasis": "Fake: $50/MWh grid energy + $100/tonne carbon; 1 kWh/GPU-hour"
+        },
+        "siteEnergy": {
+          "storedKWh": 0,
+          "capacityKWh": 1,
+          "gridImportLimitKW": 2,
+          "solarKWh": 2,
+          "protectedKWh": 0
+        }
+      }
+    }
+  ]
+}

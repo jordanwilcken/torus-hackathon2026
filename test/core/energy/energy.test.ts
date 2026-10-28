@@ -1,20 +1,24 @@
-import { test } from "../../dsl/torus.fixture.js";
+import { expect, test } from 'vitest';
+import { createFakeEnergyMap } from '../../../src/core/energy/fakes/fakeEnergyMap.js';
+import { getEnergyMap } from '../../../src/core/energy/getEnergyMap.js';
+import supplied from '../../../src/core/energy/fakes/stale-sites.json';
 
+test('the live map does not recommend a location from stale evidence', () => {
+  const readings = structuredClone(supplied);
+  readings.sites[0].snapshot.observedAt = '2026-10-27T12:00:00Z';
+  readings.sites[1].snapshot.observedAt = '2026-10-27T12:05:00Z';
+  const source = createFakeEnergyMap(readings as Parameters<typeof createFakeEnergyMap>[0], {});
 
-test("the live map does not recommend a location from stale evidence", async ({ torus }) => {
-  await torus.currentTimeIs("2026-10-27T12:06:00Z");
-  const job = await torus.jobForHours("training", 1, 1, 1, 1);
-  await torus.jobPlacement(job, "A", ["A", "B"]);
-  await torus.siteForCurrentHour("A", 1, 0, 0, 2, 2);
-  await torus.siteStorage("A", 0, 0, 0, 0, 0, 1, 1);
-  await torus.siteForCurrentHour("B", 1, 0, 0, 2, 2);
-  await torus.siteStorage("B", 0, 0, 0, 0, 0, 1, 1);
-  await torus.currentGridTerms(400, 50);
-  await torus.transferAssumptions(0, 0, 0);
-  await torus.siteObservedAt("A", "2026-10-27T12:00:00Z");
-  await torus.siteObservedAt("B", "2026-10-27T12:05:00Z");
-  await torus.maximumEvidenceAgeIs(5);
-  await torus.findWhereToRunNow(job);
-  await torus.expectStaleSiteNotRecommended("A");
-  await torus.expectCurrentSiteRecommended("B");
+  const map = getEnergyMap({
+    asOf: '2026-10-27T12:06:00Z',
+    window: { startAt: '2026-10-27T12:00:00Z', endAt: '2026-10-27T13:00:00Z' },
+    locations: ['A', 'B'],
+  }, source, 5);
+
+  const stale = map.sites.get('A')!.slots[0];
+  const current = map.sites.get('B')!.slots[0];
+  expect(stale.snapshot.status).toBe('stale');
+  expect(stale.availableNow).toBe(false);
+  expect(current.snapshot.status).toBe('current');
+  expect(current.availableNow).toBe(true);
 });

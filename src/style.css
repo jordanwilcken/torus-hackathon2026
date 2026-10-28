@@ -168,3 +168,20 @@ th, td { padding: .65rem; text-align: left; border-bottom: 1px solid #e1e9e1; }
   .impact-readout dt { font-size: 8px; }
   .impact-readout dd { font-size: 9px; }
 }
+
+.availability-label { margin: 7px 0; font-size: 10px; color: #657b6d; }
+.local-energy-details { border-top: 1px solid #e7ece5; padding-top: 10px; }
+.slot-capacity { width: 100%; font-size: .65rem; opacity: .8; }
+.energy-evidence { border-top: 1px solid #e7ece5; margin-top: 1rem; padding-top: .8rem; }
+.energy-evidence h4 { margin: 0 0 .65rem; font-size: .75rem; color: #445f4d; }
+.energy-evidence > .muted { font-size: .7rem; }
+.energy-evidence-row > p { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .25rem .75rem; margin: .6rem 0 .25rem; font-size: .7rem; color: #4c6655; }
+.energy-evidence-row small { color: #7b887d; font-size: .63rem; }
+.energy-evidence-track { background: #f2f5f0; border-radius: 4px; min-height: 30px; margin: .3rem 0; }
+.energy-evidence-segment { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem .5rem; min-height: 30px; padding: .4rem .6rem; border: 1px solid #c9d8d1; border-radius: 4px; font-size: .65rem; overflow: hidden; }
+.forecast-segment { background: #f0f4fa; border-style: dashed; border-color: #b4c7dd; color: #4a6686; }
+.actual-segment { background: #eaf4ef; color: #367354; }
+.execution-segment { background: #eef3e9; color: #5a7242; }
+.transfer-segment { background: #edf2f8; border-style: dashed; color: #436f97; }
+.energy-evidence .source-details { margin-top: .6rem; font-size: .65rem; }
+@media (max-width: 680px) { .energy-evidence-segment { font-size: .6rem; padding: .4rem; } }

@@ -1,0 +1,249 @@
+{
+  "fake": true,
+  "label": "Supplied simulation records for reporting and timeline development",
+  "job": {
+    "id": "recorded-training",
+    "workloadRef": "fake-batch",
+    "computeProfile": "fake-1kWh-per-GPUh",
+    "window": {
+      "startAt": "2026-10-27T18:00:00Z",
+      "endAt": "2026-10-27T19:00:00Z"
+    },
+    "allowedLocations": [
+      "fake-utah-grid",
+      "fake-utah-solar"
+    ],
+    "homeLocation": "fake-utah-grid",
+    "currentLocation": "fake-utah-grid",
+    "readyAt": "2026-10-27T18:00:00Z",
+    "workGpuH": 1,
+    "remainingGpuH": 1,
+    "maxGpus": 1,
+    "dataGB": 0,
+    "state": "queued"
+  },
+  "baseline": {
+    "comparisonId": "supplied-solar-comparison",
+    "inputRevision": "raw-meter-records-v1",
+    "jobId": "recorded-training",
+    "horizon": {
+      "startAt": "2026-10-27T18:00:00Z",
+      "endAt": "2026-10-27T19:00:00Z"
+    },
+    "accountingBasis": "average operational CO2 including all site meters and transfer effects",
+    "source": "Fake supplied simulation records; not live telemetry or execution by this application",
+    "simulated": true,
+    "storageToleranceKWh": 1e-9,
+    "jobs": [
+      {
+        "id": "recorded-training",
+        "workloadRef": "fake-batch",
+        "computeProfile": "fake-1kWh-per-GPUh",
+        "window": {
+          "startAt": "2026-10-27T18:00:00Z",
+          "endAt": "2026-10-27T19:00:00Z"
+        },
+        "allowedLocations": [
+          "fake-utah-grid",
+          "fake-utah-solar"
+        ],
+        "homeLocation": "fake-utah-grid",
+        "currentLocation": "fake-utah-grid",
+        "readyAt": "2026-10-27T18:00:00Z",
+        "workGpuH": 1,
+        "remainingGpuH": 1,
+        "maxGpus": 1,
+        "dataGB": 0,
+        "state": "queued"
+      }
+    ],
+    "sites": [
+      {
+        "locationId": "fake-utah-grid",
+        "initialStoredKWh": 0,
+        "gridImportLimitKW": 2
+      },
+      {
+        "locationId": "fake-utah-solar",
+        "initialStoredKWh": 0,
+        "gridImportLimitKW": 2
+      }
+    ],
+    "transfers": [],
+    "costPolicy": {
+      "basis": "Realized electricity + modeled CO2 at USD 100/tonne + transfer charge",
+      "carbonPriceUsdPerTonne": 100
+    },
+    "arm": "baseline",
+    "ticks": [
+      {
+        "feasible": true,
+        "executions": [
+          {
+            "jobId": "recorded-training",
+            "locationId": "fake-utah-grid",
+            "window": {
+              "startAt": "2026-10-27T18:00:00Z",
+              "endAt": "2026-10-27T19:00:00Z"
+            },
+            "completedGpuH": 1,
+            "remainingGpuH": 0,
+            "state": "done",
+            "computeKWh": 1,
+            "postedChargeUsd": 0.09
+          }
+        ],
+        "meters": [
+          {
+            "locationId": "fake-utah-grid",
+            "window": {
+              "startAt": "2026-10-27T18:00:00Z",
+              "endAt": "2026-10-27T19:00:00Z"
+            },
+            "solarKWh": 0,
+            "gridImportKWh": 1,
+            "batteryChargeKWh": 0,
+            "batteryDischargeKWh": 0,
+            "curtailedKWh": 0,
+            "fixedLoadKWh": 0,
+            "computeKWh": 1,
+            "endingStoredKWh": 0,
+            "accountingBasis": "average operational CO2 including all site meters and transfer effects",
+            "carbonKg": 0.4,
+            "electricityUsd": 0.05
+          },
+          {
+            "locationId": "fake-utah-solar",
+            "window": {
+              "startAt": "2026-10-27T18:00:00Z",
+              "endAt": "2026-10-27T19:00:00Z"
+            },
+            "solarKWh": 2,
+            "gridImportKWh": 0,
+            "batteryChargeKWh": 1,
+            "batteryDischargeKWh": 0,
+            "curtailedKWh": 1,
+            "fixedLoadKWh": 0,
+            "computeKWh": 0,
+            "endingStoredKWh": 1,
+            "accountingBasis": "average operational CO2 including all site meters and transfer effects",
+            "carbonKg": 0,
+            "electricityUsd": 0
+          }
+        ]
+      }
+    ]
+  },
+  "selected": {
+    "comparisonId": "supplied-solar-comparison",
+    "inputRevision": "raw-meter-records-v1",
+    "jobId": "recorded-training",
+    "horizon": {
+      "startAt": "2026-10-27T18:00:00Z",
+      "endAt": "2026-10-27T19:00:00Z"
+    },
+    "accountingBasis": "average operational CO2 including all site meters and transfer effects",
+    "source": "Fake supplied simulation records; not live telemetry or execution by this application",
+    "simulated": true,
+    "storageToleranceKWh": 1e-9,
+    "jobs": [
+      {
+        "id": "recorded-training",
+        "workloadRef": "fake-batch",
+        "computeProfile": "fake-1kWh-per-GPUh",
+        "window": {
+          "startAt": "2026-10-27T18:00:00Z",
+          "endAt": "2026-10-27T19:00:00Z"
+        },
+        "allowedLocations": [
+          "fake-utah-grid",
+          "fake-utah-solar"
+        ],
+        "homeLocation": "fake-utah-grid",
+        "currentLocation": "fake-utah-grid",
+        "readyAt": "2026-10-27T18:00:00Z",
+        "workGpuH": 1,
+        "remainingGpuH": 1,
+        "maxGpus": 1,
+        "dataGB": 0,
+        "state": "queued"
+      }
+    ],
+    "sites": [
+      {
+        "locationId": "fake-utah-grid",
+        "initialStoredKWh": 0,
+        "gridImportLimitKW": 2
+      },
+      {
+        "locationId": "fake-utah-solar",
+        "initialStoredKWh": 0,
+        "gridImportLimitKW": 2
+      }
+    ],
+    "transfers": [],
+    "costPolicy": {
+      "basis": "Realized electricity + modeled CO2 at USD 100/tonne + transfer charge",
+      "carbonPriceUsdPerTonne": 100
+    },
+    "arm": "selected",
+    "ticks": [
+      {
+        "feasible": true,
+        "executions": [
+          {
+            "jobId": "recorded-training",
+            "locationId": "fake-utah-solar",
+            "window": {
+              "startAt": "2026-10-27T18:00:00Z",
+              "endAt": "2026-10-27T19:00:00Z"
+            },
+            "completedGpuH": 1,
+            "remainingGpuH": 0,
+            "state": "done",
+            "computeKWh": 1,
+            "postedChargeUsd": 0
+          }
+        ],
+        "meters": [
+          {
+            "locationId": "fake-utah-grid",
+            "window": {
+              "startAt": "2026-10-27T18:00:00Z",
+              "endAt": "2026-10-27T19:00:00Z"
+            },
+            "solarKWh": 0,
+            "gridImportKWh": 0,
+            "batteryChargeKWh": 0,
+            "batteryDischargeKWh": 0,
+            "curtailedKWh": 0,
+            "fixedLoadKWh": 0,
+            "computeKWh": 0,
+            "endingStoredKWh": 0,
+            "accountingBasis": "average operational CO2 including all site meters and transfer effects",
+            "carbonKg": 0,
+            "electricityUsd": 0
+          },
+          {
+            "locationId": "fake-utah-solar",
+            "window": {
+              "startAt": "2026-10-27T18:00:00Z",
+              "endAt": "2026-10-27T19:00:00Z"
+            },
+            "solarKWh": 2,
+            "gridImportKWh": 0,
+            "batteryChargeKWh": 1,
+            "batteryDischargeKWh": 0,
+            "curtailedKWh": 0,
+            "fixedLoadKWh": 0,
+            "computeKWh": 1,
+            "endingStoredKWh": 1,
+            "accountingBasis": "average operational CO2 including all site meters and transfer effects",
+            "carbonKg": 0,
+            "electricityUsd": 0
+          }
+        ]
+      }
+    ]
+  }
+}

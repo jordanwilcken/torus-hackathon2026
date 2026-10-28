@@ -1,3 +1,4 @@
+import type { ExecutionSummary } from "./ExecutionEvidence.type.js";
 import type { Job } from "../jobs/Job.type.js";
 import type { JobOutcome } from "../scheduling/JobOutcome.type.js";
 import type { CarbonReport } from "./CarbonReport.type.js";
@@ -13,6 +14,7 @@ export type JobReport = {
     routingFailure?: string;
     comparison: "illustrative" | "comparable" | "not-comparable" | "unavailable";
     scenario: string;
+    execution?: { baseline?: ExecutionSummary; selected?: ExecutionSummary };
     carbon: CarbonReport;
     cost: CostReport;
 };

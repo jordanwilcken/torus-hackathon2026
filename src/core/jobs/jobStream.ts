@@ -2,6 +2,7 @@ import type { Job } from './Job.type';
 import type { JobOutcome } from '../scheduling/JobOutcome.type';
 import type { JobObservations } from '../reporting/JobObservations.type';
 import type { ReportableJob } from '../reporting/ReportableJob.interface';
+import type { ImpactObservation } from '../reporting/ImpactObservation.interface';
 import { reportableJob, withReporting } from '../reporting/impact/reportableJob';
 
 type JobListener = (jobs: JobObservations[]) => void;
@@ -27,6 +28,14 @@ export class JobStream {
 
   read(): JobObservations[] {
     return [...this.observers.values()].map(observer => observer.readObservations());
+  }
+
+  observe(evidence: ImpactObservation): boolean {
+    const observer = this.observers.get(evidence.jobId);
+    if (!observer) return false;
+    observer.observe(evidence);
+    this.publish();
+    return true;
   }
 
   subscribe(listener: JobListener): () => void {

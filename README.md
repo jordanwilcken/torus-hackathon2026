@@ -14,8 +14,10 @@ progress by area and every requirement's result. The download includes the
 scorecard and exact rubric. The badge above shows build/reporting health,
 not the rubric score.
 
-TypeScript, React and Vite setup for the Torus hackathon. The current UI is a launch
-shell. The planner, scheduler, simulator and reporting behavior are still to implement.
+TypeScript, React and Vite application for the Torus hackathon. The map, energy
+timeline and job stream display supplied observations; reporting aggregates fleet
+meters, work and transfers into comparable carbon and cost summaries. The real
+planner, scheduler and executor remain separate implementation work.
 
 Use Node **24.19.0** and npm **11.20.0**:
 
@@ -36,11 +38,13 @@ It keeps runner errors, unimplemented drivers, skipped and missing cases distinc
 - Implement application components and bind `test/driver/torus.ts` to their real
   public APIs. Keep checks in `test/dsl/`; a driver must not contain its own
   scheduler, carbon calculation or expected answers.
-- Connect `test/userflows/compute-flow.ts` to the real UI. Its three Playwright flows
-  are enabled and intentionally fail until implemented. They do not prescribe
+- Continue connecting `test/userflows/compute-flow.ts` to the real UI. Stale-site and recorded-report checks use implemented components. Scheduling/execution flows
+  remain enabled and fail until their components are implemented. They do not prescribe
   a product layout. `BOOT-01` only proves React/Vite launches.
 - Keep application logic in ordinary TypeScript components and preserve their
   public contracts.
+
+With the dev server running, `/?scenario=stale-site` exercises current/stale map readings. `/?scenario=recorded-comparison` feeds labeled raw simulation records through the real aggregator, observers and UI. It does not execute jobs.
 
 `npm test` runs Vitest. `npm run test:userflows` runs Playwright, including the launch
 smoke test. `npm run test:tooling` checks the score reporter.

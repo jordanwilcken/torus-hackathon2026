@@ -1,3 +1,4 @@
+import type { ExecutionSummary } from "./ExecutionEvidence.type.js";
 import type { TimeWindow } from "../TimeWindow.type.js";
 export interface ImpactObservation {
   comparisonId: string;
@@ -9,6 +10,7 @@ export interface ImpactObservation {
   source: string;
   simulated: boolean;
   feasible: boolean;
+  execution?: ExecutionSummary;
   carbonKg: number | null;
   electricityUsd?: number | null;
   modeledCostUsd?: number | null;

@@ -19,7 +19,7 @@ test('preserves the source snapshot and raw forecast in each site reading', () =
   const site = getEnergyMap(query, source).sites.get(reference.locationId)!;
   expect(site).toEqual({
     id: reference.locationId, ...snapshot.location,
-    slots: [{ reference, snapshot, forecast }],
+    slots: [{ reference, snapshot, forecast, availableNow: true }],
   });
 });
 
@@ -34,8 +34,27 @@ test('unavailable readings retain their identity without inventing location or s
   const site = getEnergyMap(query, source).sites.get(reference.locationId)!;
   expect(site).toEqual({
     id: reference.locationId,
-    slots: [{ reference, snapshot, forecast: {} }],
+    slots: [{ reference, snapshot, forecast: {}, availableNow: false }],
   });
+});
+
+test('current availability excludes stale, projected, future, exhausted and unavailable slots', () => {
+  const snapshot = fakeEnergyMap.readSlot(reference, query.asOf, 5);
+  const cases = [
+    { ...snapshot, status: 'stale' as const },
+    { ...snapshot, projected: true },
+    { ...snapshot, slot: { ...snapshot.slot!, usedGpus: snapshot.slot!.capGpus } },
+    { ...snapshot, slot: { ...snapshot.slot!, availableEnergyKWh: 0 } },
+    { ...snapshot, slot: { ...snapshot.slot!, availablePowerKW: 0 } },
+    { ...snapshot, slot: { ...snapshot.slot!, window: { startAt: window.endAt, endAt: '2026-10-27T20:00:00Z' } } },
+    { ...snapshot, status: 'unavailable' as const, slot: undefined },
+  ];
+  for (const reading of cases) {
+    const source: EnergyMap = { findSlots: () => [reference], readSlot: () => reading, readForecast: () => ({}) };
+    expect(getEnergyMap(query, source).sites.get(reference.locationId)!.slots[0].availableNow).toBe(false);
+  }
+  const ended: EnergyMap = { findSlots: () => [reference], readSlot: () => snapshot, readForecast: () => ({}) };
+  expect(getEnergyMap({ ...query, asOf: window.endAt }, ended).sites.get(reference.locationId)!.slots[0].availableNow).toBe(false);
 });
 
 test('preserves separate same-site slot windows and their supplied energy', () => {

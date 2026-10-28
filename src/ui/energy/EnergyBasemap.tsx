@@ -5,6 +5,7 @@ import type { getEnergyMap } from '../../core/energy/getEnergyMap';
 import type { SlotReference } from '../../core/energy/SlotReference.type';
 import type { Job } from '../../core/jobs/Job.type';
 import type { JobOutcome } from '../../core/scheduling/JobOutcome.type';
+import type { TransferObservation } from '../../core/execution/TransferObservation.type';
 import regions from './regions.json';
 
 const chipIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="3"/><path d="M9 1v4m6-4v4M9 19v4m6-4v4M1 9h4m-4 6h4m14-6h4m-4 6h4"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>';
@@ -13,6 +14,8 @@ type JobPlacement = {
   job: Job;
   outcome?: JobOutcome;
   routeAttempt: number;
+  transfers?: TransferObservation[];
+  executionObserved?: boolean;
 };
 
 type MapInspection = {
@@ -36,7 +39,7 @@ type EnergyBasemapProps = {
 };
 
 export function EnergyBasemap({ sites, placement, inspection, detailCard, children }: EnergyBasemapProps) {
-  const { job, outcome, routeAttempt } = placement;
+  const { job, outcome, routeAttempt, transfers, executionObserved } = placement;
   const { inspectedSlot, focusSlot, onInspect, onPreview, onRegion, onDismiss } = inspection;
   const { content: details, location: detailLocation } = detailCard;
   const container = useRef<HTMLDivElement>(null);
@@ -106,9 +109,9 @@ export function EnergyBasemap({ sites, placement, inspection, detailCard, childr
     const drawing = source.getElement()!.closest('svg')!;
     drawing.setAttribute('role', 'img');
     drawing.setAttribute('aria-label', 'Job placement: ' + job.id + (staying
-      ? ' stays at ' + (origin?.name ?? job.currentLocation) + '; execution not started'
+      ? ' stays at ' + (origin?.name ?? job.currentLocation) + (executionObserved ? '; execution observations supplied' : '; execution not started')
       : outcome?.selected ? ' assigned from ' + (origin?.name ?? job.currentLocation) + ' to '
-        + (destination?.name ?? selectedSlot!.locationId) + '; execution not started'
+        + (destination?.name ?? selectedSlot!.locationId) + (executionObserved ? '; execution observations supplied' : '; execution not started')
         : outcome ? ' has no selected site' : ' waiting at ' + (origin?.name ?? job.currentLocation)));
 
     if (destination && !staying && Number.isFinite(destination.latitude) && Number.isFinite(destination.longitude)) {
@@ -126,8 +129,25 @@ export function EnergyBasemap({ sites, placement, inspection, detailCard, childr
         line.getElement()!.setAttribute(name, value);
     }
     return () => { layer.remove(); renderer.remove(); };
-  }, [job.id, job.currentLocation, outcome?.selected, routeAttempt, selectedSlot?.locationId,
+  }, [job.id, job.currentLocation, outcome?.selected, routeAttempt, executionObserved, selectedSlot?.locationId,
     origin?.latitude, origin?.longitude, origin?.name, destination?.latitude, destination?.longitude, destination?.name]);
+
+  useEffect(() => {
+    const view = map.current!;
+    const layer = L.layerGroup().addTo(view);
+    for (const transfer of transfers ?? []) {
+      const from = sites.get(transfer.fromLocation), to = sites.get(transfer.toLocation);
+      if (![from?.latitude, from?.longitude, to?.latitude, to?.longitude].every(Number.isFinite)) continue;
+      const line = L.polyline([[from!.latitude!, from!.longitude!], [to!.latitude!, to!.longitude!]], {
+        color: '#467eac', weight: 3, opacity: .8, dashArray: '5 5', interactive: false, className: 'observed-transfer',
+      }).addTo(layer);
+      const path = line.getElement()!;
+      path.setAttribute('data-transfer-id', transfer.id);
+      path.setAttribute('role', 'img');
+      path.setAttribute('aria-label', 'Recorded transfer: ' + transfer.jobId + ' from ' + transfer.fromLocation + ' to ' + transfer.toLocation);
+    }
+    return () => { layer.remove(); };
+  }, [sites, transfers]);
 
   useEffect(() => {
     if (!details || !card.current) return;
