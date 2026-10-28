@@ -1,0 +1,76 @@
+.posted-prices { --price-ink: #294333; --price-muted: #66775e; --price-line: #e0e6da; color: var(--price-ink); font: 13px/1.5 'Segoe UI', system-ui, sans-serif; text-align: left; }
+.posted-prices * { box-sizing: border-box; }
+.posted-prices h3, .posted-prices h4, .posted-prices p { margin: 0; }
+.posted-prices button, .posted-prices summary { -webkit-tap-highlight-color: transparent; }
+.posted-prices :is(button, summary):focus-visible { outline: 2px solid #4b7950; outline-offset: 3px; }
+.price-strip { margin-top: 10px; padding: 18px 20px 16px; border: 1px solid var(--price-line); border-radius: 13px; background: #fbfcf8; }
+.price-strip > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.price-strip h3 { font-size: 13px; font-weight: 600; letter-spacing: -.02em; }
+.price-strip h3 .price-strip-date { display: block; margin: 2px 0 0; color: #87917e; font-size: 9px; font-weight: 400; letter-spacing: 0; }
+.price-strip > header p { color: var(--price-muted); font-size: 10px; }
+.price-strip > header strong { color: #466c47; font-size: 15px; font-weight: 600; letter-spacing: -.03em; }
+.price-strip > header span { margin-left: 3px; font-size: 9px; }
+.price-strip-hours { display: grid; grid-auto-columns: minmax(62px, 1fr); grid-auto-flow: column; gap: 7px; padding: 17px 3px 3px; overflow-x: auto; scrollbar-width: thin; }
+.price-hour { min-width: 0; padding: 0 0 4px; border: 1px solid transparent; border-radius: 5px; color: #6e8068; background: transparent; font: inherit; text-align: center; cursor: pointer; transition: background 100ms, border-color 100ms; }
+.price-hour:hover { background: #eaf0e4; }
+.price-hour[aria-pressed='true'] { background: #edf2e8; border-color: #b8cdb0; }
+.price-hour-band { display: block; width: calc(100% - 8px); height: 7px; margin: 5px 4px 8px; border-radius: 3px; background: var(--price-color); }
+.price-hour > time { display: block; font-size: 11px; font-variant-numeric: tabular-nums; }
+.price-hour > small { display: block; margin-top: 3px; font-size: 10px; line-height: 1.4; white-space: nowrap; }
+.price-hour-date { display: block; margin-top: 5px; color: #677e5d; font-size: 9px; white-space: nowrap; }
+.price-hour[data-status='Sold out'] .price-hour-band { background: repeating-linear-gradient(120deg, #d9ded4 0 3px, #a6b19e 3px 4px); }
+.price-hour[data-status='Unavailable'] .price-hour-band { background: #dfe4d9; }
+.price-hour[data-status='Stale reading'] .price-hour-band { background: #c4b99c; }
+.price-hour[data-status='Conditional forecast'] .price-hour-band { opacity: .65; }
+.price-hour[data-chosen='true'] .price-hour-band { height: 7px; box-shadow: 0 0 0 2px #fbfcf8, 0 0 0 3px #4f8055; }
+.price-selected { color: #376c3c; font-weight: 650; }
+.price-details { padding: 20px; border: 1px solid #dce4d5; border-radius: 13px; background: #f9fbf5; }
+.price-details > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.price-eyebrow { color: #778a6c; font-size: 9px; font-weight: 650; letter-spacing: .14em; }
+.price-details h3 { margin-top: 4px; font-size: 12px; font-weight: 600; }
+.price-details h3 span { color: #7f8c76; font-size: 10px; font-weight: 400; }
+.price-status { flex: 0 1 auto; padding: 3px 7px; border: 1px solid #dce7d4; border-radius: 5px; background: #edf5e5; color: #64804f; font-size: 9px; text-align: center; }
+.price-status[data-status='Stale reading'], .price-status[data-status='Sold out'] { background: #f4f0e4; border-color: #e4ddc6; color: #96805a; }
+.price-status[data-status='Unavailable'] { background: #edf0e9; border-color: #dfe5d8; color: #8a9481; }
+.price-details .price-exact { display: flex; align-items: baseline; flex-wrap: wrap; gap: 9px; margin: 17px 0 5px; font-size: 28px; letter-spacing: -.055em; font-weight: 550; line-height: 1.2; }
+.price-exact small { color: #829176; font-size: 9px; font-weight: 400; letter-spacing: 0; }
+.price-capacity { color: #687b5c; font-size: 10px; }
+.price-capacity span, .price-plan span { padding-inline: 5px; color: #b4bea9; }
+.price-details .price-condition { margin-top: 7px; color: #9a8863; font-size: 10px; }
+.price-disclosure { margin-top: 18px; border-top: 1px solid var(--price-line); padding-top: 12px; }
+.price-disclosure > summary { display: flex; align-items: center; justify-content: space-between; min-height: 23px; color: #60764f; font-size: 10px; cursor: pointer; list-style: none; }
+.price-disclosure > summary::-webkit-details-marker { display: none; }
+.price-disclosure > summary::after { content: '+'; color: #819a71; font-size: 15px; }
+.price-disclosure[open] > summary::after { content: '−'; }
+.price-facts { display: grid; gap: 10px; margin: 14px 0 0; font-size: 10px; }
+.price-facts > div { display: grid; grid-template-columns: 95px minmax(0, 1fr); gap: 10px; }
+.price-facts dt { color: #8c987f; }
+.price-facts dd { margin: 0; color: #53694a; overflow-wrap: anywhere; }
+.price-facts time { font-variant-numeric: tabular-nums; }
+.price-forecast { margin-top: 17px; padding-top: 14px; border-top: 1px solid var(--price-line); }
+.price-forecast h4 { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; text-transform: capitalize; }
+.price-forecast h4 span { color: #8d9b7d; font-size: 9px; font-weight: 400; }
+.job-price-choice { padding: 23px; border: 1px solid #d5e0cb; border-radius: 15px; background: #fafff3; box-shadow: 0 2px 3px #314b2703, 0 10px 30px #314b2705; }
+.job-price-choice h3 { margin-top: 6px; font-size: 17px; font-weight: 550; letter-spacing: -.035em; }
+.price-choice-state { display: inline-block; margin-top: 14px; color: #667b50; font-size: 9px; }
+.job-price-choice .price-destination { display: flex; align-items: center; gap: 8px; margin-top: 25px; font-size: 26px; font-weight: 550; letter-spacing: -.055em; line-height: 1.25; }
+.price-destination-dot { width: 7px; height: 7px; border: 1.5px solid #7f9b58; border-radius: 50%; box-shadow: 0 0 0 4px #e8f1dc; }
+.job-price-choice .price-choice-rate { display: flex; align-items: baseline; gap: 7px; margin: 9px 0 0 15px; color: #56743b; font-size: 22px; letter-spacing: -.045em; }
+.price-choice-rate small { color: #8c9a7d; font-size: 10px; letter-spacing: 0; }
+.job-price-choice .price-plan { margin: 9px 0 0 15px; color: #687e54; font-size: 10px; }
+.price-choice-reason { margin-top: 25px; padding-top: 18px; border-top: 1px solid #dfe8d4; }
+.price-choice-reason > p:last-child { margin-top: 8px; color: #62764f; font-size: 12px; line-height: 1.7; }
+.price-history { display: grid; gap: 15px; margin: 16px 0 2px; padding: 0; list-style: none; }
+.price-history time { color: #8a9878; font-size: 9px; font-variant-numeric: tabular-nums; }
+.price-history p { margin-top: 4px; color: #657953; font-size: 11px; line-height: 1.6; }
+.posted-prices .price-empty { margin-top: 12px; color: #8c997f; font-size: 11px; }
+@media (max-width: 480px) {
+  .price-strip { padding: 16px 14px 13px; }
+  .price-strip-hours { gap: 5px; }
+  .price-strip > header { gap: 5px; }
+  .price-strip > header strong { font-size: 13px; }
+  .price-details, .job-price-choice { padding: 18px; }
+  .price-details > header { gap: 8px; }
+  .price-details h3 span { display: block; margin-top: 4px; }
+}
+@media (prefers-reduced-motion: reduce) { .price-hour { transition: none; } }
