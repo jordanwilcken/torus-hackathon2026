@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import type { Eia930Snapshot } from '../../../../src/core/energy/data/eia930.js';
 import { describe, expect, it } from 'vitest';
 
@@ -31,7 +32,7 @@ describe('snapshot CLI coverage and provenance', () => {
       writeFileSync(input, 'Hand-written test bytes; workbook parsing is replaced by a Node module hook.');
       writeFileSync(hook, `import { registerHooks } from 'node:module';
 registerHooks({ resolve(specifier, context, next) { return specifier === 'read-excel-file/node' ? { url: ${JSON.stringify('data:text/javascript,' + encodeURIComponent(parser))}, shortCircuit: true } : next(specifier, context); } });`);
-      const result = spawnSync(process.execPath, ['--import', hook, 'scripts/fetch-eia930-snapshot.ts', '--input', input, '--retrieved-at', '2026-10-27T22:16:00Z', '--start', '2025-07-31T05:00:00Z', '--end', '2025-07-31T07:00:00Z', '--out', output], { encoding: 'utf8' });
+      const result = spawnSync(process.execPath, ['--import', pathToFileURL(hook).href, 'scripts/fetch-eia930-snapshot.ts', '--input', input, '--retrieved-at', '2026-10-27T22:16:00Z', '--start', '2025-07-31T05:00:00Z', '--end', '2025-07-31T07:00:00Z', '--out', output], { encoding: 'utf8' });
       expect(result.status).toBe(0);
       const snapshot = JSON.parse(readFileSync(output, 'utf8')) as Eia930Snapshot;
       expect(snapshot.rows).toHaveLength(count);
