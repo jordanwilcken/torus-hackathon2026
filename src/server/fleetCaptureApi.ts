@@ -4,6 +4,8 @@ import type { FrozenFleetSnapshot } from '../data/FrozenFleet.type.ts';
 import type { ReplayScenario } from '../core/execution/replay/Replay.types.ts';
 import { prepareScenario } from '../core/execution/replay/prepareScenario.ts';
 import { snapshotRevision } from './snapshotRevision.ts';
+import { selectSiteWeather, weatherVariables } from './siteWeatherSelection.ts';
+import type { SiteWeatherSelection } from '../data/SiteWeather.type.ts';
 
 const maximumBytes = 5 * 1024 * 1024;
 const revisionPattern = /^[a-f0-9]{64}$/;
@@ -36,6 +38,69 @@ function period(value: unknown): void {
   if (time(window.endAt) <= time(window.startAt)) throw new Error('Invalid source interval');
 }
 
+function weatherMetadata(value: unknown): SiteWeatherSelection {
+  const metadata = fields(value, ['sourceKind', 'model', 'issuedAt', 'selection', 'variables']);
+  if (metadata.sourceKind !== 'forecast' || metadata.model !== 'best_match' || metadata.issuedAt !== null)
+    throw new Error('Unsupported weather metadata');
+  const supplied = fields(metadata.selection, ['sites', 'forecastDays', 'variables']);
+  for (const site of list(supplied.sites, 12)) fields(site, ['id', 'latitude', 'longitude']);
+  const selection = selectSiteWeather(supplied as SiteWeatherSelection);
+  const variables = fields(metadata.variables, selection.variables);
+  for (const variable of selection.variables) {
+    const definition = fields(variables[variable], ['unit', 'temporalBasis']);
+    if (definition.unit !== weatherVariables[variable].unit || definition.temporalBasis !== weatherVariables[variable].temporalBasis)
+      throw new Error('Invalid weather units or interval meaning');
+  }
+  return selection;
+}
+
+/** Enriched forecast fields remain source evidence; validate without rewriting their revision. */
+function weatherDetails(site: Record<string, unknown>, selection: SiteWeatherSelection, index: number): void {
+  const requested = selection.sites[index];
+  if (!requested || site.locationId !== requested.id || site.latitude !== requested.latitude || site.longitude !== requested.longitude)
+    throw new Error('Weather metadata location mismatch');
+  const intervals = list(site.intervals, selection.forecastDays * 24).map(object);
+  const optionalFields = { shortwave_radiation_instant:'shortwaveRadiationInstantWm2', temperature_2m:'temperatureC', cloud_cover:'cloudCoverPercent' } as const;
+  const extraVariables = selection.variables.filter((name): name is keyof typeof optionalFields => name !== 'shortwave_radiation');
+  if (!extraVariables.length && Object.hasOwn(site,'instantaneous')) throw new Error('Unrequested instantaneous weather');
+  const readings = extraVariables.length ? list(site.instantaneous, intervals.length) : [];
+  if (extraVariables.length && readings.length !== intervals.length) throw new Error('Incomplete instantaneous weather');
+  const counts = new Map(selection.variables.map(name => [name,0]));
+  let previousEnd = -Infinity;
+  intervals.forEach((interval,index) => {
+    const window = object(interval.window);
+    const end = time(window.endAt);
+    if (end - time(window.startAt) !== 3_600_000 || end <= previousEnd) throw new Error('Invalid hourly weather interval');
+    previousEnd = end;
+    if (interval.shortwaveRadiationWm2 !== null) counts.set('shortwave_radiation',counts.get('shortwave_radiation')!+1);
+    if (!extraVariables.length) return;
+    const reading = fields(readings[index],['at',...extraVariables.map(name => optionalFields[name])]);
+    if (time(reading.at) !== end) throw new Error('Instantaneous weather timestamp mismatch');
+    for (const name of extraVariables) {
+      const amount = reading[optionalFields[name]];
+      if (amount === null) continue;
+      if (!finite(amount) || name !== 'temperature_2m' && amount < 0 || name === 'cloud_cover' && amount > 100)
+        throw new Error('Invalid instantaneous weather');
+      counts.set(name,counts.get(name)!+1);
+    }
+  });
+  const coverage = list(site.coverage,selection.variables.length);
+  if (coverage.length !== selection.variables.length) throw new Error('Incomplete weather coverage metadata');
+  const seen = new Set<string>();
+  for (const value of coverage) {
+    const metric = fields(value,['variable','status','expectedHours','availableHours','missingHours','notes']);
+    const variable = metric.variable as keyof typeof weatherVariables;
+    if (!selection.variables.includes(variable) || seen.has(variable)) throw new Error('Unknown weather coverage variable');
+    seen.add(variable);
+    const expected = selection.forecastDays*24;
+    const available = counts.get(variable)!;
+    if (metric.expectedHours !== expected || metric.availableHours !== available || metric.missingHours !== expected-available ||
+        metric.status !== (available === 0 ? 'unavailable' : available === expected ? 'complete' : 'partial'))
+      throw new Error('Inconsistent weather coverage metadata');
+    if (list(metric.notes,10).some(note => typeof note !== 'string' || note.length > 1000)) throw new Error('Invalid weather coverage notes');
+  }
+}
+
 /** Only JSON evidence enters the archive; credential-bearing fields/URLs and derived Maps are not capture inputs. */
 function safeJson(value: unknown, depth = 0, budget = { nodes: 0 }): void {
   if (depth > 64 || ++budget.nodes > 200_000) throw new Error('Capture is too deeply nested');
@@ -60,13 +125,15 @@ function source(value: unknown, kind: 'weather' | 'caiso' | 'eia'): void {
   const snapshot = object(supplied.snapshot);
   time(snapshot.retrievedAt);
   if (kind === 'weather') {
-    fields(snapshot, ['source', 'retrievedAt', 'sites']);
+    fields(snapshot, ['source', 'retrievedAt', 'sites'], ['metadata']);
     if (snapshot.source !== 'Open-Meteo') throw new Error('Unsupported weather source');
+    const selection = Object.hasOwn(snapshot,'metadata') ? weatherMetadata(snapshot.metadata) : undefined;
     const sites = list(snapshot.sites, 64);
     const ids = new Set<string>();
     if (!sites.length) throw new Error('Weather sites are missing');
-    for (const value of sites) {
-      const site = fields(value, ['locationId', 'latitude', 'longitude', 'intervals']);
+    if (selection && sites.length !== selection.sites.length) throw new Error('Weather metadata site count mismatch');
+    for (const [index,value] of sites.entries()) {
+      const site = fields(value, ['locationId', 'latitude', 'longitude', 'intervals'], selection ? ['instantaneous','coverage'] : []);
       if (typeof site.locationId !== 'string' || !site.locationId || ids.has(site.locationId) ||
           !finite(site.latitude) || Math.abs(site.latitude) > 90 || !finite(site.longitude) || Math.abs(site.longitude) > 180)
         throw new Error('Invalid weather site');
@@ -77,6 +144,7 @@ function source(value: unknown, kind: 'weather' | 'caiso' | 'eia'): void {
         if (interval.shortwaveRadiationWm2 !== null && (!finite(interval.shortwaveRadiationWm2) || interval.shortwaveRadiationWm2 < 0))
           throw new Error('Invalid weather reading');
       }
+      if (selection) weatherDetails(site,selection,index);
     }
   } else if (kind === 'caiso') {
     fields(snapshot, ['source', 'sourceUrl', 'retrievedAt', 'node', 'prices']);

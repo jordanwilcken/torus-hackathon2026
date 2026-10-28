@@ -7,6 +7,7 @@ import type { CapturedSource } from '../../data/FrozenFleet.type';
 import type { SiteWeatherSnapshot } from '../../data/SiteWeather.type';
 import type { CaisoSnapshot } from '../../server/caiso';
 import { LiveGridReadings } from '../energy/LiveGridInputs';
+import { WeatherHistory } from './WeatherHistory';
 import './SourceSignals.css';
 
 type SourceId = 'weather' | 'market' | 'eia';
@@ -160,6 +161,7 @@ export function SourceSignals({ weather, market, eia, capture, now, onRefresh }:
       <footer><a href={active.url} aria-label={`${active.name} source`} target="_blank" rel="noreferrer" title={active.url}>{active.url}</a>
         <button type="button" onClick={onRefresh}>Refresh inputs</button></footer>
       {active.id !== 'weather' && <DetailedGridEvidence key={active.id} eia={eia} market={market} now={now} />}
+      {active.id === 'weather' && <WeatherHistory revision={weather.revision} />}
       <details className="source-signals-evidence"><summary>Full snapshot evidence</summary>
         <pre>{JSON.stringify({ role: active.role, sourceUrl: active.url,
           ...(active.pinned ? { usedByThisRun: { capturedAt: capture?.capturedAt, status: active.pinned.status, revision: active.pinned.revision, snapshot: active.pinned.snapshot } } : {}),

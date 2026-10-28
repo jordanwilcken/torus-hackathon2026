@@ -83,6 +83,9 @@ test('judges can retrieve built assets, live inputs, a saved capture and CPU out
   await withDemo({}, async ({ visit, received }) => {
     const paths = ['/?capture=' + revision + '&run=' + runId, '/index.html', '/assets/index-demo.js',
       '/api/weather/sites', '/api/grid/eia?revision=' + revision, '/api/grid/caiso',
+      '/api/weather/revisions', '/api/weather/replay?at=2026-10-28T16:00:00Z',
+      '/api/weather/replay?at=2026-10-28T16%3A00%3A00.000Z&revision=' + revision + '&selection=' + revision,
+      '/api/weather/compare?earlier=' + revision + '&later=' + 'b'.repeat(64) + '&site=salt-lake_1',
       '/api/fleet/captures?revision=' + revision, '/api/jobs/context', '/api/jobs/runs/' + runId + '/output'];
     for (const path of paths) {
       assert.equal((await visit(path)).status, 200, path);
@@ -90,6 +93,30 @@ test('judges can retrieve built assets, live inputs, a saved capture and CPU out
     assert.deepEqual(received.map(value => value.path), paths);
     assert.equal((await visit('/assets/index-demo.css', { method: 'HEAD' })).status, 200);
     assert.equal((await visit('/api/jobs/runs', write())).status, 201);
+  });
+});
+
+test('weather history accepts only bounded identifiers and one explicit UTC decision time', async () => {
+  await withDemo({}, async ({ visit, received }) => {
+    const comparison = '/api/weather/compare?earlier=' + revision + '&later=' + 'b'.repeat(64);
+    const replay = '/api/weather/replay?at=2026-10-28T16:00:00Z';
+    const invalid = [
+      '/api/weather/revisions?revision=' + revision, '/api/weather/replay',
+      '/api/weather/replay?at=2026-10-28', '/api/weather/replay?at=2026-02-30T16:00:00Z',
+      '/api/weather/replay?at=2026-10-28T16:00:00%2B00:00',
+      replay + '&at=2026-10-28T17:00:00Z', replay + '&revision=invalid',
+      replay + '&selection=' + revision + '&selection=' + revision,
+      replay + '&revision=' + revision + '&revision=' + revision,
+      replay + '&url=https://evil.example', comparison,
+      comparison + '&site=../private', comparison + '&site=' + 'a'.repeat(65),
+      comparison + '&site=A&site=B', comparison + '&site=A&earlier=' + revision,
+      comparison + '&site=A&later=' + revision, comparison + '&site=A&url=https://evil.example',
+      '/api/weather/compare?earlier=invalid&later=' + revision + '&site=A',
+    ];
+    for (const path of invalid) assert.equal((await visit(path)).status, 404, path);
+    assert.equal((await visit('/api/weather/revisions', { method: 'POST', body: '{}' })).status, 404);
+    assert.equal((await visit(replay, { method: 'HEAD' })).status, 405);
+    assert.equal(received.length, 0);
   });
 });
 

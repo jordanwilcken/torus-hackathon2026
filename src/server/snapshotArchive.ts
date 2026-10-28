@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { link, lstat, mkdir, open, rename, unlink } from 'node:fs/promises';
+import { link, lstat, mkdir, open, readdir, rename, unlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { snapshotRevision } from './snapshotRevision.ts';
-import type { SnapshotStore, SourceEvidence, StoredSnapshot } from './SnapshotStore.type.ts';
+import type { SnapshotHistoryStore, SourceEvidence, StoredSnapshot } from './SnapshotStore.type.ts';
 export type { SourceEvidence } from './SnapshotStore.type.ts';
 
 type ArchiveRecord<T> = StoredSnapshot<T> & {
@@ -80,7 +80,7 @@ async function writeTemporary(directory: string, kind: string, content: string):
 }
 
 /** Stores complete normalized publications and sanitized source evidence supplied by the collector. */
-export function createSnapshotArchive<T>(directory: string, feed: string): SnapshotStore<T> {
+export function createSnapshotArchive<T>(directory: string, feed: string): SnapshotHistoryStore<T> {
   if (typeof directory !== 'string' || !directory.trim()) throw new Error('Invalid archive directory');
   if (typeof feed !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(feed) || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(feed)) throw new Error('Invalid archive feed');
   const root = resolve(directory);
@@ -179,5 +179,13 @@ export function createSnapshotArchive<T>(directory: string, feed: string): Snaps
     return revision;
   }
 
-  return { save, latest, read };
+  async function revisions(): Promise<string[]> {
+    if (!await feedDirectoryExists()) return [];
+    const entries = await readdir(feedDirectory);
+    const revisions = entries.filter(name => /^[a-f0-9]{64}\.json$/.test(name)).map(name => name.slice(0, -5));
+    if (revisions.length > 512) throw new Error('Archive history exceeds the 512-revision inspection limit');
+    return revisions.sort();
+  }
+
+  return { save, latest, read, revisions };
 }

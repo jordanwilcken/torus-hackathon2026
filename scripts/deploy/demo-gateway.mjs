@@ -35,6 +35,22 @@ function validRevisionQuery(url, required = false) {
     && [...url.searchParams.keys()].every(name => name === 'revision')
     && (!revisions.length || revisionPattern.test(revisions[0]));
 }
+function validWeatherReplayQuery(url) {
+  const query = url.searchParams;
+  if (![...query.keys()].every(name => ['at', 'revision', 'selection'].includes(name) && query.getAll(name).length === 1)) return false;
+  const at = query.get('at');
+  if (!at || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(at)) return false;
+  const time = Date.parse(at);
+  return Number.isFinite(time) && new Date(time).toISOString().slice(0, 19) === at.slice(0, 19)
+    && ['revision', 'selection'].every(name => !query.has(name) || revisionPattern.test(query.get(name)));
+}
+function validWeatherComparisonQuery(url) {
+  const query = url.searchParams;
+  return [...query.keys()].every(name => ['earlier', 'later', 'site'].includes(name))
+    && ['earlier', 'later', 'site'].every(name => query.getAll(name).length === 1)
+    && revisionPattern.test(query.get('earlier')) && revisionPattern.test(query.get('later'))
+    && /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(query.get('site'));
+}
 function routeFor(request) {
   const raw = request.url ?? '';
   const rawPath = raw.split('?')[0];
@@ -54,7 +70,9 @@ function routeFor(request) {
     || /^\/assets\/[a-zA-Z0-9_-]+\.(js|css|png|svg|webp|jpg|gif|woff2?|ico)$/.test(path) && !url.search) return 'read';
   if (method === 'HEAD') throw rejected(405, 'HEAD is supported only for built assets.');
   if (path === '/__demo/status' && !url.search) return 'status';
-  if ((path === '/api/weather/sites' || path === '/api/jobs/context' || runPath.test(path)) && !url.search) return 'read';
+  if ((path === '/api/weather/sites' || path === '/api/weather/revisions' || path === '/api/jobs/context' || runPath.test(path)) && !url.search) return 'read';
+  if (path === '/api/weather/replay' && validWeatherReplayQuery(url)) return 'read';
+  if (path === '/api/weather/compare' && validWeatherComparisonQuery(url)) return 'read';
   if (/^\/api\/grid\/(eia|caiso)$/.test(path) && validRevisionQuery(url)) return 'read';
   if (path === '/api/fleet/captures' && validRevisionQuery(url, true)) return 'read';
   throw rejected(404, 'Demo route not found.');
