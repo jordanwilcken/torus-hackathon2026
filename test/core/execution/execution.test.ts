@@ -1,4 +1,4 @@
-import { test } from "../../dsl/torus.fixture.js";
+import { test } from "./runner/execution.fixture.js";
 
 
 test("the executor accounts only for the remaining work in a partial final tick", async ({ torus }) => {
