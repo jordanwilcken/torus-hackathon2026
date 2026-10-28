@@ -103,7 +103,7 @@ export function FleetMap({ sites, transfers, playing, selected, onInspect, onJob
       element.innerHTML = '<span aria-hidden="true">▤</span><small>DC</small>';
       element.addEventListener('click', () => callbacks.current.onOrigin?.(source.id));
       const marker = L.marker([source.latitude, source.longitude], { keyboard: false,
-        icon: L.divIcon({ html: element, className: 'fleet-marker', iconSize: [30, 30], iconAnchor: [15, 15] }) }).addTo(layer);
+        icon: L.divIcon({ html: element, className: 'fleet-marker', iconSize: [30, 30], iconAnchor: [-23, 15] }) }).addTo(layer);
       const tooltip = document.createElement('div');
       tooltip.textContent = `${source.name} · ${admissions.filter(job => originForJob(job.jobId).id === source.id).length} simulated submissions · city reference`;
       marker.bindTooltip(tooltip, { direction: 'top', className: 'fleet-tooltip' });

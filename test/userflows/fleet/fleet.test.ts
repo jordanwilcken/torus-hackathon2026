@@ -20,6 +20,12 @@ test('zooming from Utah to the US and back preserves the running fleet and inspe
   await fleet.open();
   await fleet.pause();
   await fleet.step();
+  await fleet.inspectLocation('Salt Lake City');
+  expect((await fleet.currentLocation()).locationId).toBe('A');
+  await fleet.inspectDataCenter('Meta Eagle Mountain, Utah');
+  await fleet.expectDataCenterSource('meta-eagle-mountain', 'https://datacenters.atmeta.com/2026/09/deepening-our-investment-in-eagle-mountain-utah/', 1);
+  await fleet.inspectLocation('Salt Lake City');
+  expect((await fleet.currentLocation()).locationId).toBe('A');
   await fleet.showGeography('Explore Utah');
   await fleet.expectUsefulHover('Salt Lake City');
   await fleet.inspectLocation('Salt Lake City');

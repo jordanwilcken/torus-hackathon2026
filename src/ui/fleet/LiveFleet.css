@@ -68,7 +68,7 @@
 .fleet-datacenter { display:grid; justify-items:center; width:30px; height:30px; padding:1px; border:1px solid #6e9cba; border-radius:6px; color:#5485a3; background:#f2f9ff; box-shadow:0 2px 8px #43687d20; }
 .fleet-datacenter>span { font-size:18px; line-height:18px; }.fleet-datacenter small { font-size:7px; line-height:7px; font-weight:700; }
 .fleet-inspector a { font-size:11px; color:#5189aa; }
-.fleet-datacenter { transform:translateX(38px); position:relative; }
+.fleet-datacenter { position:relative; }
 .fleet-datacenter::after { content:''; position:absolute; width:38px; height:1px; top:14px; left:-38px; background:#6e9cba80; pointer-events:none; }
 
 .fleet-provenance input { max-width:100%; width:450px; margin:8px; padding:7px; border:1px solid #d7e4d9; border-radius:5px; font-size:10px; }
