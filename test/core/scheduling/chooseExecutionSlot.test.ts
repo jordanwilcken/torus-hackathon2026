@@ -6,7 +6,7 @@ import type { EnergyMap } from "../../../src/core/energy/EnergyMap.interface.js"
 import type { SlotSnapshot } from "../../../src/core/energy/SlotSnapshot.type.js";
 import type { SlotForecast } from "../../../src/core/energy/SlotForecast.type.js";
 import { chooseExecutionSlot } from "../../../src/core/scheduling/chooseExecutionSlot.js";
-import { floorWholeUnits, exceeds } from "../../../src/core/scheduling/chooseExecutionSlot.generated.js";
+import { floorWholeUnits, exceeds } from "../../../src/core/scheduling/math/chooseExecutionSlot.generated.js";
 import { createSimulation } from "../../../src/core/execution/simulation/clock.js";
 import { createEnergyMap } from "../../../src/core/energy/maps/createEnergyMap.js";
 import type { JobOutcome } from "../../../src/core/scheduling/JobOutcome.type.js";
