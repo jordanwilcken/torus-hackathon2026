@@ -6,7 +6,13 @@ test('the fleet distinguishes remaining capacity and home submission from the ac
   await fleet.open();
   await fleet.pause();
   await fleet.expectCapacityAndSubmissionMeaning();
+  await fleet.expectPhysicalCapacity('Salt Lake City', 8, null, 0);
+  await fleet.expectPhysicalCapacity('Cedar City', 8, null, 0);
+  await fleet.expectPhysicalCapacity('Sacramento', 8, null, 0);
   await fleet.step();
+  await fleet.expectPhysicalCapacity('Salt Lake City', 8, 0, 0);
+  await fleet.expectPhysicalCapacity('Cedar City', 6, 8, 2);
+  await fleet.expectPhysicalCapacity('Sacramento', 8, 0, 0);
   await fleet.expectJobChoice('work-02', 'Cedar City', 'Cedar City', 'Cedar City');
 });
 

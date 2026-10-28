@@ -5,19 +5,21 @@ import './FleetMap.css';
 import { dataCenters, originForJob } from '../../data/dataCenters';
 import { createFleetActivity } from './fleetActivity';
 import type { TransferObservation } from '../../core/execution/TransferObservation.type';
+import type { FleetCapacity } from './fleetCapacity';
 
-export type FleetSiteVisual = {
+export type FleetSiteVisual = FleetCapacity & {
   id: string; name: string; latitude: number; longitude: number;
-  availableGpus: number; capacity: number; solarKW: number; storedKWh: number; storageCapacityKWh: number;
-  activeJobs: number; queuedJobs: number; unknown?: boolean;
+  capacity: number; solarKW: number; storedKWh: number; storageCapacityKWh: number;
+  activeJobs: number; queuedJobs: number;
 };
 type Props = {
   activityEpoch?: number; sites: FleetSiteVisual[]; transfers: readonly TransferObservation[]; playing: boolean; completed?: boolean;
   admissions?: Array<{ jobId: string; homeLocation: string }>; onOrigin?: (id: string) => void;
   selected?: string; onInspect: (id: string) => void; onJob: (id: string) => void;
 };
-const color = (site: FleetSiteVisual, completed: boolean) => completed ? '#7c929c' : site.unknown ? '#89969a' : site.availableGpus <= 0 ? '#d16f63'
-  : site.availableGpus < site.capacity / 2 ? '#d7af5e' : '#53ad83';
+const color = (site: FleetSiteVisual, completed: boolean) => completed ? '#7c929c' : site.capacityState === 'unknown' ? '#89969a'
+  : site.capacityState === 'allocated' ? '#7298b5' : site.capacityState === 'constrained' ? '#d16f63'
+  : site.availableGpus! < site.capacity / 2 ? '#d7af5e' : '#53ad83';
 
 const glyphPaths = {
   packet: 'M6 3h8l4 4v14H6Z M14 3v4h4 M10 10l-2 3 2 3 M14 10l2 3-2 3',
@@ -112,7 +114,9 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
       element.className = 'fleet-node';
       element.style.setProperty('--site-color', color(site, completed));
       element.dataset.siteId = site.id;
-      element.dataset.state = completed ? 'complete' : site.unknown ? 'unknown' : site.activeJobs ? 'working' : site.availableGpus > 0 ? 'available' : 'constrained';
+      element.dataset.capacityState = site.capacityState;
+      element.dataset.physicalGpus = String(site.availableGpus ?? 'unknown');
+      element.dataset.state = completed ? 'complete' : site.capacityState === 'unknown' ? 'unknown' : site.activeJobs ? 'working' : site.capacityState;
       element.setAttribute('aria-label', `Inspect ${site.name}`);
       element.setAttribute('aria-pressed', String(selected === site.id));
       element.innerHTML = '<span class="fleet-node-halo"></span><span class="fleet-node-body"><span class="fleet-node-glyph"></span></span><span class="fleet-node-orbit"></span><span class="fleet-node-name"></span>';
@@ -124,10 +128,15 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
       const tooltip = document.createElement('div');
       const name = document.createElement('strong'); name.textContent = site.name; tooltip.append(name);
       const purpose = document.createElement('div'); purpose.textContent = 'Modeled compute site · solar, grid and battery'; tooltip.append(purpose);
-      const line = document.createElement('div'); line.textContent = completed ? 'Model complete · inspect results' : site.unknown ? 'GPU availability unknown · public inputs unavailable'
-        : `Up to ${site.availableGpus} / ${site.capacity} modeled GPUs still open this hour · ${site.activeJobs} working`;
+      const line = document.createElement('div'); line.textContent = completed ? 'Model complete · inspect results' : site.capacityState === 'unknown' ? 'GPU capacity unknown · missing model inputs'
+        : `Up to ${site.availableGpus} / ${site.capacity} modeled GPUs available · ${site.scheduledGpus} scheduled`;
       tooltip.append(line);
-      const power = document.createElement('small'); power.textContent = completed ? 'Final modeled storage: ' + site.storedKWh.toFixed(2) + ' kWh' : site.unknown ? 'Connect public inputs to start'
+      if (!completed && site.remainingEnergyKWh !== null) {
+        const budget = document.createElement('div');
+        budget.textContent = `${site.remainingEnergyKWh.toFixed(2)} kWh modeled budget left · runtime may be less than an hour`;
+        tooltip.append(budget);
+      }
+      const power = document.createElement('small'); power.textContent = completed ? 'Final modeled storage: ' + site.storedKWh.toFixed(2) + ' kWh' : site.capacityState === 'unknown' ? 'Capacity needs current model inputs'
         : `${site.solarKW.toFixed(2)} kW modeled solar · ${site.storedKWh.toFixed(2)} kWh stored`;
       tooltip.append(power);
       marker.bindTooltip(tooltip, { direction: 'top', offset: [0, -22], className: 'fleet-tooltip', interactive: false });
@@ -217,11 +226,12 @@ export function FleetMap({ sites, transfers, playing, completed = false, selecte
   return <div className="fleet-geography compact-energy-map" data-playing={playing}>
     <div className="fleet-canvas" ref={container} role="region" aria-label="Continuous fleet map" />
     <div className="fleet-camera"><button onClick={() => zoom(false)}>Show US</button><button onClick={() => zoom(true)}>Explore Utah</button></div>
-    <div className="fleet-legend"><strong className="fleet-legend-title">Remaining modeled GPU capacity</strong>
+    <div className="fleet-legend"><strong className="fleet-legend-title">Energy-supported GPU capacity · modeled</strong>
       {completed ? <span><i style={{ background: '#7c929c' }} />Model complete · inspect results</span> : <>
         <span><i style={{ background: '#53ad83' }} />Open</span><span><i style={{ background: '#d7af5e' }} />Limited</span>
-        <span><i style={{ background: '#d16f63' }} />No extra capacity</span><span><i style={{ background: '#89969a' }} />Unknown</span>
+        <span><i style={{ background: '#7298b5' }} />Allocated</span><span><i style={{ background: '#d16f63' }} />Energy constrained</span><span><i style={{ background: '#89969a' }} />Unknown</span>
       </>}
+      <small>Capacity, not carbon ranking</small>
       <small className="fleet-activity-key"><span><i style={{ background: '#2563eb' }} />Submission to home queue</span><span><i style={{ background: '#0d9488' }} />Chosen site move</span></small>
     </div>
   </div>;

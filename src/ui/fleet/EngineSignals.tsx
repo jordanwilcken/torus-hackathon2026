@@ -40,6 +40,7 @@ export function MoveSignal({ decision, destinationName, transfer }: {
     {decision.move && transfer?.started && net !== undefined && Number.isFinite(net) &&
       <p><b>{number(net * 1000)} g</b><span>estimated net carbon reduction</span></p>}
     <small>{decision.reason}</small>
+    {transfer?.started && <small>Ready after transfer: {transfer.readyAt.slice(0, 16).replace('T', ' ')} UTC.</small>}
     {transfer && !transfer.started && <small>{transfer.explanation}</small>}
   </section>;
 }

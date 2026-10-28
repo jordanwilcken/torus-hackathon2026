@@ -15,11 +15,14 @@ import type { ReplayProgress } from '../../core/execution/replay/createPairedRep
 import { SourceSignals } from './SourceSignals';
 import { FleetSummary } from './FleetSummary';
 import { CapacityHorizon, MoveSignal } from './EngineSignals';
+import { fleetCapacity } from './fleetCapacity';
 import './LiveFleet.css';
 
 const number = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 2 });
 const time = (value: string) => value.slice(11, 16) + ' UTC';
-const unconnected = modeledSites.map(site => ({ ...site, capacity: 8, availableGpus: 0, solarKW: 0, storedKWh: 0, storageCapacityKWh: 0, activeJobs: 0, queuedJobs: 0, unknown: true }));
+const unconnected: FleetSiteVisual[] = modeledSites.map(site => ({ ...site,
+  ...fleetCapacity({ planPublished: false, kWPerGpu: .4, allocations: [] }),
+  capacity: 8, solarKW: 0, storedKWh: 0, storageCapacityKWh: 0, activeJobs: 0, queuedJobs: 0 }));
 
 export function LiveFleet({ grid }: { grid: PublicGridClient }) {
   const [weatherClient] = useState(() => createSiteWeatherClient());
@@ -146,23 +149,23 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
   const displayHour = latestDecision?.hour ?? 0;
   const currentAt = new Date(Date.parse(progress.scenario.startAt) + displayHour * 3_600_000).toISOString();
   const currentTick = progress.selected.run.ticks.find(tick => tick.meters[0]?.window.startAt === currentAt);
+  const currentPlan = progress.selected.plans?.findLast(plan => Date.parse(plan.asOf) === Date.parse(currentAt));
   const sites: FleetSiteVisual[] = progress.scenario.sites.map(definition => {
     const reference = { id: definition.configuration.locationId, name: definition.name ?? definition.configuration.locationId, latitude: definition.lat ?? NaN, longitude: definition.lng ?? NaN };
     const compute = definition.configuration.compute;
     const input = definition.observations[displayHour];
     const dropped = progress.scenario.events?.some(event => event.atHour === displayHour && (event.payload as { locationId: string }).locationId === reference.id);
-    const reading = progress.map.sites.get(reference.id)?.slots.find(slot => slot.snapshot.slot?.window.startAt === currentAt)?.snapshot.slot;
+    const snapshot = progress.map.sites.get(reference.id)?.slots.find(slot => slot.snapshot.slot?.window.startAt === currentAt)?.snapshot;
     const allocations = latestDecision?.results.filter(result => result.accepted && result.selection.selected && result.selection.allocation.slot.locationId === reference.id) ?? [];
-    const allocated = allocations.reduce((total, result) => total + (result.selection.selected ? result.selection.allocation.allocatedGpus : 0), 0);
+    const capacity = fleetCapacity({ snapshot, planPublished: Boolean(progress.selected.plans?.length), kWPerGpu: compute.kWPerGpu,
+      plan: currentPlan?.slots.find(slot => slot.locationId === reference.id && Date.parse(slot.window.startAt) === Date.parse(currentAt)),
+      allocations: allocations.flatMap(result => result.selection.selected ? [result.selection.allocation] : []) });
     const meter = currentTick?.meters.find(meter => meter.locationId === reference.id);
     const priorMeter = progress.selected.run.ticks.flatMap(tick => tick.meters).findLast(meter => meter.locationId === reference.id);
-    const supported = reading && reading.availableEnergyKWh > 0
-      ? Math.min(reading.capGpus, Math.floor(reading.availablePowerKW / compute.kWPerGpu)) : 0;
-    return { ...reference, capacity: compute.capGpus, storageCapacityKWh: definition.configuration.storage.limits.capacityKWh, availableGpus: Math.max(0, supported - allocated),
+    return { ...reference, ...capacity, capacity: compute.capGpus, storageCapacityKWh: definition.configuration.storage.limits.capacityKWh,
       solarKW: meter?.solarKWh ?? (dropped ? 0 : input.supply?.solarKW ?? 0),
       storedKWh: priorMeter?.endingStoredKWh ?? definition.configuration.storage.initial.storedKWh,
-      activeJobs: progress.phase === 'routed' ? allocations.length : 0, queuedJobs: progress.selected.finalJobs.filter(job => job.currentLocation === reference.id && job.state === 'queued' && job.readyAt <= currentAt).length,
-      unknown: !reading && !meter };
+      activeJobs: progress.phase === 'routed' ? allocations.length : 0, queuedJobs: progress.selected.finalJobs.filter(job => job.currentLocation === reference.id && job.state === 'queued' && job.readyAt <= currentAt).length };
   });
   const origin = dataCenters.find(site => site.id === originId);
   const admissions = [...new Set(progress.selected.decisions.flatMap(decision => decision.results.map(result => result.jobId)))].map(jobId => ({ jobId, homeLocation: progress.scenario.jobs.find(job => job.id === jobId)!.homeLocation }));
@@ -240,9 +243,12 @@ function FleetSession({ capture, restored, freezeAnchor, latestSources, onRestor
         </section>}
         {active && <section aria-label="Location activity" data-location-id={active.id} data-hour={progress.hour}>
           <p className="eyebrow">COMPUTE SITE · MODELED</p><h3>{active.name}</h3><p className="fleet-inspect-time">{time(currentAt)} · Grid region {progress.scenario.sites.find(site => site.configuration.locationId === active.id)?.regionId}</p>
-          <p className="fleet-section-label">Remaining compute capacity · up to</p><div className="fleet-capacity"><strong>{active.availableGpus}<small> / {active.capacity}</small></strong><span>GPUs open<br />for this hour</span></div>
-          <div className="fleet-capacity-bar">{Array.from({ length: active.capacity }, (_, index) => <i key={index} data-free={index < active.availableGpus} />)}</div>
-          <p className="fleet-capacity-note">Runtime depends on the remaining energy budget. Red means no additional GPU capacity; accepted jobs can still run.</p><p className="fleet-active-count">{active.activeJobs} jobs working · {active.queuedJobs} waiting here</p>
+          <p className="fleet-section-label">Energy-supported GPUs · up to</p><div className="fleet-capacity"><strong data-testid="location-physical-gpus">{active.availableGpus ?? 'Unknown'}<small> / {active.capacity}</small></strong><span>GPUs available<br />for this hour</span></div>
+          <div className="fleet-capacity-bar">{Array.from({ length: active.capacity }, (_, index) => <i key={index} data-free={active.availableGpus !== null && index < active.availableGpus} />)}</div>
+          <p className="fleet-capacity-note">{active.remainingEnergyKWh === null ? 'Modeled energy budget unknown.' : `${number(active.remainingEnergyKWh)} kWh modeled energy budget remaining.`} Runtime may be less than one hour. Colors show capacity, not carbon ranking.</p>
+          <p className="fleet-active-count" data-testid="location-schedule">{active.plannedGpus === null ? 'No current plan' : `Scheduler opened ${active.plannedGpus} GPUs`} · {active.scheduledGpus} GPUs scheduled</p>
+          <p className="fleet-capacity-note">The scheduler may leave supported capacity unused. {active.capacityState === 'allocated' && 'This hour’s offered capacity is committed to accepted work.'}</p>
+          <p className="fleet-active-count">{active.activeJobs} jobs working · {active.queuedJobs} waiting here</p>
           <div className="fleet-power-heading"><span>Powering this compute site</span><small>This model hour</small></div>
           <dl className="fleet-metrics"><div><dt><i className="energy-key solar" />Solar power</dt><dd><span data-testid="location-solar-kw" data-value={active.solarKW}>{number(active.solarKW)}</span> kW</dd></div>
             <div><dt><i className="energy-key compute" />Work energy used</dt><dd><span data-testid="location-compute-kwh" data-value={activeMeter?.computeKWh ?? 0}>{activeMeter ? number(activeMeter.computeKWh) : 'Pending'}</span>{activeMeter && ' kWh'}</dd></div>

@@ -153,10 +153,21 @@ export class FleetFlow {
   }
 
   async expectCapacityAndSubmissionMeaning(): Promise<void> {
-    await expect(this.panel.getByText('Remaining modeled GPU capacity', { exact: true })).toBeVisible();
-    await expect(this.panel.getByText('No extra capacity', { exact: true })).toBeVisible();
+    await expect(this.panel.getByText('Energy-supported GPU capacity · modeled', { exact: true })).toBeVisible();
+    await expect(this.panel.getByText('Energy constrained', { exact: true })).toBeVisible();
+    await expect(this.panel.getByText('Capacity, not carbon ranking', { exact: true })).toBeVisible();
     await expect(this.panel.getByText('Submission to home queue', { exact: true })).toBeVisible();
     await expect(this.panel.getByText('Chosen site move', { exact: true })).toBeVisible();
+  }
+
+  async expectPhysicalCapacity(name: string, freeGpus: number, openedGpus: number | null, scheduledGpus: number): Promise<void> {
+    const marker = this.panel.getByRole('button', { name: 'Inspect ' + name, exact: true });
+    await expect(marker).toHaveAttribute('data-capacity-state', 'available');
+    await expect(marker).toHaveCSS('--site-color', '#53ad83');
+    await this.inspectLocation(name);
+    await expect(this.activity.getByTestId('location-physical-gpus')).toHaveText(`${freeGpus} / 8`);
+    await expect(this.activity.getByTestId('location-schedule')).toHaveText(
+      `${openedGpus === null ? 'No current plan' : 'Scheduler opened ' + openedGpus + ' GPUs'} · ${scheduledGpus} GPUs scheduled`);
   }
 
   async expectJobChoice(id: string, home: string, current: string, acceptedAt: string): Promise<void> {
