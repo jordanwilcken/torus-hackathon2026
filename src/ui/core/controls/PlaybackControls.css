@@ -1,0 +1,58 @@
+.playback-controls {
+    color: #203833;
+    font: 14px/1.5 Inter, "Segoe UI", system-ui, sans-serif;
+    background: #fff;
+    border: 1px solid #dce4dd;
+    border-radius: 12px;
+    padding: 22px;
+    min-width: 0;
+    container-type: inline-size;
+}
+.playback-controls * { box-sizing: border-box; }
+.playback-controls h2 { margin: 0; font-size: 20px; letter-spacing: -.03em; }
+.playback-controls h3 { margin: 0 0 4px; font-size: 15px; }
+.playback-controls p { margin: 6px 0 0; }
+.playback-controls .playback-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.playback-controls .playback-mode { border-radius: 20px; padding: 3px 10px; background: #eef5ef; font-size: 12px; font-weight: 600; }
+.playback-controls .playback-clock { margin: 18px 0; display: flex; flex-wrap: wrap; gap: 14px 30px; }
+.playback-controls .playback-clock dt { color: #68796e; font-size: 12px; }
+.playback-controls .playback-clock dd { margin: 2px 0 0; font-size: 16px; font-weight: 600; }
+.playback-controls .playback-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.playback-controls button, .playback-controls select {
+    font: inherit;
+    min-height: 42px;
+    border: 1px solid #cbd9ce;
+    border-radius: 6px;
+    color: #28533e;
+    background: #f4f7f3;
+    padding: 8px 13px;
+}
+.playback-controls button { cursor: pointer; font-weight: 600; }
+.playback-controls button.playback-primary { color: #fff; background: #28533e; border-color: #28533e; }
+.playback-controls button:disabled, .playback-controls select:disabled { opacity: .55; cursor: default; }
+.playback-controls button:focus-visible, .playback-controls select:focus-visible { outline: 3px solid #257bba; outline-offset: 3px; }
+.playback-controls label { display: grid; gap: 5px; font-size: 12px; color: #5b7162; }
+.playback-controls .playback-speed { margin-left: auto; display: flex; align-items: center; gap: 9px; }
+.playback-controls .playback-scenario { margin-top: 22px; border-top: 1px solid #e2e9e3; padding-top: 18px; }
+.playback-controls .playback-event-actions { display: flex; gap: 10px; align-items: end; margin-top: 12px; }
+.playback-controls .playback-event-actions label { flex: 1; min-width: 0; }
+.playback-controls .playback-event-actions select { width: 100%; text-overflow: ellipsis; }
+.playback-controls .playback-event-detail { color: #68796e; font-size: 12px; overflow-wrap: anywhere; }
+.playback-controls .playback-condition, .playback-controls .playback-response, .playback-controls .playback-failure {
+    padding: 10px 12px;
+    margin-top: 14px;
+    border-radius: 6px;
+    background: #edf5ef;
+    overflow-wrap: anywhere;
+}
+.playback-controls .playback-condition[data-kind="stale"],
+.playback-controls .playback-condition[data-kind="degraded"] { background: #fff4d9; color: #745820; }
+.playback-controls .playback-condition[data-kind="infeasible"],
+.playback-controls .playback-response[data-kind="error"],
+.playback-controls .playback-failure { background: #fff0eb; color: #8d3829; }
+.playback-controls .playback-response > span { font-size: 11px; color: #68796e; text-transform: uppercase; letter-spacing: .06em; }
+.playback-controls .playback-pending { color: #68796e; font-size: 12px; }
+@container (max-width: 470px) {
+    .playback-controls .playback-speed { margin-left: 0; width: 100%; }
+    .playback-controls .playback-event-actions { align-items: stretch; flex-direction: column; }
+}
