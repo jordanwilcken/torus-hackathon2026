@@ -117,14 +117,15 @@ export function createReplayArmSession(scenario: ReplayScenario, arm: "baseline"
             const readiness: PlanningReadiness[] = [];
             if (fleet) for (const job of jobs) {
                 if (job.state === "moving" || Date.parse(job.readyAt) > Date.parse(context.asOf)) continue;
-                const approvedMove = scenario.routing?.movePolicy === "carbon-benefit"
-                    ? await routeReplayJob(job, physicalEnergy, scenario, sites, context.asOf, true, physicalEnergy) : undefined;
                 for (const destination of sites) {
                     if (destination.locationId === job.currentLocation || !job.allowedLocations.includes(destination.locationId) ||
                         destination.computeProfile !== job.computeProfile) continue;
                     if (scenario.routing?.movePolicy === "carbon-benefit") {
-                        // Only a move the existing chooser can start from this publication is eligible.
-                        if (approvedMove && !approvedMove.selected && approvedMove.transfer?.destination === destination.locationId)
+                        // Assess every destination under the existing whole-job and arrival policy.
+                        // The cheapest private choice may already be needed by an earlier deadline.
+                        const candidate = { ...job, allowedLocations: [job.currentLocation, destination.locationId] };
+                        const approvedMove = await routeReplayJob(candidate, physicalEnergy, scenario, sites, context.asOf, true, physicalEnergy);
+                        if (!approvedMove.selected && approvedMove.transfer?.destination === destination.locationId)
                             readiness.push({ jobId: job.id, locationId: destination.locationId, readyAt: approvedMove.transfer.readyAt });
                     } else {
                         const transfer = prepareTransfer(job, destination, context.asOf, scenario.routing!.transfer,
@@ -154,8 +155,16 @@ export function createReplayArmSession(scenario: ReplayScenario, arm: "baseline"
             // The executor owns remaining work and location. The clock owns admission/deadline visibility.
             const jobs = context.jobs.map(job => executor.job(job.id)!)
                 .filter(job => job.state === "queued" || job.state === "running");
-            const route = (job: Job) => routeReplayJob(job, policyView(context, arm),
-                scenario, sites, context.asOf, fleet, physicalEnergy);
+            const route = (job: Job) => {
+                const coverage = currentPlan?.deadlines.find(covered => covered.jobId === job.id);
+                // A transfer may consume only the destination budgeted for this job in the shared witness.
+                // Shortfall or absent coverage permits staying, but cannot spend another job's arrival quota.
+                // This is a routing constraint, not a physical reservation of future supply.
+                const permittedTransfers = planning ? coverage?.status === "covered" && coverage.locationId
+                    ? [coverage.locationId] : [] : undefined;
+                return routeReplayJob(job, policyView(context, arm),
+                    scenario, sites, context.asOf, fleet, physicalEnergy, permittedTransfers);
+            };
             if (arm === "selected") {
                 decisions.push({ hour: context.hour, results: await routeAndAcceptJobs(jobs, { route }, executor) });
             } else {

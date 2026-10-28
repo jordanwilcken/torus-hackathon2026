@@ -35,7 +35,8 @@ export function replayTransferDecision(job: Job, energy: EnergyMap, scenario: Re
 
 /** Plan over current ledger publications; the executor independently validates every command. */
 export async function routeReplayJob(job: Job, energy: EnergyMap, scenario: ReplayScenario,
-    sites: readonly ExecutionSite[], asOf: string, fleet: boolean, movementEnergy: EnergyMap = energy) {
+    sites: readonly ExecutionSite[], asOf: string, fleet: boolean, movementEnergy: EnergyMap = energy,
+    permittedTransfers?: readonly string[]) {
     const current = sites.find(site => site.locationId === job.currentLocation)!;
     const transfers = new Map<string, ReturnType<typeof replayTransferDecision>>();
     const outcome = await chooseExecutionSlot(fleet ? job : { ...job, allowedLocations: [job.homeLocation] }, energy, {
@@ -46,7 +47,12 @@ export async function routeReplayJob(job: Job, energy: EnergyMap, scenario: Repl
             if (!transfers.has(locationId)) transfers.set(locationId,
                 replayTransferDecision(job, movementEnergy, scenario, sites, asOf, locationId));
             const result = transfers.get(locationId);
-            return result?.decision?.move === false ? { rejectedBecause: result.decision.reason } : result;
+            if (result?.decision?.move === false) return { rejectedBecause: result.decision.reason };
+            if (result && permittedTransfers && !permittedTransfers.includes(locationId)) return {
+                rejectedBecause: "The shared capacity plan has not assigned this job to " + locationId +
+                    "; arrival capacity is budgeted across competing jobs, not physically reserved.",
+            };
+            return result;
         },
     });
     const requested = !outcome.selected ? outcome.transfer?.destination : undefined;
