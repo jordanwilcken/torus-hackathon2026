@@ -3,10 +3,10 @@
 [![Build and score reporting](https://github.com/jordanwilcken/torus-hackathon2026/actions/workflows/requirements.yml/badge.svg?branch=main)](https://github.com/jordanwilcken/torus-hackathon2026/actions/workflows/requirements.yml?query=branch%3Amain)
 
 <!-- scorecard:start -->
-<!-- scorecard:run 13 attempt 1 -->
-**[Open latest CI scorecard →](https://github.com/jordanwilcken/torus-hackathon2026/actions/runs/40634462102)** · **[Download scorecard + rubric](https://github.com/jordanwilcken/torus-hackathon2026/actions/runs/40634462102/artifacts/12792717704)** · [All runs](https://github.com/jordanwilcken/torus-hackathon2026/actions/workflows/requirements.yml?query=branch%3Amain)
+<!-- scorecard:run 14 attempt 1 -->
+**[Open latest CI scorecard →](https://github.com/jordanwilcken/torus-hackathon2026/actions/runs/40638012882)** · **[Download scorecard + rubric](https://github.com/jordanwilcken/torus-hackathon2026/actions/runs/40638012882/artifacts/12794496376)** · [All runs](https://github.com/jordanwilcken/torus-hackathon2026/actions/workflows/requirements.yml?query=branch%3Amain)
 
-Latest reported commit: [`6602f76`](https://github.com/jordanwilcken/torus-hackathon2026/commit/6602f76dfeda73f11f943544a480f9dadd81e4ef) · Run 13, attempt 1.
+Latest reported commit: [`c87b872`](https://github.com/jordanwilcken/torus-hackathon2026/commit/c87b872f71a2f104b2979e2a5c0f949fa9239ddb) · Run 14, attempt 1.
 <!-- scorecard:end -->
 
 The links update automatically after main-branch CI. The run summary shows the numeric score,
