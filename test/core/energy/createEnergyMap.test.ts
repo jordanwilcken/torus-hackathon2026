@@ -1,3 +1,5 @@
+import { snapshotGrid, sites } from "../../../src/core/energy/data/sites.js";
+import { createSimulation, type PhaseContext } from "../../../src/core/execution/simulation/clock.js";
 import { describe, expect, it } from "vitest";
 import { createEnergyMap } from "../../../src/core/energy/maps/createEnergyMap.js";
 import { getEnergyMap } from "../../../src/core/energy/getEnergyMap.js";
@@ -238,4 +240,54 @@ describe("versioned energy lookup over supplied providers", () => {
         expect(() => createEnergyMap({ ...scope, sites: [...scope.sites, scope.sites[0]] }, providers)).toThrow(RangeError);
         expect(() => createEnergyMap({ ...scope, window: { startAt: asOf, endAt: asOf } }, providers)).toThrow(RangeError);
     });
+});
+
+it("composes with the shipped regional adapter and simulation fence across two hours", async () => {
+    const site = sites[0];
+    const horizon: TimeWindow = { startAt: "2025-07-31T05:00:00Z", endAt: "2025-07-31T07:00:00Z" };
+    const slotReference: SlotReference = { locationId: site.id, slotId: "salt-lake-morning" };
+    const first = reading(site.id, "2025-07-31T05:00:00Z");
+    first.version = "morning-1";
+    first.slot = { ...first.slot!, id: slotReference.slotId, window: horizon };
+    const second = structuredClone(first);
+    second.version = "morning-2";
+    second.observedAt = "2025-07-31T06:00:00Z";
+    second.slot!.usedGpus = 1;
+    const scope: EnergyMapScope = {
+        window: horizon,
+        sites: [{ locationId: site.id, regionId: site.regionId, computeProfile: "H100" }],
+    };
+    const providers: EnergyMapProviders = {
+        // Supplied local readings; this does not stand in for a working energy ledger.
+        siteEnergy: { slots: (locationId: string): SlotSnapshot[] => locationId === site.id ? [first, second] : [] },
+        regionalGrid: snapshotGrid(),
+    };
+    const seen: SlotSnapshot[] = [];
+    const simulation = createSimulation({
+        seed: 1, snapshotId: "shipped-eia930-pace", startAt: horizon.startAt, hours: 2,
+        syntheticForecast: false, workload: { kind: "fixture", jobs: [] },
+    }, {
+        energy: createEnergyMap(scope, providers),
+        createPhases: () => ({
+            plan(context: PhaseContext): void {
+                // Ask for later evidence: the real clock's map fence must retain this tick's view.
+                const query: SlotQuery = { window: context.tick, asOf: "2025-07-31T07:00:00Z" };
+                expect(context.energy.findSlots(query)).toEqual([slotReference]);
+                seen.push(context.energy.readSlot(slotReference, query.asOf, 120));
+                // Regional observations are not relabeled as forecast output.
+                expect(context.energy.readForecast(slotReference, query.asOf)).toEqual({});
+            },
+        }),
+    });
+
+    await simulation.step();
+    await simulation.step();
+
+    expect(seen.map(snapshot => ({
+        status: snapshot.status, version: snapshot.version, observedAt: snapshot.observedAt,
+        usedGpus: snapshot.slot!.usedGpus,
+    }))).toEqual([
+        { status: "current", version: "morning-1", observedAt: "2025-07-31T05:00:00Z", usedGpus: 0 },
+        { status: "current", version: "morning-2", observedAt: "2025-07-31T06:00:00Z", usedGpus: 1 },
+    ]);
 });
