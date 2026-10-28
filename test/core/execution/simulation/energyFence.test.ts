@@ -137,3 +137,55 @@ test('evidence returned to planning is a copy that cannot change the underlying 
   expect(shared.slot!.postedUsdPerGpuHour).toBe(0.04);
   expect(series.carbon!.points[0].value).toBe(300);
 });
+
+const query = { window: { startAt: tickStart, endAt: nextHour }, asOf: tickStart };
+
+test('discovery returns the same detached reference it checked, even if a getter or readSlot changes the source', () => {
+  const { map } = recordedMap();
+  let reads = 0;
+  const shifting = { locationId: 'at-tick-start', get slotId() { reads += 1; return reads === 1 ? 'at-tick-start' : 'one-second-late'; } };
+  const mutated = ref('at-tick-start');
+  const viaGetter: EnergyMap = { ...map, findSlots: () => [shifting] };
+  const viaReadSlot: EnergyMap = {
+    ...map, findSlots: () => [mutated],
+    readSlot: (reference, asOf, age) => {
+      const result = map.readSlot(reference, asOf, age);
+      reference.slotId = 'one-second-late';
+      mutated.slotId = 'one-second-late';
+      return result;
+    },
+  };
+
+  expect(fenceEnergyMap(viaGetter, tickStart).findSlots(query)).toEqual([ref('at-tick-start')]);
+  expect(fenceEnergyMap(viaReadSlot, tickStart).findSlots(query)).toEqual([ref('at-tick-start')]);
+});
+
+test('discovery drops a reference whose snapshot describes a different slot', () => {
+  const { map, snapshots } = recordedMap();
+  const mismatched: EnergyMap = { ...map, findSlots: () => [ref('one-second-late')], readSlot: () => structuredClone(snapshots['at-tick-start']) };
+
+  expect(fenceEnergyMap(mismatched, tickStart).findSlots(query)).toEqual([]);
+});
+
+test('malformed candidates are dropped one by one while dated current and stale slots stay', () => {
+  const { map, snapshots } = recordedMap();
+  const stale = { ...snapshot('stale-earlier', '2026-10-27T16:00:00Z'), status: 'stale' as const };
+  const readings: Record<string, unknown> = {
+    'bad-time': snapshot('bad-time', 'not a timestamp'),
+    'null-snapshot': null,
+    'uncloneable': { ...snapshot('uncloneable', tickStart), extra: () => 1 },
+    'stale-earlier': stale,
+    'at-tick-start': snapshots['at-tick-start'],
+  };
+  const messy: EnergyMap = {
+    ...map,
+    findSlots: () => [null, 42, { locationId: 1, slotId: 'x' }, ref('bad-time'), ref('null-snapshot'), ref('uncloneable'),
+      ref('throws'), ref('stale-earlier'), ref('at-tick-start')] as unknown as ReturnType<EnergyMap['findSlots']>,
+    readSlot: reference => {
+      if (reference.slotId === 'throws') throw new Error('broken reading');
+      return readings[reference.slotId] as SlotSnapshot;
+    },
+  };
+
+  expect(fenceEnergyMap(messy, tickStart).findSlots(query)).toEqual([ref('stale-earlier'), ref('at-tick-start')]);
+});

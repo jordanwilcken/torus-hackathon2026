@@ -1,5 +1,7 @@
 import type { EnergyMap } from "../../energy/EnergyMap.interface.js";
 import type { SlotForecast } from "../../energy/SlotForecast.type.js";
+import type { SlotReference } from "../../energy/SlotReference.type.js";
+import type { SlotSnapshot } from "../../energy/SlotSnapshot.type.js";
 
 function instant(value: string): number {
     const time = Date.parse(value);
@@ -22,11 +24,20 @@ export function fenceEnergyMap(map: EnergyMap, fence: string): EnergyMap {
     return {
         findSlots(query) {
             const asOf = clamp(query.asOf);
-            // Fail closed: keep a slot only if its own evidence proves it was observed by asOf. Age is
-            // irrelevant to that check, so the freshness limit is lifted for this probe read.
-            return map.findSlots({ ...query, asOf })
-                .filter(reference => observedBy(map.readSlot(reference, asOf, Number.MAX_SAFE_INTEGER).observedAt, asOf))
-                .map(reference => structuredClone(reference));
+            // Fail closed, one candidate at a time: detach the reference once, then keep exactly that copy only
+            // if the slot's own snapshot names it and proves it was observed by asOf. Anything malformed or
+            // unprovable is dropped rather than trusted. Age is irrelevant here, so freshness is not limited.
+            return map.findSlots({ ...query, asOf }).flatMap(candidate => {
+                try {
+                    const { locationId, slotId } = structuredClone(candidate) as SlotReference;
+                    if (typeof locationId !== "string" || typeof slotId !== "string") return [];
+                    const snapshot = structuredClone(map.readSlot({ locationId, slotId }, asOf, Number.MAX_SAFE_INTEGER)) as SlotSnapshot | null;
+                    const names = snapshot?.slot?.id === slotId && snapshot.slot.locationId === locationId;
+                    return names && snapshot.status !== "unavailable" && observedBy(snapshot.observedAt, asOf) ? [{ locationId, slotId }] : [];
+                } catch {
+                    return [];
+                }
+            });
         },
         readSlot(reference, asOf, maximumAgeMinutes) {
             const at = clamp(asOf);

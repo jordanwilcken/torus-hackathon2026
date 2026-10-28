@@ -7,6 +7,9 @@ import {
   createPolicyArms, createSimulation, type PhaseContext, type SimulationConfig, type SimulationPhases,
 } from '../../../../src/core/execution/simulation/clock.js';
 import { DEFAULT_WORKLOAD_SETTINGS } from '../../../../src/core/execution/simulation/workload.js';
+import type { InputEvent } from '../../../../src/core/execution/simulation/clock.js';
+
+type InputEventWithExtras = InputEvent & Record<string, unknown>;
 
 const T0 = '2026-10-27T12:00:00Z';
 const at = (hour: number) => new Date(Date.parse(T0) + hour * 3_600_000).toISOString().replace('.000Z', 'Z');
@@ -575,4 +578,38 @@ test('array payloads with extra non-index properties are validated too', () => {
   })).toThrow(RangeError);
   const sim = createSimulation(fixtureConfig([], 2), { energy: recordedEnergy, createPhases: () => ({}) });
   expect(() => sim.schedule({ atHour: 1, kind: 'bad', payload })).toThrow(RangeError);
+});
+
+test('extra event fields are validated like the payload and cannot share mutable state between arms', () => {
+  const metadata = new Map([['factor', 1]]);
+  const event = { atHour: 1, kind: 'heat-wave', metadata } as InputEventWithExtras;
+
+  expect(() => createSimulation(fixtureConfig([], 2, { events: [event] }), {
+    energy: recordedEnergy, createPhases: () => ({}),
+  })).toThrow(RangeError);
+  const arms = createPolicyArms(fixtureConfig([], 2), recordedEnergy, { baseline: () => ({}), selected: () => ({}) });
+  expect(() => arms.schedule(event)).toThrow(RangeError);
+  expect(arms.baseline.inputs().events).toEqual([]);
+  expect(arms.selected.inputs().events).toEqual([]);
+});
+
+class Factor { constructor(readonly value: number) {} }
+class Hours extends Array<number> {}
+
+test.each([
+  ['a class instance payload', { atHour: 1, kind: 'bad', payload: new Factor(1) }],
+  ['a nested class instance', { atHour: 1, kind: 'bad', payload: { factor: new Factor(1) } }],
+  ['an Array subclass payload', { atHour: 1, kind: 'bad', payload: Hours.from([1, 2]) }],
+  ['a class instance as the event', Object.assign(new Factor(1), { atHour: 1, kind: 'bad' })],
+])('events built from class instances are rejected rather than normalized: %s', (_label, event) => {
+  const sim = createSimulation(fixtureConfig([], 2), { energy: recordedEnergy, createPhases: () => ({}) });
+
+  expect(() => sim.schedule(event as InputEventWithExtras)).toThrow(RangeError);
+  expect(sim.inputs().events).toEqual([]);
+});
+
+test('a non-string event kind is rejected', () => {
+  const sim = createSimulation(fixtureConfig([], 2), { energy: recordedEnergy, createPhases: () => ({}) });
+
+  expect(() => sim.schedule({ atHour: 1, kind: 7 } as unknown as InputEventWithExtras)).toThrow(RangeError);
 });

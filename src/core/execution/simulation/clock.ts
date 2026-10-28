@@ -65,15 +65,29 @@ function assertPlainData(value: unknown, path: string): void {
     throw new RangeError(`Event ${path} must be plain JSON-like data.`);
 }
 
+// structuredClone turns class instances and Array subclasses into plain values, so their prototypes are
+// checked on the caller's object first. Only data descriptors are followed, so no caller getter runs here.
+function assertPlainSource(value: unknown, path: string, seen = new WeakSet<object>()): void {
+    if (value === null || typeof value !== "object" || seen.has(value)) return;
+    seen.add(value);
+    const prototype = Object.getPrototypeOf(value);
+    if (Array.isArray(value) ? prototype !== Array.prototype : prototype !== Object.prototype && prototype !== null)
+        throw new RangeError(`Event ${path} must be plain JSON-like data.`);
+    for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value)))
+        if ("value" in descriptor) assertPlainSource(descriptor.value, `${path}.${key}`, seen);
+}
+
 /** Copy the caller's event exactly once, so getters or later mutation cannot make two arms disagree. */
 function prepareEvent(event: InputEvent): InputEvent {
+    assertPlainSource(event, "event");
     let copy: InputEvent;
     try {
         copy = structuredClone(event);
     } catch {
         throw new RangeError("Event must be plain JSON-like data.");
     }
-    if (copy.payload !== undefined) assertPlainData(copy.payload, "payload");
+    assertPlainData(copy, "event");
+    if (typeof copy.kind !== "string") throw new RangeError("Event kind must be a string.");
     return copy;
 }
 
