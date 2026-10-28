@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { collectEiaSnapshot } from '../../../../src/server/eia';
+import { collectEiaSnapshot, collectEiaPublication } from '../../../../src/server/eia';
 
 const now = () => Date.parse('2026-10-28T08:00:00Z');
 const payload = { response: { frequency: 'hourly', dateFormat: 'YYYY-MM-DD"T"HH24', total: '1', data: [
@@ -41,4 +41,20 @@ test('respects EIA rate-limit backoff without disclosing the upstream body', asy
 test('a network error never exposes the API key in its message', async () => {
   const fetcher = (async () => { throw new Error('https://api.eia.gov/?api_key=secret-fixture'); }) as typeof fetch;
   await expect(collectEiaSnapshot('secret-fixture', fetcher, now)).rejects.toThrow('EIA could not be reached.');
+});
+
+
+test('keeps reproducible source rows and request scope while removing echoed credentials and unknown metadata', async () => {
+  const supplied = structuredClone(payload);
+  Object.assign(supplied.response.data[0], { unexpected: 'secret-fixture' });
+  Object.assign(supplied.response, { request: 'secret-fixture' });
+  const publication = await collectEiaPublication('secret-fixture', async () => Response.json(supplied), now);
+  expect(publication.snapshot.observations[0].value).toBe(5429);
+  expect(publication.evidence).toEqual({ format: 'eia-response-v1', body: {
+    sourceUrl: 'https://api.eia.gov/v2/electricity/rto/region-data/data/',
+    retrievedAt: '2026-10-28T08:00:00.000Z',
+    query: { frequency: 'hourly', respondent: 'PACE', start: '2026-10-25T08', end: '2026-10-29T08', length: 5000, sort: 'period descending' },
+    response: payload.response,
+  } });
+  expect(JSON.stringify(publication)).not.toContain('secret-fixture');
 });

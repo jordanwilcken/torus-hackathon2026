@@ -119,7 +119,7 @@ With the pinned Node/npm versions, copy `.env.example` to `.env.local` and set `
 - `/api/grid/eia`: EIA-930 PACE demand, generation, signed interchange, and separately labeled day-ahead demand forecasts. The server requests a bounded 72-hour history plus 24-hour forecast horizon and caches successful snapshots for 15 minutes.
 - `/api/grid/caiso`: anonymous CAISO OASIS five-minute PACE wholesale dispatch prices, cached for five minutes. Negative prices remain valid. These prices do not establish a site's retail bill or available compute.
 
-The page polls these independent server caches each minute. Failed refreshes preserve the original reading and retrieval timestamps, expose the failure, and back off (including Retry-After). No Fake values replace an unavailable live feed. Cache data is in memory; restarting the server starts a new collection. Public source values and UTC validity intervals stay distinct from retrieval time. EIA demand is delayed; generation/interchange generally arrive later. This API connection has no carbon series: the existing workbook adapter remains the separate source for delayed carbon history.
+The page polls these independent server caches each minute. Failed refreshes preserve the original reading and retrieval timestamps, expose the failure, and back off (including Retry-After). No Fake values replace an unavailable live feed. Each successful collection is saved before publication. On restart, the server restores the last verified snapshot and attempts a live refresh; a failed refresh leaves the saved revision visibly stale. Public source values and UTC validity intervals stay distinct from retrieval time. EIA demand is delayed; generation/interchange generally arrive later. This API connection has no carbon series: the existing workbook adapter remains the separate source for delayed carbon history.
 
 `ApiRegionalGrid` implements the existing synchronous `RegionalGrid.read` contract over a normalized EIA snapshot. The visible live-input panel consumes that provider. The existing illustrative map/job preview remains explicitly simulated; wiring real worker execution is a separate tracked requirement. A static `dist/` upload alone cannot serve the APIs: deployment must retain the server routes and server environment secret.
 
@@ -144,10 +144,32 @@ function Demand({ feeds }: { feeds: PublicGridClient }) {
 // <Demand feeds={feeds} /> can be mounted alongside other independent consumers.
 ```
 
-`feeds.eia` and `feeds.caiso` each expose `status`, `snapshot`, `revision`, request times and failure information. Revisions identify the complete normalized publication, including retrieval provenance. Identical cached content keeps its revision; a failed refresh keeps the last successful revision and evidence timestamps. Each source advances independently. The server still keeps its cache in memory; durable sanitized source archives remain part of the collector task.
+`feeds.eia` and `feeds.caiso` each expose `status`, `snapshot`, `revision`, request times and failure information. Revisions identify the complete normalized publication, including retrieval provenance. Identical cached content keeps its revision; a failed refresh keeps the last successful revision and evidence timestamps. Each source advances independently. The server persists each publication and sanitized source evidence in the local archive described below.
 
 `feeds.regionalGrid` is a stable synchronous `RegionalGrid` view of the latest EIA snapshot. It can be supplied to `createEnergyMap(scope, { siteEnergy, regionalGrid: feeds.regionalGrid })` alongside the application's existing site-energy provider. Observe `feeds.eia` to redraw consumers when its state changes. This does not create site capacity, prices or carbon evidence, resample hourly periods into partial slots, or wire the application's existing map/scheduler automatically.
 
 For a decision that spans asynchronous work, capture `feeds.eia.getSnapshot()` once, check its status and source age, and use `new ApiRegionalGrid(input.snapshot)` with that captured revision. A live provider may advance between separate reads; a pinned provider keeps the decision's input fixed. CAISO prices remain five-minute wholesale context until an explicit interval and signed-price policy adapts them to the site's accounting/pricing contract.
 
 The executable example at `test/userflows/data/fixture.html` mounts two independent consumers: one reads the snapshot, the other uses the synchronous regional provider. Its browser test verifies shared revisions through refresh and failure. The application's live panel uses the same exported client/hook.
+
+### Persist and replay snapshots
+
+The server stores immutable revision files in `.cache/grid/eia/` and `.cache/grid/caiso/`, with a separate `latest.json` pointer for each feed. Set the server environment variable `GRID_SNAPSHOT_DIR` to an absolute path to use a persistent deployment volume. The default cache directory is ignored by Git. A deployment with an ephemeral filesystem loses its archive when that filesystem is replaced.
+
+Each revision file contains the normalized snapshot, its SHA-256 revision, sanitized source evidence, and an evidence checksum. EIA evidence whitelists the response fields used by the parser and records credential-free query context; CAISO evidence retains the public CSV and query interval. API keys, full EIA request URLs, and unrecognized EIA metadata are excluded. Checksums detect corrupt files; they do not authenticate the publisher.
+
+A new server loads the last saved revision once, preserving its original observation and retrieval times, then attempts a live collection. If collection fails, the retained snapshot is `stale`; if no valid snapshot exists, it is `unavailable`. A disk write failure also preserves the prior publication rather than advertising an unsaved revision. Each feed has its own revision and refresh cadence.
+
+Capture the revision used by a decision, then replay that exact normalized publication:
+
+```ts
+const response = await fetch(`/api/grid/eia?revision=${recordedRevision}`);
+if (!response.ok) throw new Error('Saved input is unavailable');
+const { archived, revision, snapshot } = await response.json();
+// archived === true: historical evidence, not a live FeedState.
+const recordedGrid = new ApiRegionalGrid(snapshot);
+```
+
+The same endpoint is available for `/api/grid/caiso`. Replay never calls an upstream service or substitutes the latest data. It returns 404 for an absent revision, 400 for an invalid or repeated revision parameter, and 503 for unreadable or corrupt evidence. Responses contain normalized snapshots, not the server's source archive. `GRID_FEEDS_OFFLINE=1` disables both upstream collection and archive access for the owned CI server.
+
+There is no automatic archive pruning yet. Keep the archive directory on the same persistent volume across restarts and retain revisions referenced by recorded decisions. Wiring that revision through the application map, scheduler, and worker receipt remains a separate integration task.

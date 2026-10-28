@@ -88,3 +88,41 @@ test('an empty collection never creates a publication revision', async () => {
   expect(result.snapshot).toBeNull();
   expect(result.revision).toBeNull();
 });
+
+test('a new cache restores the saved revision before a failed live refresh without changing evidence times', async () => {
+  const snapshot = { retrievedAt: '2026-10-28T08:00:00Z', value: 5429 };
+  let restores = 0;
+  let collections = 0;
+  const feed = createCachedFeed(async () => { collections++; throw new FeedError('Network unavailable.'); },
+    900_000, () => Date.parse('2026-10-28T09:00:00Z'), async () => { restores++; return snapshot; });
+  const [first, second] = await Promise.all([feed.read(), feed.read()]);
+  expect(first.status).toBe('stale');
+  expect(first.snapshot).toEqual(snapshot);
+  expect(first.revision).toBe('7b046b7111e429cae6e07609f49d9d07e39726881e5f04c8f3ec87e3b15cb79f');
+  expect(second.revision).toBe(first.revision);
+  expect(first.lastAttemptAt).toBe('2026-10-28T09:00:00.000Z');
+  expect(restores).toBe(1);
+  expect(collections).toBe(1);
+});
+
+test('corrupt saved evidence is reported safely when live collection is also unavailable', async () => {
+  const feed = createCachedFeed(async () => { throw new FeedError('Network unavailable.'); }, 900_000, () => 0,
+    async () => { throw new Error('Private archive path with secret-fixture'); });
+  const result = await feed.read();
+  expect(result.status).toBe('unavailable');
+  expect(result.snapshot).toBeNull();
+  expect(result.revision).toBeNull();
+  expect(result.error).toContain('Saved snapshot could not be loaded.');
+  expect(result.error).not.toContain('secret-fixture');
+});
+
+test('a successful live refresh replaces restored evidence and clears a restore failure', async () => {
+  const snapshot = { retrievedAt: '2026-10-28T09:00:00Z', value: 5500 };
+  let restores = 0;
+  const feed = createCachedFeed(async () => snapshot, 900_000, () => 0,
+    async () => { restores++; throw new Error('Corrupt saved data'); });
+  const result = await feed.read();
+  expect(restores).toBe(1);
+  expect(result).toMatchObject({ status: 'ready', snapshot });
+  expect(result.error).toBeUndefined();
+});

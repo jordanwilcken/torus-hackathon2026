@@ -1,5 +1,6 @@
 import { strFromU8, unzipSync } from 'fflate';
 import { FeedError } from './cachedFeed.ts';
+import type { SourceEvidence } from './snapshotArchive.ts';
 
 export type CaisoSnapshot = {
   source: string;
@@ -54,6 +55,10 @@ export function parseCaisoCsv(csv: string, retrievedAt: string): CaisoSnapshot {
 }
 
 export async function collectCaisoPrices(fetcher: typeof fetch = fetch, now: () => number = Date.now): Promise<CaisoSnapshot> {
+  return (await collectCaisoPublication(fetcher, now)).snapshot;
+}
+
+export async function collectCaisoPublication(fetcher: typeof fetch = fetch, now: () => number = Date.now): Promise<{ snapshot: CaisoSnapshot; evidence: SourceEvidence }> {
   const end = Math.floor(now() / hour) * hour + hour;
   const url = new URL(sourceUrl);
   url.searchParams.set('startdatetime', oasisTime(end - 2 * hour));
@@ -72,7 +77,12 @@ export async function collectCaisoPrices(fetcher: typeof fetch = fetch, now: () 
     if (error instanceof FeedError) throw error;
     throw new FeedError('CAISO request failed or timed out.');
   }
-  return parseCaisoCsv(priceCsv(bytes), new Date(now()).toISOString());
+  const csv = priceCsv(bytes);
+  const snapshot = parseCaisoCsv(csv, new Date(now()).toISOString());
+  return { snapshot, evidence: { format: 'caiso-csv-v1', body: {
+    sourceUrl, retrievedAt: snapshot.retrievedAt,
+    query: { startdatetime: oasisTime(end - 2 * hour), enddatetime: oasisTime(end) }, csv,
+  } } };
 }
 
 function priceCsv(bytes: Uint8Array): string {

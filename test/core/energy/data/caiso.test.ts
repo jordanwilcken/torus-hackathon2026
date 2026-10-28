@@ -1,6 +1,6 @@
 import { strToU8, zipSync } from 'fflate';
 import { describe, expect, it, vi } from 'vitest';
-import { collectCaisoPrices, parseCaisoCsv } from '../../../../src/server/caiso.js';
+import { collectCaisoPrices, collectCaisoPublication, parseCaisoCsv } from '../../../../src/server/caiso.js';
 import { FeedError } from '../../../../src/server/cachedFeed.js';
 
 const retrievedAt = '2026-10-28T08:16:00.000Z';
@@ -102,4 +102,16 @@ describe('CAISO PACE market prices', () => {
     const network = vi.fn<typeof fetch>().mockRejectedValue(new Error('upstream-private-debug'));
     await expect(collectCaisoPrices(network)).rejects.toThrow('CAISO request failed or timed out.');
   });
+});
+
+
+it('keeps the public CSV with exact retrieval time and query window for replay', async () => {
+  const suppliedCsv = csv(priceRow('-7.125'));
+  const publication = await collectCaisoPublication(async () => zipResponse({ 'prices.csv': suppliedCsv }), () => Date.parse(retrievedAt));
+  expect(publication.snapshot.prices[0].usdPerMWh).toBe(-7.125);
+  expect(publication.evidence).toEqual({ format: 'caiso-csv-v1', body: {
+    sourceUrl: publication.snapshot.sourceUrl, retrievedAt,
+    query: { startdatetime: '20261028T07:00-0000', enddatetime: '20261028T09:00-0000' },
+    csv: suppliedCsv,
+  } });
 });
